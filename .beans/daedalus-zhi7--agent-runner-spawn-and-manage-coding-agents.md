@@ -1,11 +1,11 @@
 ---
 # daedalus-zhi7
 title: 'Agent Runner: Spawn and manage coding agents'
-status: todo
+status: in-progress
 type: feature
 priority: critical
 created_at: 2026-01-26T05:39:25Z
-updated_at: 2026-01-26T08:54:39Z
+updated_at: 2026-01-26T09:42:13Z
 parent: daedalus-ss8m
 blocking:
     - daedalus-4h5x
@@ -96,16 +96,16 @@ UI can use OutputEvent to:
 - Split view: filter by stream, show in separate panes
 
 ## Checklist
-- [ ] Create AgentRunner class with configurable backend
-- [ ] Implement prompt generation from bean (full body)
-- [ ] Spawn process with proper stdio handling
-- [ ] Stream stdout/stderr separately with timestamps via EventEmitter
-- [ ] Detect process exit and exit code
-- [ ] Support cancellation (SIGTERM → SIGKILL after grace period)
-- [ ] Track running time (startedAt timestamp)
-- [ ] Handle backend-specific CLI arguments
-- [ ] Accept worktreePath parameter (default: project root, worktree path for parallel)
-- [ ] No timeout - let agents run to completion
+- [x] Create AgentRunner class with configurable backend
+- [x] Implement prompt generation from bean (full body)
+- [x] Spawn process with proper stdio handling
+- [x] Stream stdout/stderr separately with timestamps via EventEmitter
+- [x] Detect process exit and exit code
+- [x] Support cancellation (SIGTERM → SIGKILL after grace period)
+- [x] Track running time (startedAt timestamp)
+- [x] Handle backend-specific CLI arguments
+- [x] Accept worktreePath parameter (default: project root, worktree path for parallel)
+- [x] No timeout - let agents run to completion
 
 ## Events
 - `started`: (bean: Bean) - emitted when agent process spawns successfully

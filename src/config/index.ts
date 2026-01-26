@@ -9,9 +9,23 @@ import { z } from 'zod';
 
 // Configuration schema
 const AgentConfigSchema = z.object({
-  command: z.string().default('opencode'),
-  args: z.array(z.string()).default(['run']),
-  model: z.string().optional(),
+  backend: z.enum(['opencode', 'claude', 'codex']).default('opencode'),
+  opencode: z
+    .object({
+      model: z.string().optional(),
+    })
+    .optional(),
+  claude: z
+    .object({
+      model: z.string().optional(),
+      dangerously_skip_permissions: z.boolean().default(true),
+    })
+    .optional(),
+  codex: z
+    .object({
+      model: z.string().optional(),
+    })
+    .optional(),
 });
 
 const TalosConfigSchema = z.object({

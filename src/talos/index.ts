@@ -38,7 +38,14 @@ export {
 } from './beans-client.js';
 export { BeanWatcher, Watcher } from './watcher.js';
 export { Scheduler, type SchedulerConfig, type SchedulerEvents } from './scheduler.js';
-export { AgentRunner } from './agent-runner.js';
+export {
+  AgentRunner,
+  generatePrompt,
+  type AgentConfig,
+  type OutputEvent,
+  type ExitResult,
+  type AgentRunnerEvents,
+} from './agent-runner.js';
 export { CompletionHandler } from './completion-handler.js';
 
 // Event types for the daemon

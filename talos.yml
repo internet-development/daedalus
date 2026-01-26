@@ -3,13 +3,16 @@
 
 # Agent runner configuration
 agent:
-  # Command to run (opencode, claude, etc.)
-  command: opencode
-  # Arguments to pass
-  args:
-    - run
-  # Model to use (optional, uses agent's default if not specified)
-  # model: anthropic/claude-sonnet-4-20250514
+  # Backend to use: opencode, claude, or codex
+  backend: opencode
+  # Backend-specific configuration (optional)
+  # opencode:
+  #   model: anthropic/claude-sonnet-4-20250514
+  # claude:
+  #   model: anthropic/claude-sonnet-4-20250514
+  #   dangerously_skip_permissions: true
+  # codex:
+  #   model: gpt-4
 
 # Scheduler configuration
 scheduler:
