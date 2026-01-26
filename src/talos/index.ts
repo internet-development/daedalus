@@ -9,7 +9,33 @@
  * - Completion handler for post-execution tasks
  */
 
-export { BeansClient } from './beans-client.js';
+// Beans client - standalone functions and types
+export {
+  // Types
+  type Bean,
+  type BeanStatus,
+  type BeanType,
+  type BeanPriority,
+  type BeanFilter,
+  type CreateBeanInput,
+  type TalosTag,
+  // Error class
+  BeansCliError,
+  // Functions
+  listBeans,
+  getBean,
+  getBlockedBy,
+  updateBeanStatus,
+  updateBeanBody,
+  updateBeanTags,
+  createBean,
+  isStuck,
+  getEpicAncestor,
+  setCwd,
+  getCwd,
+  // Legacy class (deprecated)
+  BeansClient,
+} from './beans-client.js';
 export { Watcher } from './watcher.js';
 export { Scheduler } from './scheduler.js';
 export { AgentRunner } from './agent-runner.js';

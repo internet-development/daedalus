@@ -1,11 +1,11 @@
 ---
 # daedalus-a5ja
 title: 'Beans Client: Typed wrapper for beans CLI'
-status: todo
+status: in-progress
 type: feature
 priority: critical
 created_at: 2026-01-26T05:38:55Z
-updated_at: 2026-01-26T08:54:39Z
+updated_at: 2026-01-26T09:19:41Z
 parent: daedalus-ss8m
 blocking:
     - daedalus-neut
@@ -44,19 +44,19 @@ async function execBeansQuery<T>(query: string): Promise<T>;
 - Throws `BeansCliError` for actual failures (CLI not found, parse errors, etc.)
 
 ## Checklist
-- [ ] Define Bean, BeanStatus, BeanFilter, BeanType types matching beans GraphQL schema
-- [ ] Implement `execBeans()` helper for running `beans` CLI commands
-- [ ] Implement `execBeansQuery()` for `beans query --json` queries
-- [ ] Implement `listBeans()` with optional filter
-- [ ] Implement `getBean()` returning null for not found
-- [ ] Implement `getBlockedBy()` for dependency resolution
-- [ ] Implement `updateBeanStatus()` using `beans update`
-- [ ] Implement `updateBeanTags()` for adding/removing tags (blocked, failed)
-- [ ] Implement `createBean()` using `beans create`
-- [ ] Implement `updateBeanBody()` for checklist updates
-- [ ] Implement `isStuck()` helper function (checks blocked/failed tags)
-- [ ] Implement `getEpicAncestor()` - walk parent chain until type='epic' or null
-- [ ] Define `BeansCliError` for actual failure cases
+- [x] Define Bean, BeanStatus, BeanFilter, BeanType types matching beans GraphQL schema
+- [x] Implement `execBeans()` helper for running `beans` CLI commands
+- [x] Implement `execBeansQuery()` for `beans query --json` queries
+- [x] Implement `listBeans()` with optional filter
+- [x] Implement `getBean()` returning null for not found
+- [x] Implement `getBlockedBy()` for dependency resolution
+- [x] Implement `updateBeanStatus()` using `beans update`
+- [x] Implement `updateBeanTags()` for adding/removing tags (blocked, failed)
+- [x] Implement `createBean()` using `beans create`
+- [x] Implement `updateBeanBody()` for checklist updates
+- [x] Implement `isStuck()` helper function (checks blocked/failed tags)
+- [x] Implement `getEpicAncestor()` - walk parent chain until type='epic' or null
+- [x] Define `BeansCliError` for actual failure cases
 
 ## Shared Types
 
