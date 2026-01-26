@@ -1,11 +1,11 @@
 ---
 # daedalus-kqdl
 title: 'Execute View: Agent output streaming'
-status: in-progress
+status: completed
 type: feature
 priority: high
 created_at: 2026-01-26T05:40:18Z
-updated_at: 2026-01-26T10:07:39Z
+updated_at: 2026-01-26T10:07:50Z
 parent: daedalus-kvgh
 ---
 
