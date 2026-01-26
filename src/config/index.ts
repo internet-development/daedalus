@@ -52,7 +52,7 @@ const AgentConfigSchema = z.object({
 const SchedulerConfigSchema = z.object({
   max_parallel: z.number().min(1).default(1),
   poll_interval: z.number().min(100).default(1000),
-  auto_enqueue_on_startup: z.boolean().default(true),
+  auto_enqueue_on_startup: z.boolean().default(false),
 });
 
 /**
