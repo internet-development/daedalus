@@ -1,11 +1,11 @@
 ---
 # daedalus-dsj8
 title: 'Monitor View: Bean list and queue status'
-status: todo
+status: in-progress
 type: feature
 priority: high
 created_at: 2026-01-26T05:40:09Z
-updated_at: 2026-01-26T08:54:39Z
+updated_at: 2026-01-26T09:54:41Z
 parent: daedalus-kvgh
 ---
 
@@ -41,19 +41,19 @@ STUCK (1 bean)
 **Draft visibility**: Togglable. Add a keyboard shortcut (e.g., `d`) to toggle draft beans visibility. Hidden by default but accessible when needed.
 
 ## Checklist
-- [ ] Create MonitorView component
-- [ ] Create BeanList component with grouping
-- [ ] Create BeanItem component with status icon, title, type, priority
-- [ ] Subscribe to Talos queue changes
-- [ ] Show elapsed time for in-progress beans
-- [ ] Show blocker info for stuck beans (blocked/failed tags)
-- [ ] Implement navigation (j/k or arrows)
-- [ ] Implement selection with Enter (show context menu)
-- [ ] Create BeanContextMenu component with state-appropriate actions
-- [ ] Show empty states for each group
-- [ ] Color-code by priority (critical=red, high=yellow, etc)
-- [ ] Add "Recently Completed" section
-- [ ] Add toggle for draft visibility (shortcut: d)
+- [x] Create MonitorView component
+- [x] Create BeanList component with grouping
+- [x] Create BeanItem component with status icon, title, type, priority
+- [x] Subscribe to Talos queue changes
+- [x] Show elapsed time for in-progress beans
+- [x] Show blocker info for stuck beans (blocked/failed tags)
+- [x] Implement navigation (j/k or arrows)
+- [x] Implement selection with Enter (show context menu)
+- [x] Create BeanContextMenu component with state-appropriate actions
+- [x] Show empty states for each group
+- [x] Color-code by priority (critical=red, high=yellow, etc)
+- [x] Add "Recently Completed" section
+- [x] Add toggle for draft visibility (shortcut: d)
 
 ## Status Icons
 - ○ Queued (todo status)

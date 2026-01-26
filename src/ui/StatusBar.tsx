@@ -37,8 +37,10 @@ function getContextShortcuts(view: ViewType, isPaused: boolean): ShortcutDef[] {
 
   switch (view) {
     case 'monitor':
+      shortcuts.push({ hotkey: 'j/k', label: 'navigate' });
+      shortcuts.push({ hotkey: 'Enter', label: 'actions' });
+      shortcuts.push({ hotkey: 'd', label: 'drafts' });
       shortcuts.push({ hotkey: 'r', label: 'retry' });
-      shortcuts.push({ hotkey: 'Enter', label: 'view' });
       break;
     case 'execute':
       shortcuts.push({ hotkey: 'c', label: 'cancel' });
