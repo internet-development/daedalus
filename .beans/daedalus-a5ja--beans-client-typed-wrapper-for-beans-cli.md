@@ -1,11 +1,11 @@
 ---
 # daedalus-a5ja
 title: 'Beans Client: Typed wrapper for beans CLI'
-status: in-progress
+status: completed
 type: feature
 priority: critical
 created_at: 2026-01-26T05:38:55Z
-updated_at: 2026-01-26T09:19:41Z
+updated_at: 2026-01-26T09:19:54Z
 parent: daedalus-ss8m
 blocking:
     - daedalus-neut
