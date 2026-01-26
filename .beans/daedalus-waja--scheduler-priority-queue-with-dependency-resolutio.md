@@ -1,11 +1,11 @@
 ---
 # daedalus-waja
 title: 'Scheduler: Priority queue with dependency resolution'
-status: in-progress
+status: completed
 type: feature
 priority: critical
 created_at: 2026-01-26T05:39:13Z
-updated_at: 2026-01-26T09:39:42Z
+updated_at: 2026-01-26T09:40:11Z
 parent: daedalus-ss8m
 blocking:
     - daedalus-4h5x
