@@ -1,11 +1,11 @@
 ---
 # daedalus-uyd2
 title: 'Configuration: talos.yml schema and loading'
-status: todo
+status: in-progress
 type: feature
 priority: high
 created_at: 2026-01-26T05:40:42Z
-updated_at: 2026-01-26T08:54:39Z
+updated_at: 2026-01-26T09:44:52Z
 parent: daedalus-ss8m
 blocking:
     - daedalus-4h5x
@@ -102,14 +102,14 @@ Bean: daedalus-waja
 ```
 
 ## Checklist
-- [ ] Define Zod schema for configuration
-- [ ] Create default configuration values (all fields optional)
-- [ ] Implement config file loading from talos.yml
-- [ ] Search upward for config file (like beans does)
-- [ ] Detect `.beans/` directory location (same dir as talos.yml or search upward)
-- [ ] Merge with defaults
-- [ ] Validate with helpful error messages
-- [ ] Export typed TalosConfig interface
-- [ ] Export discovered paths (configPath, beansPath, projectRoot)
-- [ ] Implement commit type mapping (bean.type → conventional commit type)
-- [ ] Implement scope extraction (walk up to find epic ancestor, omit if none)
+- [x] Define Zod schema for configuration
+- [x] Create default configuration values (all fields optional)
+- [x] Implement config file loading from talos.yml
+- [x] Search upward for config file (like beans does)
+- [x] Detect `.beans/` directory location (same dir as talos.yml or search upward)
+- [x] Merge with defaults
+- [x] Validate with helpful error messages
+- [x] Export typed TalosConfig interface
+- [x] Export discovered paths (configPath, beansPath, projectRoot)
+- [x] Implement commit type mapping (bean.type → conventional commit type)
+- [x] Implement scope extraction (walk up to find epic ancestor, omit if none)
