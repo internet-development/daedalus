@@ -1,11 +1,11 @@
 ---
 # daedalus-ap8h
 title: 'Project Setup: Replace existing Daedalus codebase'
-status: in-progress
+status: completed
 type: task
 priority: critical
 created_at: 2026-01-26T05:38:47Z
-updated_at: 2026-01-26T09:10:22Z
+updated_at: 2026-01-26T09:16:13Z
 parent: daedalus-ss8m
 blocking:
     - daedalus-a5ja
