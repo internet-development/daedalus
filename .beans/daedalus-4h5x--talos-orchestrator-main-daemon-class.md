@@ -1,11 +1,11 @@
 ---
 # daedalus-4h5x
 title: 'Talos Orchestrator: Main daemon class'
-status: in-progress
+status: completed
 type: feature
 priority: high
 created_at: 2026-01-26T05:39:46Z
-updated_at: 2026-01-26T09:49:03Z
+updated_at: 2026-01-26T09:49:15Z
 parent: daedalus-ss8m
 blocking:
     - daedalus-3eaw
