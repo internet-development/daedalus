@@ -1,11 +1,11 @@
 ---
 # daedalus-3eaw
 title: 'TUI App Shell: Entry point and view routing'
-status: in-progress
+status: completed
 type: feature
 priority: high
 created_at: 2026-01-26T05:39:56Z
-updated_at: 2026-01-26T09:52:22Z
+updated_at: 2026-01-26T09:52:35Z
 parent: daedalus-kvgh
 blocking:
     - daedalus-dsj8
