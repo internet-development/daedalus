@@ -22,3 +22,14 @@ export {
   beansCliTool,
   type PlanningToolName,
 } from './tools.js';
+export {
+  consultExpert,
+  consultExperts,
+  synthesizeExpertFeedback,
+  consultExpertsWithSynthesis,
+  formatExpertFeedbackForChat,
+  getAvailableExperts,
+  type ExpertFeedback,
+  type ExpertConsultationResult,
+  type ConsultExpertsOptions,
+} from './expert-advisor.js';

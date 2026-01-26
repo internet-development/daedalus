@@ -5,7 +5,7 @@ status: in-progress
 type: feature
 priority: high
 created_at: 2026-01-26T05:40:32Z
-updated_at: 2026-01-26T10:03:17Z
+updated_at: 2026-01-26T10:05:16Z
 parent: daedalus-kvgh
 ---
 
@@ -145,8 +145,8 @@ Voice enables natural conversation flow without keyboard context-switching.
 
 ### Expert Advisors
 - [x] Define expert personas and system prompts
-- [ ] Implement expert consultation (spawn sub-agent, collect response)
-- [ ] Create expert synthesis logic in planning agent
+- [x] Implement expert consultation (spawn sub-agent, collect response)
+- [x] Create expert synthesis logic in planning agent
 - [x] Add expert toggle (enable/disable specific experts)
 
 ### Modes

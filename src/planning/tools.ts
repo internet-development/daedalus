@@ -452,6 +452,44 @@ export const beansCliTool = tool({
 });
 
 // =============================================================================
+// Expert Consultation Tool
+// =============================================================================
+
+/**
+ * Note: This tool is a placeholder. The actual expert consultation is handled
+ * by the usePlanningAgent hook which has access to the config and can spawn
+ * sub-agents. This tool definition is here for documentation purposes.
+ */
+export const consultExpertsTool = tool({
+  description:
+    'Consult expert advisors for feedback on a plan or approach. Each expert provides their unique perspective.',
+  parameters: z.object({
+    context: z
+      .string()
+      .describe('The plan, approach, or content to get feedback on'),
+    question: z
+      .string()
+      .optional()
+      .describe('Optional specific question to ask the experts'),
+    experts: z
+      .array(
+        z.enum(['pragmatist', 'architect', 'skeptic', 'simplifier', 'security'])
+      )
+      .describe('Which experts to consult'),
+  }),
+  execute: async ({ context, question, experts }) => {
+    // This is handled externally by the planning agent hook
+    // The tool definition exists for the AI to understand the capability
+    return {
+      message:
+        'Expert consultation is handled by the planning agent. Include expert perspectives in your response.',
+      experts,
+      context: context.slice(0, 200) + '...',
+    };
+  },
+});
+
+// =============================================================================
 // Tool Registry
 // =============================================================================
 
@@ -462,6 +500,7 @@ export const PLANNING_TOOLS = {
   bash_readonly: bashReadonlyTool,
   web_search: webSearchTool,
   beans_cli: beansCliTool,
+  consult_experts: consultExpertsTool,
 };
 
 export type PlanningToolName = keyof typeof PLANNING_TOOLS;
