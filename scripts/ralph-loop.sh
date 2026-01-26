@@ -63,6 +63,39 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+# Notifications
+notify() {
+  local title="$1"
+  local message="$2"
+  local sound="${3:-default}"
+  
+  # macOS notification
+  osascript -e "display notification \"$message\" with title \"$title\" sound name \"$sound\"" 2>/dev/null || true
+  
+  # Terminal bell
+  printf '\a'
+}
+
+notify_iteration() {
+  # Just terminal bell for iterations - subtle
+  printf '\a'
+}
+
+notify_bean_complete() {
+  local bean_id="$1"
+  notify "Bean Completed" "$bean_id" "Glass"
+}
+
+notify_all_done() {
+  local count="$1"
+  notify "Ralph Loop Done" "Completed $count bean(s)" "Hero"
+}
+
+notify_error() {
+  local message="$1"
+  notify "Ralph Loop Error" "$message" "Basso"
+}
+
 # Log with timestamp
 log() {
   echo -e "${BLUE}[$(date '+%H:%M:%S')]${NC} $1"
@@ -319,6 +352,7 @@ work_on_bean() {
       end_time=$(date +%s)
       duration=$((end_time - start_time))
       log_success "Bean completed: $bean_id (${iteration} iterations, ${duration}s)"
+      notify_bean_complete "$bean_id"
       return 0
     fi
 
@@ -327,10 +361,12 @@ work_on_bean() {
       end_time=$(date +%s)
       duration=$((end_time - start_time))
       log_warn "Bean is stuck (blocked/failed): $bean_id (${iteration} iterations, ${duration}s)"
+      notify_error "Bean stuck: $bean_id"
       return 0
     fi
 
     log "Status: $status - continuing..."
+    notify_iteration
   done
 
   local end_time duration
@@ -356,6 +392,7 @@ main() {
         log "No actionable beans found"
       else
         log_success "All done! Completed $beans_completed bean(s)"
+        notify_all_done "$beans_completed"
       fi
       break
     fi
@@ -376,6 +413,7 @@ main() {
     # If specific bean or --once, exit after one
     if [[ -n "$SPECIFIC_BEAN" ]] || $ONCE; then
       log_success "Completed $beans_completed bean(s)"
+      notify_all_done "$beans_completed"
       break
     fi
   done
