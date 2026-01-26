@@ -1,11 +1,11 @@
 ---
 # daedalus-j9m4
 title: 'Completion Handler: Post-execution actions'
-status: todo
+status: in-progress
 type: feature
 priority: high
 created_at: 2026-01-26T05:39:36Z
-updated_at: 2026-01-26T08:54:39Z
+updated_at: 2026-01-26T09:46:53Z
 parent: daedalus-ss8m
 blocking:
     - daedalus-4h5x
@@ -97,15 +97,15 @@ Where:
 - scope: parent epic's slug (if exists)
 
 ## Checklist
-- [ ] Detect completion type (success, blocked tag, failed/crashed)
-- [ ] Implement commit for sequential mode (main branch)
-- [ ] Implement commit + merge for parallel mode (worktrees)
-- [ ] Format commit message using conventional commits
-- [ ] Extract type from bean.type, scope via getEpicAncestor()
-- [ ] Handle blocked tag detection (agent added 'blocked' tag)
-- [ ] Add 'failed' tag on crash/error
-- [ ] Create blocker bean if agent didn't (for blocked or crashed)
-- [ ] Handle crash/error cases - create descriptive error bean
-- [ ] Emit completion events for UI (bean-blocked, bean-failed, bean-completed)
-- [ ] Support dry-run mode (no actual commits)
-- [ ] Respect git hooks (don't skip verify)
+- [x] Detect completion type (success, blocked tag, failed/crashed)
+- [x] Implement commit for sequential mode (main branch)
+- [x] Implement commit + merge for parallel mode (worktrees)
+- [x] Format commit message using conventional commits
+- [x] Extract type from bean.type, scope via getEpicAncestor()
+- [x] Handle blocked tag detection (agent added 'blocked' tag)
+- [x] Add 'failed' tag on crash/error
+- [x] Create blocker bean if agent didn't (for blocked or crashed)
+- [x] Handle crash/error cases - create descriptive error bean
+- [x] Emit completion events for UI (bean-blocked, bean-failed, bean-completed)
+- [x] Support dry-run mode (no actual commits)
+- [x] Respect git hooks (don't skip verify)

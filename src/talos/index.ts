@@ -46,7 +46,12 @@ export {
   type ExitResult,
   type AgentRunnerEvents,
 } from './agent-runner.js';
-export { CompletionHandler } from './completion-handler.js';
+export {
+  CompletionHandler,
+  type CompletionResult,
+  type CompletionHandlerOptions,
+  type CompletionHandlerEvents,
+} from './completion-handler.js';
 
 // Event types for the daemon
 export type TalosEvent =
