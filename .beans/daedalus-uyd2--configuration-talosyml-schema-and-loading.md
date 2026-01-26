@@ -1,11 +1,11 @@
 ---
 # daedalus-uyd2
 title: 'Configuration: talos.yml schema and loading'
-status: in-progress
+status: completed
 type: feature
 priority: high
 created_at: 2026-01-26T05:40:42Z
-updated_at: 2026-01-26T09:44:52Z
+updated_at: 2026-01-26T09:45:04Z
 parent: daedalus-ss8m
 blocking:
     - daedalus-4h5x
