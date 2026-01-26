@@ -1,11 +1,11 @@
 ---
 # daedalus-3eaw
 title: 'TUI App Shell: Entry point and view routing'
-status: todo
+status: in-progress
 type: feature
 priority: high
 created_at: 2026-01-26T05:39:56Z
-updated_at: 2026-01-26T08:54:39Z
+updated_at: 2026-01-26T09:52:22Z
 parent: daedalus-kvgh
 blocking:
     - daedalus-dsj8
@@ -35,19 +35,19 @@ Create the main Ink application shell with view routing, keyboard shortcuts, and
 ```
 
 ## Checklist
-- [ ] Create src/index.tsx entry point
-- [ ] Initialize Talos daemon before rendering
-- [ ] Create App.tsx with view state management
-- [ ] Implement smart default view (Execute if running, else Monitor)
-- [ ] Implement view switching (1=Monitor, 2=Execute, 3=Plan)
-- [ ] Create Header component with title and view tabs
-- [ ] Create StatusBar component with shortcuts and queue count
-- [ ] Create useTalos hook for accessing daemon instance
-- [ ] Create TalosContext for providing Talos instance to components
-- [ ] Handle quit (q) with graceful shutdown
-- [ ] Support terminal resize events (Ink handles this)
-- [ ] Add loading state while Talos initializes
-- [ ] Use full terminal height
+- [x] Create src/index.tsx entry point
+- [x] Initialize Talos daemon before rendering
+- [x] Create App.tsx with view state management
+- [x] Implement smart default view (Execute if running, else Monitor)
+- [x] Implement view switching (1=Monitor, 2=Execute, 3=Plan)
+- [x] Create Header component with title and view tabs
+- [x] Create StatusBar component with shortcuts and queue count
+- [x] Create useTalos hook for accessing daemon instance
+- [x] Create TalosContext for providing Talos instance to components
+- [x] Handle quit (q) with graceful shutdown
+- [x] Support terminal resize events (Ink handles this)
+- [x] Add loading state while Talos initializes
+- [x] Use full terminal height
 
 ## Keyboard Shortcuts (Global)
 - `q`: Quit application

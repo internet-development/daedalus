@@ -8,7 +8,7 @@
 import { render } from 'ink';
 import React from 'react';
 
-import { App } from './index.js';
+import { DaedalusApp } from './index.js';
 import { TreeCommand } from './cli/tree.js';
 
 const args = process.argv.slice(2);
@@ -39,8 +39,8 @@ Environment:
       break;
 
     default:
-      // Launch main Talos daemon UI
-      render(<App />);
+      // Launch main Talos daemon UI with full-screen mode
+      render(<DaedalusApp />, { exitOnCtrlC: false });
       break;
   }
 }

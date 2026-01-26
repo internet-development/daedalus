@@ -1,91 +1,114 @@
 /**
- * Daedalus Main App Component
+ * Daedalus Main Entry Point
  *
- * This is the root Ink component for the Talos daemon UI.
- * It manages the overall application state and renders the main interface.
+ * Initializes Talos daemon and renders the Ink TUI application.
+ * Exports the main App component wrapped with TalosProvider.
  */
 import React, { useState, useEffect } from 'react';
-import { Box, Text, useApp, useInput } from 'ink';
+import { Box, Text, render } from 'ink';
+import { Talos } from './talos/talos.js';
+import { App, TalosProvider, type ViewType } from './ui/index.js';
 
-export interface AppProps {
-  initialView?: 'dashboard' | 'beans' | 'output';
+export interface DaedalusAppProps {
+  initialView?: ViewType;
 }
 
-export function App({ initialView = 'dashboard' }: AppProps) {
-  const { exit } = useApp();
-  const [view, setView] = useState(initialView);
+/**
+ * Loading screen shown while Talos initializes
+ */
+function LoadingScreen() {
+  const [dots, setDots] = useState('');
 
-  useInput((input, key) => {
-    // Global keybindings
-    if (input === 'q' || (key.ctrl && input === 'c')) {
-      exit();
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setDots((prev) => (prev.length >= 3 ? '' : prev + '.'));
+    }, 300);
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <Box flexDirection="column" padding={2}>
+      <Text bold color="cyan">
+        DAEDALUS
+      </Text>
+      <Box marginTop={1}>
+        <Text color="gray">Initializing Talos{dots}</Text>
+      </Box>
+    </Box>
+  );
+}
+
+/**
+ * Error screen shown when Talos fails to initialize
+ */
+function ErrorScreen({ error }: { error: Error }) {
+  return (
+    <Box flexDirection="column" padding={2}>
+      <Text bold color="red">
+        Failed to initialize Talos
+      </Text>
+      <Box marginTop={1}>
+        <Text color="gray">{error.message}</Text>
+      </Box>
+    </Box>
+  );
+}
+
+/**
+ * Root component that handles Talos initialization
+ */
+export function DaedalusApp({ initialView }: DaedalusAppProps) {
+  const [state, setState] = useState<
+    | { status: 'loading' }
+    | { status: 'ready'; talos: Talos }
+    | { status: 'error'; error: Error }
+  >({ status: 'loading' });
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function init() {
+      try {
+        const talos = new Talos();
+        await talos.start();
+
+        if (mounted) {
+          setState({ status: 'ready', talos });
+        }
+      } catch (err) {
+        if (mounted) {
+          setState({
+            status: 'error',
+            error: err instanceof Error ? err : new Error(String(err)),
+          });
+        }
+      }
     }
 
-    // View switching
-    if (input === '1') setView('dashboard');
-    if (input === '2') setView('beans');
-    if (input === '3') setView('output');
-  });
+    init();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  if (state.status === 'loading') {
+    return <LoadingScreen />;
+  }
+
+  if (state.status === 'error') {
+    return <ErrorScreen error={state.error} />;
+  }
 
   return (
-    <Box flexDirection="column" padding={1}>
-      <Box marginBottom={1}>
-        <Text bold color="cyan">
-          Daedalus
-        </Text>
-        <Text color="gray"> v2.0.0 </Text>
-        <Text dimColor>| Talos Daemon</Text>
-      </Box>
-
-      <Box marginBottom={1}>
-        <Text dimColor>
-          [1] Dashboard [2] Beans [3] Output [q] Quit
-        </Text>
-      </Box>
-
-      <Box flexDirection="column" borderStyle="single" padding={1}>
-        {view === 'dashboard' && <DashboardView />}
-        {view === 'beans' && <BeansView />}
-        {view === 'output' && <OutputView />}
-      </Box>
-    </Box>
+    <TalosProvider talos={state.talos}>
+      <App initialView={initialView} />
+    </TalosProvider>
   );
 }
 
-function DashboardView() {
-  return (
-    <Box flexDirection="column">
-      <Text bold>Dashboard</Text>
-      <Text dimColor>Talos daemon status and agent overview</Text>
-      <Box marginTop={1}>
-        <Text color="yellow">No agents running</Text>
-      </Box>
-    </Box>
-  );
-}
+// Re-export components for external use
+export { App } from './ui/index.js';
+export type { ViewType } from './ui/index.js';
 
-function BeansView() {
-  return (
-    <Box flexDirection="column">
-      <Text bold>Beans</Text>
-      <Text dimColor>Issue tracker integration</Text>
-      <Box marginTop={1}>
-        <Text color="gray">Run `beans query` to see issues</Text>
-      </Box>
-    </Box>
-  );
-}
-
-function OutputView() {
-  return (
-    <Box flexDirection="column">
-      <Text bold>Output</Text>
-      <Text dimColor>Agent output logs</Text>
-      <Box marginTop={1}>
-        <Text color="gray">No output captured yet</Text>
-      </Box>
-    </Box>
-  );
-}
-
-export default App;
+export default DaedalusApp;
