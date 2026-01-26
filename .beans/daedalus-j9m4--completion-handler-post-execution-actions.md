@@ -1,11 +1,11 @@
 ---
 # daedalus-j9m4
 title: 'Completion Handler: Post-execution actions'
-status: in-progress
+status: completed
 type: feature
 priority: high
 created_at: 2026-01-26T05:39:36Z
-updated_at: 2026-01-26T09:46:53Z
+updated_at: 2026-01-26T09:47:04Z
 parent: daedalus-ss8m
 blocking:
     - daedalus-4h5x
