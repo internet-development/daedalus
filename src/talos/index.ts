@@ -37,7 +37,7 @@ export {
   BeansClient,
 } from './beans-client.js';
 export { BeanWatcher, Watcher } from './watcher.js';
-export { Scheduler } from './scheduler.js';
+export { Scheduler, type SchedulerConfig, type SchedulerEvents } from './scheduler.js';
 export { AgentRunner } from './agent-runner.js';
 export { CompletionHandler } from './completion-handler.js';
 

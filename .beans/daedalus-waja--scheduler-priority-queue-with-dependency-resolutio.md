@@ -1,11 +1,11 @@
 ---
 # daedalus-waja
 title: 'Scheduler: Priority queue with dependency resolution'
-status: todo
+status: in-progress
 type: feature
 priority: critical
 created_at: 2026-01-26T05:39:13Z
-updated_at: 2026-01-26T08:54:39Z
+updated_at: 2026-01-26T09:39:42Z
 parent: daedalus-ss8m
 blocking:
     - daedalus-4h5x
@@ -72,16 +72,16 @@ interface SchedulerConfig {
 ```
 
 ## Checklist
-- [ ] Create priority queue data structure
-- [ ] Implement priority comparison (priority level → createdAt)
-- [ ] Build dependency graph from blockedBy relationships
-- [ ] Check if bean is blocked before allowing execution
-- [ ] Track in-progress beans for concurrency control
-- [ ] Emit 'bean-ready' when slot opens and bean is eligible
-- [ ] Handle bean status changes (re-sort queue)
-- [ ] Support configurable maxParallel (default: 1)
-- [ ] Implement worktree creation for parallel mode (max_parallel > 1)
-- [ ] Pass worktree path to runner when in parallel mode
+- [x] Create priority queue data structure
+- [x] Implement priority comparison (priority level → createdAt)
+- [x] Build dependency graph from blockedBy relationships
+- [x] Check if bean is blocked before allowing execution
+- [x] Track in-progress beans for concurrency control
+- [x] Emit 'bean-ready' when slot opens and bean is eligible
+- [x] Handle bean status changes (re-sort queue)
+- [x] Support configurable maxParallel (default: 1)
+- [x] Implement worktree creation for parallel mode (max_parallel > 1)
+- [x] Pass worktree path to runner when in parallel mode
 
 ## Priority Order
 1. critical
