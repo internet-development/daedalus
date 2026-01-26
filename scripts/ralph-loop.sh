@@ -371,8 +371,6 @@ main() {
 
     # Work on the bean
     work_on_bean "$bean_id"
-    ((beans_completed++))
-
     beans_completed=$((beans_completed + 1))
 
     # If specific bean or --once, exit after one
