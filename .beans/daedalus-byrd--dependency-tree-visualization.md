@@ -1,11 +1,11 @@
 ---
 # daedalus-byrd
 title: Dependency Tree Visualization
-status: todo
+status: in-progress
 type: feature
 priority: normal
 created_at: 2026-01-26T07:49:14Z
-updated_at: 2026-01-26T08:54:39Z
+updated_at: 2026-01-26T10:10:01Z
 parent: daedalus-ss8m
 ---
 
@@ -66,13 +66,13 @@ Toggle with `t` for tree view vs list view.
 ## Checklist
 
 ### Phase 1: CLI Script
-- [ ] Create `src/cli/tree.ts` command
-- [ ] Query beans with parent/blocking relationships
-- [ ] Build tree data structure from flat bean list
-- [ ] Render tree with Unicode box-drawing characters
-- [ ] Add status indicators and colors
-- [ ] Support `--blocking` flag for blocking-based tree
-- [ ] Support filtering options
+- [x] Create `src/cli/tree.ts` command
+- [x] Query beans with parent/blocking relationships
+- [x] Build tree data structure from flat bean list
+- [x] Render tree with Unicode box-drawing characters
+- [x] Add status indicators and colors
+- [x] Support `--blocking` flag for blocking-based tree
+- [x] Support filtering options
 
 ### Phase 2: Monitor View Integration
 - [ ] Add tree view mode toggle (`t` key)

@@ -9,17 +9,97 @@ import { render } from 'ink';
 import React from 'react';
 
 import { DaedalusApp } from './index.js';
-import { TreeCommand } from './cli/tree.js';
+import { TreeCommand, TreeCommandProps } from './cli/tree.js';
 
 const args = process.argv.slice(2);
 const command = args[0];
 
+/**
+ * Parse CLI arguments into an object
+ * Supports: --flag, --key=value, --key value, positional args
+ */
+function parseArgs(args: string[]): { flags: Record<string, string | boolean>; positional: string[] } {
+  const flags: Record<string, string | boolean> = {};
+  const positional: string[] = [];
+
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i];
+    
+    if (arg.startsWith('--')) {
+      const withoutDashes = arg.slice(2);
+      
+      if (withoutDashes.includes('=')) {
+        const [key, value] = withoutDashes.split('=', 2);
+        flags[key] = value;
+      } else if (i + 1 < args.length && !args[i + 1].startsWith('-')) {
+        // Check if next arg looks like a value (not a flag)
+        flags[withoutDashes] = args[++i];
+      } else {
+        flags[withoutDashes] = true;
+      }
+    } else if (arg.startsWith('-') && arg.length === 2) {
+      // Short flags like -c
+      const flag = arg.slice(1);
+      if (i + 1 < args.length && !args[i + 1].startsWith('-')) {
+        flags[flag] = args[++i];
+      } else {
+        flags[flag] = true;
+      }
+    } else {
+      positional.push(arg);
+    }
+  }
+
+  return { flags, positional };
+}
+
 async function main() {
   switch (command) {
-    case 'tree':
-      // Show bean tree view
-      render(<TreeCommand />);
+    case 'tree': {
+      // Parse tree command arguments
+      const { flags, positional } = parseArgs(args.slice(1));
+      
+      const props: TreeCommandProps = {
+        rootId: positional[0],
+        blocking: flags['blocking'] === true || flags['b'] === true,
+        status: typeof flags['status'] === 'string' ? flags['status'] : 
+                typeof flags['s'] === 'string' ? flags['s'] : undefined,
+        excludeStatus: typeof flags['exclude-status'] === 'string' ? flags['exclude-status'] :
+                       typeof flags['x'] === 'string' ? flags['x'] : undefined,
+        compact: flags['compact'] === true || flags['c'] === true,
+      };
+
+      // Show help for tree command
+      if (flags['help'] || flags['h']) {
+        console.log(`
+Usage: daedalus tree [bean-id] [options]
+
+Display bean dependency tree using Unicode box-drawing characters.
+
+Arguments:
+  bean-id              Root bean ID to start from (optional, shows all roots if omitted)
+
+Options:
+  --blocking, -b       Show blocking relationships instead of parent/child
+  --status, -s         Filter by status (comma-separated, e.g. "todo,in-progress")
+  --exclude-status, -x Exclude by status (comma-separated, e.g. "completed,scrapped")
+  --compact, -c        Compact mode - one line per bean without type/status
+  --help, -h           Show this help message
+
+Examples:
+  daedalus tree                          Show full hierarchy from all roots
+  daedalus tree daedalus-na2v            Show tree starting from specific bean
+  daedalus tree --blocking               Show blocking dependencies
+  daedalus tree -s todo,in-progress      Show only actionable beans
+  daedalus tree -x completed,scrapped    Hide completed/scrapped beans
+  daedalus tree --compact                Compact output
+`);
+        break;
+      }
+
+      render(<TreeCommand {...props} />);
       break;
+    }
 
     case 'help':
     case '--help':
@@ -29,7 +109,7 @@ Daedalus v2 - Agentic Coding Orchestration
 
 Usage:
   daedalus           Launch the Talos daemon UI
-  daedalus tree      Show bean dependency tree
+  daedalus tree      Show bean dependency tree (use --help for options)
   daedalus help      Show this help message
 
 Environment:
