@@ -1,11 +1,11 @@
 ---
 # daedalus-kqdl
 title: 'Execute View: Agent output streaming'
-status: todo
+status: in-progress
 type: feature
 priority: high
 created_at: 2026-01-26T05:40:18Z
-updated_at: 2026-01-26T08:54:39Z
+updated_at: 2026-01-26T10:07:39Z
 parent: daedalus-kvgh
 ---
 
@@ -37,17 +37,17 @@ beans-e5f6: Implement user settings
 **Split view**: No split view. Keep it simple with full-screen scrolling output.
 
 ## Checklist
-- [ ] Create ExecuteView component
-- [ ] Create OutputPane component with scrolling
-- [ ] Subscribe to Talos output events
-- [ ] Render ANSI codes properly (colors, formatting)
-- [ ] Auto-scroll to bottom on new output
-- [ ] Support scroll-back (j/k or arrows)
-- [ ] Show bean title and ID at top
-- [ ] Show elapsed time (or "Completed Xm ago" for finished)
-- [ ] Cancel shortcut (c) to abort
-- [ ] Show last completed bean output when nothing running (via talos.getOutput())
-- [ ] Implement output buffering (avoid flicker)
+- [x] Create ExecuteView component
+- [x] Create OutputPane component with scrolling
+- [x] Subscribe to Talos output events
+- [x] Render ANSI codes properly (colors, formatting)
+- [x] Auto-scroll to bottom on new output
+- [x] Support scroll-back (j/k or arrows)
+- [x] Show bean title and ID at top
+- [x] Show elapsed time (or "Completed Xm ago" for finished)
+- [x] Cancel shortcut (c) to abort
+- [x] Show last completed bean output when nothing running (via talos.getOutput())
+- [x] Implement output buffering (avoid flicker)
 
 ## Keyboard Shortcuts
 - `c`: Cancel running bean
