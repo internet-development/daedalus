@@ -63,17 +63,13 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-# Notifications
+# Notifications (using terminal-notifier)
 notify() {
   local title="$1"
   local message="$2"
-  local sound="${3:-default}"
+  local sound="${3:-Ping}"
   
-  # macOS notification
-  osascript -e "display notification \"$message\" with title \"$title\" sound name \"$sound\"" 2>/dev/null || true
-  
-  # Terminal bell
-  printf '\a'
+  terminal-notifier -title "$title" -message "$message" -sound "$sound" 2>/dev/null || true
 }
 
 notify_iteration() {
@@ -88,7 +84,7 @@ notify_bean_complete() {
 
 notify_all_done() {
   local count="$1"
-  notify "Ralph Loop Done" "Completed $count bean(s)" "Hero"
+  notify "Ralph Loop Done" "Completed $count bean(s)" "Ping"
 }
 
 notify_error() {
