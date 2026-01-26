@@ -5,7 +5,7 @@ status: in-progress
 type: feature
 priority: normal
 created_at: 2026-01-26T07:49:14Z
-updated_at: 2026-01-26T10:10:01Z
+updated_at: 2026-01-26T10:13:00Z
 parent: daedalus-ss8m
 ---
 
@@ -75,8 +75,8 @@ Toggle with `t` for tree view vs list view.
 - [x] Support filtering options
 
 ### Phase 2: Monitor View Integration
-- [ ] Add tree view mode toggle (`t` key)
-- [ ] Create TreeView component
-- [ ] Reuse tree-building logic from CLI
-- [ ] Highlight ready-to-execute beans
-- [ ] Show execution path (what leads to what)
+- [x] Add tree view mode toggle (`t` key)
+- [x] Create TreeView component
+- [x] Reuse tree-building logic from CLI
+- [x] Highlight ready-to-execute beans
+- [x] Show execution path (what leads to what)

@@ -16,6 +16,11 @@
  * - ▶ In progress (running)
  * - ⚠ Stuck (in-progress with 'blocked' or 'failed' tag)
  * - ✓ Completed (in recent section)
+ * 
+ * Tree View (toggle with 't'):
+ * - Shows parent/child hierarchy
+ * - Highlights ready-to-execute beans
+ * - Shows execution path
  */
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Box, Text, useInput, useStdout } from 'ink';
@@ -23,6 +28,7 @@ import { useTalos } from '../TalosContext.js';
 import type { Bean, BeanPriority } from '../../talos/beans-client.js';
 import { isStuck, listBeans } from '../../talos/beans-client.js';
 import type { RunningBean } from '../../talos/talos.js';
+import { TreeView, flattenTree, buildParentChildTree } from '../components/index.js';
 
 // =============================================================================
 // Types
@@ -286,8 +292,11 @@ export function MonitorView() {
     talos.getRecentlyCompleted()
   );
   const [drafts, setDrafts] = useState<Bean[]>([]);
+  const [allBeans, setAllBeans] = useState<Bean[]>([]);
   const [showDrafts, setShowDrafts] = useState(false);
+  const [showTreeView, setShowTreeView] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [selectedTreeIndex, setSelectedTreeIndex] = useState(0);
   const [showContextMenu, setShowContextMenu] = useState(false);
   const [elapsedTick, setElapsedTick] = useState(0);
 
@@ -302,6 +311,38 @@ export function MonitorView() {
         .catch(() => setDrafts([]));
     }
   }, [showDrafts]);
+
+  // Load all beans for tree view (excluding completed/scrapped by default)
+  useEffect(() => {
+    if (showTreeView) {
+      listBeans({ excludeStatus: ['scrapped'] })
+        .then(setAllBeans)
+        .catch(() => setAllBeans([]));
+    }
+  }, [showTreeView]);
+
+  // Build flattened tree for navigation
+  const flatTreeNodes = useMemo(() => {
+    if (!showTreeView || allBeans.length === 0) return [];
+    const trees = buildParentChildTree(allBeans);
+    return flattenTree(trees);
+  }, [showTreeView, allBeans]);
+
+  // Get running bean IDs for tree view highlighting
+  const runningIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const [id] of inProgress) {
+      ids.add(id);
+    }
+    return ids;
+  }, [inProgress]);
+
+  // Get selected bean ID for tree view
+  const selectedTreeBeanId = useMemo(() => {
+    if (!showTreeView || flatTreeNodes.length === 0) return undefined;
+    const idx = Math.min(selectedTreeIndex, flatTreeNodes.length - 1);
+    return flatTreeNodes[idx]?.node.bean.id;
+  }, [showTreeView, flatTreeNodes, selectedTreeIndex]);
 
   // Subscribe to Talos events
   useEffect(() => {
@@ -501,19 +542,37 @@ export function MonitorView() {
       // Don't handle input if context menu is open
       if (showContextMenu) return;
 
-      // Navigation
-      if (key.upArrow || input === 'k') {
-        setSelectedIndex((i) => Math.max(0, i - 1));
+      // Toggle tree view
+      if (input === 't') {
+        setShowTreeView((s) => !s);
         return;
       }
 
-      if (key.downArrow || input === 'j') {
-        setSelectedIndex((i) => Math.min(allDisplayBeans.length - 1, i + 1));
-        return;
+      // Navigation - different for tree view vs list view
+      if (showTreeView) {
+        if (key.upArrow || input === 'k') {
+          setSelectedTreeIndex((i) => Math.max(0, i - 1));
+          return;
+        }
+
+        if (key.downArrow || input === 'j') {
+          setSelectedTreeIndex((i) => Math.min(flatTreeNodes.length - 1, i + 1));
+          return;
+        }
+      } else {
+        if (key.upArrow || input === 'k') {
+          setSelectedIndex((i) => Math.max(0, i - 1));
+          return;
+        }
+
+        if (key.downArrow || input === 'j') {
+          setSelectedIndex((i) => Math.min(allDisplayBeans.length - 1, i + 1));
+          return;
+        }
       }
 
-      // Toggle drafts
-      if (input === 'd') {
+      // Toggle drafts (list view only)
+      if (input === 'd' && !showTreeView) {
         setShowDrafts((s) => !s);
         return;
       }
@@ -543,15 +602,33 @@ export function MonitorView() {
 
   return (
     <Box flexDirection="column" padding={1} width={terminalWidth - 4}>
-      {/* Bean groups */}
-      {groupsWithOffsets.map(({ group, offset }) => (
-        <BeanListGroup
-          key={group.title}
-          group={group}
-          selectedIndex={selectedIndex}
-          globalIndexOffset={offset}
+      {/* View mode header */}
+      <Box marginBottom={1}>
+        <Text bold color="cyan">
+          {showTreeView ? 'Tree View' : 'List View'}
+        </Text>
+        <Text color="gray"> (press t to toggle)</Text>
+      </Box>
+
+      {/* Tree View */}
+      {showTreeView ? (
+        <TreeView
+          beans={allBeans}
+          selectedId={selectedTreeBeanId}
+          runningIds={runningIds}
+          width={terminalWidth - 4}
         />
-      ))}
+      ) : (
+        /* Bean groups (List View) */
+        groupsWithOffsets.map(({ group, offset }) => (
+          <BeanListGroup
+            key={group.title}
+            group={group}
+            selectedIndex={selectedIndex}
+            globalIndexOffset={offset}
+          />
+        ))
+      )}
 
       {/* Context menu overlay */}
       {showContextMenu && selectedBean && (
@@ -567,8 +644,13 @@ export function MonitorView() {
       <Box marginTop={1} borderStyle="single" borderLeft={false} borderRight={false} borderBottom={false} paddingTop={0}>
         <Text color="gray">
           <Text color="cyan">[j/k]</Text> navigate{' '}
-          <Text color="cyan">[Enter]</Text> actions{' '}
-          <Text color="cyan">[d]</Text> {showDrafts ? 'hide' : 'show'} drafts
+          <Text color="cyan">[t]</Text> {showTreeView ? 'list' : 'tree'} view{' '}
+          {!showTreeView && (
+            <>
+              <Text color="cyan">[Enter]</Text> actions{' '}
+              <Text color="cyan">[d]</Text> {showDrafts ? 'hide' : 'show'} drafts
+            </>
+          )}
           {selectedBean && isStuck(selectedBean) && (
             <>
               {' '}
