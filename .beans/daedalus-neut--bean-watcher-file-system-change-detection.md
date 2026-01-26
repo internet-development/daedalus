@@ -1,11 +1,11 @@
 ---
 # daedalus-neut
 title: 'Bean Watcher: File system change detection'
-status: in-progress
+status: completed
 type: feature
 priority: critical
 created_at: 2026-01-26T05:39:03Z
-updated_at: 2026-01-26T09:29:06Z
+updated_at: 2026-01-26T09:29:23Z
 parent: daedalus-ss8m
 blocking:
     - daedalus-4h5x
