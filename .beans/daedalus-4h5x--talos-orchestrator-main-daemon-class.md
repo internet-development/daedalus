@@ -1,11 +1,11 @@
 ---
 # daedalus-4h5x
 title: 'Talos Orchestrator: Main daemon class'
-status: todo
+status: in-progress
 type: feature
 priority: high
 created_at: 2026-01-26T05:39:46Z
-updated_at: 2026-01-26T08:54:39Z
+updated_at: 2026-01-26T09:49:03Z
 parent: daedalus-ss8m
 blocking:
     - daedalus-3eaw
@@ -82,18 +82,18 @@ interface RunningBean {
 **Output persistence**: Persist agent output to `.talos/output/{bean-id}.log`. This allows viewing output from previous runs and survives restarts.
 
 ## Checklist
-- [ ] Create Talos class skeleton
-- [ ] Load and validate talos.yml configuration
-- [ ] Initialize Watcher, Scheduler, Runner, CompletionHandler
-- [ ] Wire watcher events to scheduler
-- [ ] Wire scheduler 'bean-ready' to runner
-- [ ] Wire runner completion to completion handler
-- [ ] Implement pause/resume (pause scheduler)
-- [ ] Implement cancel (kill running agent)
-- [ ] Implement retry (remove tag, prompt for worktree handling, re-enqueue)
-- [ ] Handle graceful shutdown (stop watcher, wait for agent)
-- [ ] Emit unified events for UI consumption
-- [ ] On startup, detect orphaned in-progress beans and add 'failed' tag + create blocker
-- [ ] Track last 5 completed beans for getRecentlyCompleted()
-- [ ] Persist output to .talos/output/{bean-id}.log
-- [ ] Implement getOutput() to read persisted output
+- [x] Create Talos class skeleton
+- [x] Load and validate talos.yml configuration
+- [x] Initialize Watcher, Scheduler, Runner, CompletionHandler
+- [x] Wire watcher events to scheduler
+- [x] Wire scheduler 'bean-ready' to runner
+- [x] Wire runner completion to completion handler
+- [x] Implement pause/resume (pause scheduler)
+- [x] Implement cancel (kill running agent)
+- [x] Implement retry (remove tag, prompt for worktree handling, re-enqueue)
+- [x] Handle graceful shutdown (stop watcher, wait for agent)
+- [x] Emit unified events for UI consumption
+- [x] On startup, detect orphaned in-progress beans and add 'failed' tag + create blocker
+- [x] Track last 5 completed beans for getRecentlyCompleted()
+- [x] Persist output to .talos/output/{bean-id}.log
+- [x] Implement getOutput() to read persisted output

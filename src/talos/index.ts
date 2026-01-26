@@ -52,6 +52,7 @@ export {
   type CompletionHandlerOptions,
   type CompletionHandlerEvents,
 } from './completion-handler.js';
+export { Talos, type RunningBean, type TalosEvents } from './talos.js';
 
 // Event types for the daemon
 export type TalosEvent =
