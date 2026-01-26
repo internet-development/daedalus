@@ -36,7 +36,7 @@ export {
   // Legacy class (deprecated)
   BeansClient,
 } from './beans-client.js';
-export { Watcher } from './watcher.js';
+export { BeanWatcher, Watcher } from './watcher.js';
 export { Scheduler } from './scheduler.js';
 export { AgentRunner } from './agent-runner.js';
 export { CompletionHandler } from './completion-handler.js';

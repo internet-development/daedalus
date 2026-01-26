@@ -1,11 +1,11 @@
 ---
 # daedalus-neut
 title: 'Bean Watcher: File system change detection'
-status: todo
+status: in-progress
 type: feature
 priority: critical
 created_at: 2026-01-26T05:39:03Z
-updated_at: 2026-01-26T08:54:39Z
+updated_at: 2026-01-26T09:29:06Z
 parent: daedalus-ss8m
 blocking:
     - daedalus-4h5x
@@ -66,20 +66,20 @@ watcher.on('tags-changed', (bean, added, removed) => {
 Note: The Orchestrator (daedalus-4h5x) wires Watcher events to Scheduler and CompletionHandler.
 
 ## Checklist
-- [ ] Set up chokidar watcher on .beans/ directory
-- [ ] Implement `start()` to load initial state via beans client
-- [ ] Parse bean files on change using beans client
-- [ ] Detect status changes by comparing with cached state
-- [ ] Detect tag changes by comparing with cached state (for blocked/failed tags)
-- [ ] Emit `status-changed` event specifically for status transitions
-- [ ] Emit `tags-changed` event when tags are added/removed
-- [ ] Emit `updated` event for any change (including status)
-- [ ] Emit `created` / `deleted` for new/removed beans
-- [ ] Handle file renames (delete + create)
-- [ ] Debounce rapid changes (100ms window)
-- [ ] Maintain in-memory cache of bean states
-- [ ] Implement `getBeans()` and `getBean()` for state access
-- [ ] Clean up watcher on `stop()`
+- [x] Set up chokidar watcher on .beans/ directory
+- [x] Implement `start()` to load initial state via beans client
+- [x] Parse bean files on change using beans client
+- [x] Detect status changes by comparing with cached state
+- [x] Detect tag changes by comparing with cached state (for blocked/failed tags)
+- [x] Emit `status-changed` event specifically for status transitions
+- [x] Emit `tags-changed` event when tags are added/removed
+- [x] Emit `updated` event for any change (including status)
+- [x] Emit `created` / `deleted` for new/removed beans
+- [x] Handle file renames (delete + create)
+- [x] Debounce rapid changes (100ms window)
+- [x] Maintain in-memory cache of bean states
+- [x] Implement `getBeans()` and `getBean()` for state access
+- [x] Clean up watcher on `stop()`
 
 ## Implementation Notes
 - Use chokidar for cross-platform file watching
