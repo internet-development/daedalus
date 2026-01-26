@@ -1,11 +1,11 @@
 ---
 # daedalus-dsj8
 title: 'Monitor View: Bean list and queue status'
-status: in-progress
+status: completed
 type: feature
 priority: high
 created_at: 2026-01-26T05:40:09Z
-updated_at: 2026-01-26T09:54:41Z
+updated_at: 2026-01-26T09:54:54Z
 parent: daedalus-kvgh
 ---
 
