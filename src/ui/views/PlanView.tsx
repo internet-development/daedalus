@@ -1,19 +1,361 @@
 /**
  * PlanView
  *
- * Chat interface for creating/refining beans with AI.
- * This is a placeholder - full implementation in separate bean.
+ * AI-powered planning workbench for creating, refining, and critiquing beans.
+ * Central to the Daedalus workflow - all beans originate through structured
+ * conversation with a dedicated planning agent and its expert advisors.
+ *
+ * Modes:
+ * - new: Create new beans through conversation
+ * - refine: Refine existing draft beans
+ * - critique: Run draft beans through expert review
+ * - sweep: Final consistency check across related beans
  */
-import React from 'react';
-import { Box, Text } from 'ink';
+import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
+import { Box, Text, useInput, useStdout } from 'ink';
+import { loadConfig } from '../../config/index.js';
+import { ChatHistory, type ChatMessage, type ToolCall } from '../components/ChatHistory.js';
+import { ChatInput } from '../components/ChatInput.js';
+import { MultipleChoice } from '../components/MultipleChoice.js';
+import { PromptSelector } from '../components/PromptSelector.js';
+import { ModeSelector } from '../components/ModeSelector.js';
+import { useChatHistory } from '../hooks/useChatHistory.js';
+import { usePlanningAgent } from '../hooks/usePlanningAgent.js';
+import type { Bean } from '../../talos/beans-client.js';
+
+// =============================================================================
+// Types
+// =============================================================================
+
+export type PlanMode = 'new' | 'refine' | 'critique' | 'sweep';
+
+export interface PendingChoice {
+  id: string;
+  question: string;
+  options: Array<{ label: string; value: string }>;
+}
+
+// =============================================================================
+// Constants
+// =============================================================================
+
+const MODE_LABELS: Record<PlanMode, string> = {
+  new: 'New Bean',
+  refine: 'Refine',
+  critique: 'Critique',
+  sweep: 'Final Sweep',
+};
+
+// =============================================================================
+// Main Component
+// =============================================================================
 
 export function PlanView() {
+  const { stdout } = useStdout();
+  const terminalWidth = stdout?.columns ?? 80;
+  const terminalHeight = stdout?.rows ?? 24;
+
+  // Load config for planning agent settings
+  const config = useMemo(() => loadConfig().config, []);
+
+  // State
+  const [mode, setMode] = useState<PlanMode>('new');
+  const [selectedBean, setSelectedBean] = useState<Bean | null>(null);
+  const [showPromptSelector, setShowPromptSelector] = useState(false);
+  const [showModeSelector, setShowModeSelector] = useState(false);
+  const [pendingChoice, setPendingChoice] = useState<PendingChoice | null>(null);
+
+  // Chat history hook
+  const {
+    messages,
+    addMessage,
+    clearMessages,
+    isLoading: historyLoading,
+  } = useChatHistory();
+
+  // Planning agent hook
+  const {
+    sendMessage,
+    isStreaming,
+    streamingContent,
+    error,
+    cancelStream,
+  } = usePlanningAgent({
+    config: config.planning_agent,
+    expertsConfig: config.experts,
+    mode,
+    selectedBean,
+    onMessageComplete: (content: string, toolCalls?: ToolCall[]) => {
+      addMessage({
+        role: 'assistant',
+        content,
+        toolCalls,
+        timestamp: Date.now(),
+      });
+
+      // Check if the message contains a multiple choice question
+      const choiceMatch = content.match(/\[(\d)\]\s+(.+?)(?:\n|$)/g);
+      if (choiceMatch && choiceMatch.length >= 2) {
+        // Extract question (line before the choices)
+        const lines = content.split('\n');
+        const choiceStartIndex = lines.findIndex((l: string) => l.match(/\[1\]/));
+        if (choiceStartIndex > 0) {
+          const question = lines[choiceStartIndex - 1];
+          const options = choiceMatch.map((m: string) => {
+            const match = m.match(/\[(\d)\]\s+(.+)/);
+            return {
+              label: match?.[2]?.trim() ?? '',
+              value: match?.[1] ?? '',
+            };
+          });
+          setPendingChoice({
+            id: `choice-${Date.now()}`,
+            question,
+            options,
+          });
+        }
+      }
+    },
+    onError: (err: Error) => {
+      addMessage({
+        role: 'system',
+        content: `Error: ${err.message}`,
+        timestamp: Date.now(),
+      });
+    },
+  });
+
+  // Handle sending a message
+  const handleSend = useCallback(
+    async (text: string) => {
+      // Add user message to history
+      addMessage({
+        role: 'user',
+        content: text,
+        timestamp: Date.now(),
+      });
+
+      // Clear any pending choice
+      setPendingChoice(null);
+
+      // Send to planning agent
+      await sendMessage(text, messages);
+    },
+    [addMessage, sendMessage, messages]
+  );
+
+  // Handle multiple choice selection
+  const handleChoiceSelect = useCallback(
+    (value: string) => {
+      if (pendingChoice) {
+        const selected = pendingChoice.options.find((o) => o.value === value);
+        if (selected) {
+          handleSend(selected.label);
+        }
+      }
+      setPendingChoice(null);
+    },
+    [pendingChoice, handleSend]
+  );
+
+  // Handle prompt selection
+  const handlePromptSelect = useCallback(
+    (prompt: string) => {
+      setShowPromptSelector(false);
+      handleSend(prompt);
+    },
+    [handleSend]
+  );
+
+  // Handle mode change
+  const handleModeChange = useCallback((newMode: PlanMode, bean?: Bean) => {
+    setMode(newMode);
+    setSelectedBean(bean ?? null);
+    setShowModeSelector(false);
+  }, []);
+
+  // Handle clear chat
+  const handleClearChat = useCallback(() => {
+    clearMessages();
+    setPendingChoice(null);
+  }, [clearMessages]);
+
+  // Keyboard shortcuts
+  useInput(
+    (input, key) => {
+      // Don't capture input if prompt or mode selector is open
+      if (showPromptSelector || showModeSelector) return;
+
+      // Ctrl+P: Open prompt selector
+      if (key.ctrl && input === 'p') {
+        setShowPromptSelector(true);
+        return;
+      }
+
+      // Ctrl+M: Open mode selector
+      if (key.ctrl && input === 'm') {
+        setShowModeSelector(true);
+        return;
+      }
+
+      // Ctrl+L: Clear chat
+      if (key.ctrl && input === 'l') {
+        handleClearChat();
+        return;
+      }
+
+      // Number keys for quick choice selection
+      if (pendingChoice && input >= '1' && input <= '9') {
+        const index = parseInt(input, 10) - 1;
+        if (index < pendingChoice.options.length) {
+          handleChoiceSelect(pendingChoice.options[index].value);
+        }
+        return;
+      }
+    },
+    { isActive: !showPromptSelector && !showModeSelector }
+  );
+
+  // Calculate layout dimensions
+  const headerHeight = 1;
+  const footerHeight = 2;
+  const inputHeight = 3;
+  const chatHeight = terminalHeight - headerHeight - footerHeight - inputHeight - 8; // padding/borders
+
+  // Combine messages with streaming content
+  const displayMessages = useMemo(() => {
+    const result = [...messages];
+    if (isStreaming && streamingContent) {
+      result.push({
+        role: 'assistant',
+        content: streamingContent,
+        timestamp: Date.now(),
+        isStreaming: true,
+      });
+    }
+    return result;
+  }, [messages, isStreaming, streamingContent]);
+
+  // Prompt selector overlay
+  if (showPromptSelector) {
+    return (
+      <Box flexDirection="column" padding={1}>
+        <PromptSelector
+          onSelect={handlePromptSelect}
+          onCancel={() => setShowPromptSelector(false)}
+        />
+      </Box>
+    );
+  }
+
+  // Mode selector overlay
+  if (showModeSelector) {
+    return (
+      <Box flexDirection="column" padding={1}>
+        <ModeSelector
+          currentMode={mode}
+          onSelect={handleModeChange}
+          onCancel={() => setShowModeSelector(false)}
+        />
+      </Box>
+    );
+  }
+
   return (
-    <Box flexDirection="column" padding={1}>
-      <Text bold>Plan</Text>
-      <Text dimColor>Chat interface for planning</Text>
+    <Box flexDirection="column" padding={1} width={terminalWidth - 4}>
+      {/* Header with mode indicator */}
+      <Box justifyContent="space-between" marginBottom={1}>
+        <Text bold>Plan</Text>
+        <Box>
+          <Text color="gray">[Mode: </Text>
+          <Text color="cyan">{MODE_LABELS[mode]}</Text>
+          {selectedBean && (
+            <>
+              <Text color="gray"> - </Text>
+              <Text color="yellow">{selectedBean.id.replace('beans-', '')}</Text>
+            </>
+          )}
+          <Text color="gray">]</Text>
+        </Box>
+      </Box>
+
+      {/* Separator */}
+      <Box marginBottom={1}>
+        <Text color="gray">{'─'.repeat(Math.min(terminalWidth - 6, 70))}</Text>
+      </Box>
+
+      {/* Chat history */}
+      <Box flexDirection="column" height={chatHeight} overflowY="hidden">
+        {messages.length === 0 && !isStreaming ? (
+          <Box flexDirection="column">
+            <Text color="gray">Welcome to the Planning Workbench!</Text>
+            <Text color="gray" dimColor>
+              Describe what you want to build, and I'll help you plan it.
+            </Text>
+            <Box marginTop={1}>
+              <Text color="gray">Tips:</Text>
+            </Box>
+            <Text color="gray" dimColor>
+              • Be specific about the problem you're solving
+            </Text>
+            <Text color="gray" dimColor>
+              • I'll research your codebase and consult expert advisors
+            </Text>
+            <Text color="gray" dimColor>
+              • Press <Text color="cyan">Ctrl+P</Text> for custom prompts
+            </Text>
+            <Text color="gray" dimColor>
+              • Press <Text color="cyan">Ctrl+M</Text> to change mode
+            </Text>
+          </Box>
+        ) : (
+          <ChatHistory messages={displayMessages} width={terminalWidth - 8} />
+        )}
+      </Box>
+
+      {/* Multiple choice selector (if pending) */}
+      {pendingChoice && (
+        <Box marginY={1}>
+          <MultipleChoice
+            question={pendingChoice.question}
+            options={pendingChoice.options}
+            onSelect={handleChoiceSelect}
+          />
+        </Box>
+      )}
+
+      {/* Error display */}
+      {error && (
+        <Box marginY={1}>
+          <Text color="red">Error: {error.message}</Text>
+        </Box>
+      )}
+
+      {/* Separator */}
       <Box marginTop={1}>
-        <Text color="gray">Type to start planning...</Text>
+        <Text color="gray">{'─'.repeat(Math.min(terminalWidth - 6, 70))}</Text>
+      </Box>
+
+      {/* Input area */}
+      <ChatInput
+        onSend={handleSend}
+        disabled={isStreaming}
+        placeholder={isStreaming ? 'Waiting for response...' : 'Type your message...'}
+      />
+
+      {/* Footer hints */}
+      <Box marginTop={1}>
+        <Text color="gray">
+          <Text color="cyan">[Enter]</Text> Send
+          {'  '}
+          <Text color="cyan">[Ctrl+P]</Text> Prompts
+          {'  '}
+          <Text color="cyan">[Ctrl+M]</Text> Mode
+          {'  '}
+          <Text color="cyan">[Ctrl+L]</Text> Clear
+          {'  '}
+          <Text color="cyan">[Esc]</Text> Back
+        </Text>
       </Box>
     </Box>
   );

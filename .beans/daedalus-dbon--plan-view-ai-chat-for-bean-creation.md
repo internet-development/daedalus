@@ -1,11 +1,11 @@
 ---
 # daedalus-dbon
 title: 'Plan View: AI Planning Workbench'
-status: todo
+status: in-progress
 type: feature
 priority: high
 created_at: 2026-01-26T05:40:32Z
-updated_at: 2026-01-26T08:54:39Z
+updated_at: 2026-01-26T10:03:17Z
 parent: daedalus-kvgh
 ---
 
@@ -129,43 +129,43 @@ Voice enables natural conversation flow without keyboard context-switching.
 ## Checklist
 
 ### Core Components
-- [ ] Create PlanView component with mode switching
-- [ ] Create ChatHistory component with message rendering
-- [ ] Create ChatInput component with keyboard handling
-- [ ] Create MultipleChoice component for structured questions
-- [ ] Create ExpertQuote component for advisor responses
+- [x] Create PlanView component with mode switching
+- [x] Create ChatHistory component with message rendering
+- [x] Create ChatInput component with keyboard handling
+- [x] Create MultipleChoice component for structured questions
+- [x] Create ExpertQuote component for advisor responses
 
 ### Planning Agent
-- [ ] Define planning agent config schema in talos.yml
-- [ ] Set up Vercel AI SDK (@ai-sdk/anthropic, @ai-sdk/openai)
-- [ ] Create planning agent system prompt (read-only, bean-focused)
-- [ ] Implement tool definitions for AI SDK (read files, run safe commands, web search)
-- [ ] Implement beans CLI tool for AI SDK (create, update, query)
-- [ ] Support streaming responses via AI SDK streamText()
+- [x] Define planning agent config schema in talos.yml
+- [x] Set up Vercel AI SDK (@ai-sdk/anthropic, @ai-sdk/openai)
+- [x] Create planning agent system prompt (read-only, bean-focused)
+- [x] Implement tool definitions for AI SDK (read files, run safe commands, web search)
+- [x] Implement beans CLI tool for AI SDK (create, update, query)
+- [x] Support streaming responses via AI SDK streamText()
 
 ### Expert Advisors
-- [ ] Define expert personas and system prompts
+- [x] Define expert personas and system prompts
 - [ ] Implement expert consultation (spawn sub-agent, collect response)
 - [ ] Create expert synthesis logic in planning agent
-- [ ] Add expert toggle (enable/disable specific experts)
+- [x] Add expert toggle (enable/disable specific experts)
 
 ### Modes
-- [ ] Implement New Bean Creation mode
-- [ ] Implement Bean Refinement mode (load existing draft)
-- [ ] Implement Bean Critique mode (structured expert review)
-- [ ] Implement Final Sweep mode (cross-bean consistency check)
-- [ ] Create mode switcher UI
+- [x] Implement New Bean Creation mode
+- [x] Implement Bean Refinement mode (load existing draft)
+- [x] Implement Bean Critique mode (structured expert review)
+- [x] Implement Final Sweep mode (cross-bean consistency check)
+- [x] Create mode switcher UI
 
 ### Custom Prompts
-- [ ] Create prompts directory structure
-- [ ] Implement prompt loader
-- [ ] Add prompt selector UI (Ctrl+P)
-- [ ] Include default prompts (challenge, simplify, research, etc.)
+- [x] Create prompts directory structure
+- [x] Implement prompt loader
+- [x] Add prompt selector UI (Ctrl+P)
+- [x] Include default prompts (challenge, simplify, research, etc.)
 
 ### Persistence
-- [ ] Implement chat history save/load
-- [ ] Handle multiple chat sessions
-- [ ] Add clear chat command
+- [x] Implement chat history save/load
+- [x] Handle multiple chat sessions
+- [x] Add clear chat command
 
 ### Voice Input (Future)
 - [ ] Research Qwen-Omni integration options
