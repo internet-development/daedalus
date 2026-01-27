@@ -5,7 +5,7 @@ status: todo
 type: milestone
 priority: high
 created_at: 2026-01-26T05:38:28Z
-updated_at: 2026-01-26T08:54:39Z
+updated_at: 2026-01-26T10:20:46Z
 ---
 
 Complete rewrite of Daedalus as a bean-driven AI workflow system. Replace the existing agent monitoring dashboard with a new architecture consisting of:
