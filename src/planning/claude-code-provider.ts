@@ -9,12 +9,72 @@
  * and uses Claude Code's native tools (Read, Glob, Grep, Bash) for
  * codebase access. For beans operations, it instructs the agent to
  * use the `beans` CLI directly via Bash.
+ *
+ * Debug logging: Set DEBUG=claude-code-provider or DEBUG=* to enable
  */
 import { spawn, type ChildProcess, execSync } from 'child_process';
 import { EventEmitter } from 'events';
+import { appendFileSync, mkdirSync, existsSync } from 'fs';
+import { join } from 'path';
 import type { PlanMode } from '../ui/views/PlanView.js';
 import type { Bean } from '../talos/beans-client.js';
 import { getPlanningAgentSystemPrompt } from './system-prompts.js';
+
+// =============================================================================
+// Debug Logging
+// =============================================================================
+
+const DEBUG_NAMESPACE = 'claude-code-provider';
+
+/**
+ * Check if debug logging is enabled
+ */
+function isDebugEnabled(): boolean {
+  const debugEnv = process.env.DEBUG ?? '';
+  if (!debugEnv) return false;
+  if (debugEnv === '*') return true;
+  return debugEnv.split(',').some((ns) => ns.trim() === DEBUG_NAMESPACE || ns.trim() === 'planning');
+}
+
+/**
+ * Get the debug log file path
+ */
+function getDebugLogPath(): string {
+  const talosDir = join(process.cwd(), '.talos');
+  if (!existsSync(talosDir)) {
+    mkdirSync(talosDir, { recursive: true });
+  }
+  return join(talosDir, 'planning-agent.log');
+}
+
+/**
+ * Log a debug message to .talos/planning-agent.log
+ */
+function debug(category: string, message: string, data?: unknown): void {
+  if (!isDebugEnabled()) return;
+
+  const timestamp = new Date().toISOString();
+  let logLine = `[${timestamp}] [${category}] ${message}`;
+
+  if (data !== undefined) {
+    try {
+      const dataStr = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
+      // Truncate very long data
+      const truncated = dataStr.length > 2000 ? dataStr.slice(0, 2000) + '... (truncated)' : dataStr;
+      logLine += `\n${truncated}`;
+    } catch {
+      logLine += `\n[unable to stringify data]`;
+    }
+  }
+
+  logLine += '\n';
+
+  try {
+    appendFileSync(getDebugLogPath(), logLine);
+  } catch {
+    // Silently ignore logging errors
+  }
+}
 
 // =============================================================================
 // Types
@@ -303,9 +363,12 @@ export class ClaudeCodeProvider extends EventEmitter {
     message: string,
     history: Array<{ role: string; content: string }>
   ): Promise<void> {
+    debug('send', 'Starting send()', { mode: this.mode, messageLength: message.length, historyLength: history.length });
+
     // Build the full prompt with history
     const systemPrompt = getPlanningAgentSystemPrompt(this.mode, this.selectedBean);
     const fullSystemPrompt = systemPrompt + BEANS_INSTRUCTIONS;
+    debug('send', 'Built system prompt', { systemPromptLength: fullSystemPrompt.length });
 
     // Build conversation history as text
     let conversationContext = '';
@@ -321,6 +384,7 @@ export class ClaudeCodeProvider extends EventEmitter {
     const fullPrompt = conversationContext
       ? `${conversationContext}\nUser: ${message}`
       : message;
+    debug('send', 'Built full prompt', { promptLength: fullPrompt.length, prompt: fullPrompt.slice(0, 500) });
 
     // Build CLI arguments
     const args = [
@@ -328,12 +392,15 @@ export class ClaudeCodeProvider extends EventEmitter {
       '--output-format', 'stream-json',
       '--verbose',
       '--append-system-prompt', fullSystemPrompt,
-      '--allowedTools', 'Read Glob Grep Bash',
+      '--allowedTools', 'Read,Glob,Grep,Bash',
       fullPrompt,
     ];
+    debug('spawn', 'CLI arguments', { argsCount: args.length, args: args.map((a, i) => i === 5 ? '[system-prompt]' : a) });
 
     // Spawn the process
     return new Promise((resolve, reject) => {
+      debug('spawn', 'Spawning claude process', { cwd: process.cwd() });
+
       this.process = spawn('claude', args, {
         cwd: process.cwd(),
         stdio: ['pipe', 'pipe', 'pipe'],
@@ -342,6 +409,8 @@ export class ClaudeCodeProvider extends EventEmitter {
           FORCE_COLOR: '0', // Disable colors for clean parsing
         },
       });
+
+      debug('spawn', 'Process spawned', { pid: this.process.pid });
 
       // Handle abort signal
       if (this.abortSignal) {
@@ -352,23 +421,43 @@ export class ClaudeCodeProvider extends EventEmitter {
 
       let buffer = '';
       this.fullContent = '';
+      let eventCount = 0;
+      let stdoutChunks = 0;
 
       // Handle stdout (stream-json events)
       this.process.stdout?.on('data', (data: Buffer) => {
-        buffer += data.toString();
-        
+        stdoutChunks++;
+        const chunk = data.toString();
+        debug('stdout', `Received chunk #${stdoutChunks}`, { length: chunk.length, preview: chunk.slice(0, 200) });
+
+        buffer += chunk;
+
         // Process complete lines
         const lines = buffer.split('\n');
         buffer = lines.pop() ?? ''; // Keep incomplete line in buffer
 
         for (const line of lines) {
           const event = parseStreamEvent(line);
-          if (!event) continue;
+          if (!event) {
+            if (line.trim()) {
+              debug('parse', 'Failed to parse line', line.slice(0, 200));
+            }
+            continue;
+          }
+
+          eventCount++;
+          debug('event', `Event #${eventCount}: ${event.type}${event.subtype ? '/' + event.subtype : ''}`, {
+            type: event.type,
+            subtype: event.subtype,
+            hasMessage: !!event.message,
+            hasResult: !!event.result,
+          });
 
           // Handle assistant text
           if (event.type === 'assistant') {
             const text = extractTextContent(event);
             if (text) {
+              debug('text', 'Extracted text from assistant message', { textLength: text.length, preview: text.slice(0, 100) });
               this.fullContent += text;
               this.emit('text', text);
             }
@@ -376,12 +465,14 @@ export class ClaudeCodeProvider extends EventEmitter {
             // Handle tool calls
             const toolCalls = extractToolCalls(event);
             for (const tc of toolCalls) {
+              debug('tool', `Tool call: ${tc.name}`, tc.args);
               this.emit('toolCall', tc);
             }
           }
 
           // Handle final result
           if (event.type === 'result') {
+            debug('result', 'Received result event', { fullContentLength: this.fullContent.length });
             // Result event means we're done
             this.emit('done', this.fullContent);
           }
@@ -391,18 +482,22 @@ export class ClaudeCodeProvider extends EventEmitter {
       // Handle stderr (usually empty or errors)
       this.process.stderr?.on('data', (data: Buffer) => {
         const text = data.toString();
+        debug('stderr', 'Received stderr', text);
         // Only emit errors for actual errors, not warnings
         if (text.includes('Error:') || text.includes('error:')) {
+          debug('error', 'Emitting error from stderr', text);
           this.emit('error', new Error(text));
         }
       });
 
       // Handle process exit
       this.process.on('close', (code) => {
+        debug('close', 'Process closed', { code, fullContentLength: this.fullContent.length, eventCount, stdoutChunks });
         this.process = null;
 
         // Process any remaining buffer
         if (buffer.trim()) {
+          debug('close', 'Processing remaining buffer', { bufferLength: buffer.length });
           const event = parseStreamEvent(buffer);
           if (event?.type === 'assistant') {
             const text = extractTextContent(event);
@@ -415,12 +510,16 @@ export class ClaudeCodeProvider extends EventEmitter {
 
         if (code !== 0 && code !== null) {
           const error = new Error(`claude process exited with code ${code}`);
+          debug('error', 'Process exited with non-zero code', { code });
           this.emit('error', error);
           reject(error);
         } else {
           // Ensure done is emitted even if no result event
           if (this.fullContent) {
+            debug('done', 'Emitting done (from close handler)', { fullContentLength: this.fullContent.length });
             this.emit('done', this.fullContent);
+          } else {
+            debug('warn', 'Process completed but no content was extracted', { eventCount, stdoutChunks });
           }
           resolve();
         }
@@ -428,6 +527,7 @@ export class ClaudeCodeProvider extends EventEmitter {
 
       // Handle spawn errors
       this.process.on('error', (error: Error) => {
+        debug('error', 'Spawn error', { message: error.message, name: error.name });
         this.process = null;
         this.emit('error', error);
         reject(error);
