@@ -1,11 +1,11 @@
 ---
 # daedalus-uool
 title: Crash beans should be children of Errors epic
-status: in-progress
+status: completed
 type: bug
 priority: normal
 created_at: 2026-01-27T00:09:12Z
-updated_at: 2026-01-27T01:25:53Z
+updated_at: 2026-01-27T01:26:06Z
 parent: daedalus-kfjn
 ---
 
