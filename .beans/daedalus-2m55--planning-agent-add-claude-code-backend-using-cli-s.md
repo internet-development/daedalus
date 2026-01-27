@@ -1,12 +1,11 @@
 ---
 # daedalus-2m55
 title: 'Planning agent: Add claude_code backend using CLI subscription'
-status: in-progress
+status: completed
 type: feature
 priority: normal
-tags: []
 created_at: 2026-01-27T02:26:58Z
-updated_at: 2026-01-27T02:43:25Z
+updated_at: 2026-01-27T02:44:03Z
 parent: daedalus-19c1
 ---
 
