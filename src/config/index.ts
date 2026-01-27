@@ -461,6 +461,10 @@ export function resolveSkillsDirectory(skillsDir: string, projectRoot: string): 
 
 /**
  * Validate that a skill name matches an existing skill in the skills directory
+ * Supports both formats:
+ * - Flat file: skills/skill-name.md
+ * - Directory: skills/skill-name/SKILL.md (Agent Skills format)
+ * 
  * @param skillName - The skill name to validate
  * @param skillsDir - Absolute path to the skills directory
  * @returns Object with isValid boolean and error message if invalid
@@ -469,8 +473,6 @@ export function validateSkillExists(
   skillName: string,
   skillsDir: string
 ): { isValid: boolean; error?: string } {
-  const skillPath = join(skillsDir, `${skillName}.md`);
-  
   if (!existsSync(skillsDir)) {
     return {
       isValid: false,
@@ -478,14 +480,22 @@ export function validateSkillExists(
     };
   }
   
-  if (!existsSync(skillPath)) {
-    return {
-      isValid: false,
-      error: `Skill file not found: ${skillPath}`,
-    };
+  // Check for Agent Skills format first (skill-name/SKILL.md)
+  const agentSkillPath = join(skillsDir, skillName, 'SKILL.md');
+  if (existsSync(agentSkillPath)) {
+    return { isValid: true };
   }
   
-  return { isValid: true };
+  // Fall back to flat file format (skill-name.md)
+  const flatSkillPath = join(skillsDir, `${skillName}.md`);
+  if (existsSync(flatSkillPath)) {
+    return { isValid: true };
+  }
+  
+  return {
+    isValid: false,
+    error: `Skill not found: ${skillName} (tried ${agentSkillPath} and ${flatSkillPath})`,
+  };
 }
 
 /**
