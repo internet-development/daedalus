@@ -1,11 +1,11 @@
 ---
 # daedalus-kvgh
 title: 'Daedalus TUI: Terminal Interface'
-status: todo
+status: completed
 type: epic
 priority: high
 created_at: 2026-01-26T05:38:38Z
-updated_at: 2026-01-26T08:54:39Z
+updated_at: 2026-01-27T01:46:24Z
 parent: daedalus-na2v
 ---
 
