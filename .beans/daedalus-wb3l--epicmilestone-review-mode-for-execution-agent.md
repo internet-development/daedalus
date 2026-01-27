@@ -1,11 +1,11 @@
 ---
 # daedalus-wb3l
 title: Epic/milestone review mode for execution agent
-status: in-progress
+status: completed
 type: feature
 priority: high
 created_at: 2026-01-27T00:43:16Z
-updated_at: 2026-01-27T01:13:37Z
+updated_at: 2026-01-27T01:13:52Z
 parent: daedalus-ss8m
 ---
 
