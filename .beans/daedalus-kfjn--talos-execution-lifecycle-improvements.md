@@ -1,11 +1,11 @@
 ---
 # daedalus-kfjn
 title: Talos execution lifecycle improvements
-status: todo
+status: completed
 type: epic
 priority: high
 created_at: 2026-01-27T00:36:31Z
-updated_at: 2026-01-27T00:42:10Z
+updated_at: 2026-01-27T01:27:26Z
 parent: daedalus-na2v
 ---
 
