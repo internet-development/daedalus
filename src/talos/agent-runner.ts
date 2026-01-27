@@ -48,6 +48,12 @@ export interface AgentRunnerEvents {
   error: (error: Error) => void;
 }
 
+/** Review mode configuration */
+export interface ReviewConfig {
+  testCommand?: string;
+  conventionsFile?: string;
+}
+
 // =============================================================================
 // Prompt Generation
 // =============================================================================
@@ -140,10 +146,28 @@ function extractFilePaths(body: string): string[] {
 }
 
 /**
+ * Read conventions file content if it exists.
+ */
+function readConventionsFile(path?: string): string {
+  if (!path) return '';
+  try {
+    const { readFileSync, existsSync } = require('fs');
+    const fullPath = require('path').join(getCwd(), path);
+    if (existsSync(fullPath)) {
+      const content = readFileSync(fullPath, 'utf-8');
+      return `\n## Project Conventions\n\nFrom \`${path}\`:\n\n${content.slice(0, 2000)}${content.length > 2000 ? '\n...(truncated)' : ''}\n`;
+    }
+  } catch {
+    // Ignore errors
+  }
+  return '';
+}
+
+/**
  * Generate a review mode prompt for epic/milestone beans.
  * The agent acts as a senior engineer reviewing completed work.
  */
-export function generateReviewPrompt(bean: BeanWithChildren): string {
+export function generateReviewPrompt(bean: BeanWithChildren, config?: ReviewConfig): string {
   const beanType = bean.type.charAt(0).toUpperCase() + bean.type.slice(1);
   
   // Format child beans for review
@@ -185,13 +209,19 @@ ${child.body}
     }
   }
 
+  // Get conventions if configured
+  const conventionsContent = readConventionsFile(config?.conventionsFile);
+  
+  // Use configured test command or default
+  const testCommand = config?.testCommand || 'npm test';
+
   return `You are a senior engineer reviewing completed work before marking a ${beanType.toLowerCase()} as done.
 
 ## ${beanType}: ${bean.id}
 ### ${bean.title}
 
 ${bean.body}
-${filesQuickRef}${gitContext}
+${filesQuickRef}${gitContext}${conventionsContent}
 ---
 
 ## Completed Children to Review
@@ -209,7 +239,7 @@ ${childrenDetails || 'No child beans found.'}
    - Any obvious bugs or issues?
    - Does it follow project patterns and conventions?
    - Is error handling appropriate?
-4. **Run the test suite**: \`npm test\` (or appropriate command)
+4. **Run the test suite**: \`${testCommand}\`
 5. **Verify integration** between components works correctly
 
 ## Outcome
@@ -234,12 +264,12 @@ ${childrenDetails || 'No child beans found.'}
  * Generate prompt for a bean, using review mode for epics/milestones
  * and implementation mode for other types.
  */
-export async function generatePromptForBean(bean: Bean): Promise<string> {
+export async function generatePromptForBean(bean: Bean, reviewConfig?: ReviewConfig): Promise<string> {
   if (isReviewMode(bean)) {
     // Fetch bean with children for review mode
     const beanWithChildren = await getBeanWithChildren(bean.id);
     if (beanWithChildren) {
-      return generateReviewPrompt(beanWithChildren);
+      return generateReviewPrompt(beanWithChildren, reviewConfig);
     }
     // Fallback to regular prompt if children can't be fetched
     return generatePrompt(bean);

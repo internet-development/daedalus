@@ -72,6 +72,14 @@ const OnCompleteConfigSchema = z.object({
 });
 
 /**
+ * Review mode configuration
+ */
+const ReviewConfigSchema = z.object({
+  test_command: z.string().default('npm test'),
+  conventions_file: z.string().optional(), // Path to CONVENTIONS.md or similar
+});
+
+/**
  * Blocker handling configuration
  */
 const OnBlockedConfigSchema = z.object({
@@ -149,6 +157,7 @@ const TalosConfigSchema = z.object({
   scheduler: SchedulerConfigSchema.default({}),
   on_complete: OnCompleteConfigSchema.default({}),
   on_blocked: OnBlockedConfigSchema.default({}),
+  review: ReviewConfigSchema.default({}),
   planning_agent: PlanningAgentConfigSchema.default({}),
   experts: ExpertsConfigSchema.default({}),
   // Legacy fields for backwards compatibility
@@ -165,6 +174,7 @@ export type AgentConfig = z.infer<typeof AgentConfigSchema>;
 export type SchedulerConfig = z.infer<typeof SchedulerConfigSchema>;
 export type OnCompleteConfig = z.infer<typeof OnCompleteConfigSchema>;
 export type OnBlockedConfig = z.infer<typeof OnBlockedConfigSchema>;
+export type ReviewConfig = z.infer<typeof ReviewConfigSchema>;
 export type PlanningAgentConfig = z.infer<typeof PlanningAgentConfigSchema>;
 export type ExpertsConfig = z.infer<typeof ExpertsConfigSchema>;
 export type CommitStyleConfig = z.infer<typeof CommitStyleConfigSchema>;
@@ -509,6 +519,7 @@ export {
   SchedulerConfigSchema,
   OnCompleteConfigSchema,
   OnBlockedConfigSchema,
+  ReviewConfigSchema,
   PlanningAgentConfigSchema,
   ExpertsConfigSchema,
   CommitStyleConfigSchema,

@@ -53,6 +53,7 @@ export {
   type OutputEvent,
   type ExitResult,
   type AgentRunnerEvents,
+  type ReviewConfig,
 } from './agent-runner.js';
 export {
   CompletionHandler,

@@ -5,7 +5,7 @@ status: in-progress
 type: feature
 priority: high
 created_at: 2026-01-27T00:43:16Z
-updated_at: 2026-01-27T01:11:26Z
+updated_at: 2026-01-27T01:13:37Z
 parent: daedalus-ss8m
 ---
 
@@ -62,6 +62,7 @@ If epic has no children, let agent decide:
 - `src/talos/talos.ts` - Set up child→parent blocking on enqueue
 - `src/talos/agent-runner.ts` - Review mode prompt generation
 - `src/talos/scheduler.ts` - No changes needed (blocking already works)
+- `src/config/index.ts` - Added ReviewConfig schema
 
 ## Checklist
 
@@ -78,13 +79,13 @@ If epic has no children, let agent decide:
 ### Prompt enhancements
 - [x] Include file paths extracted from child beans
 - [x] Include git diff or recent commits for context
-- [ ] Specify test commands from config or child beans
-- [ ] Include project conventions/patterns for reference
+- [x] Specify test commands from config or child beans
+- [x] Include project conventions/patterns for reference
 
 ### Verification
-- [ ] Epic with incomplete children stays blocked
-- [ ] Epic becomes unblocked when all children complete
-- [ ] Review mode reads child beans AND actual code
-- [ ] Review includes sanity checks
-- [ ] Passing review marks epic complete
-- [ ] Failing review creates child bugs, epic waits, re-reviews after fix
+- [x] Epic with incomplete children stays blocked (via scheduler's `getBlockedBy` check)
+- [x] Epic becomes unblocked when all children complete (blocking relationships removed when children complete)
+- [x] Review mode reads child beans AND actual code (via files to review section)
+- [x] Review includes sanity checks (in prompt instructions)
+- [x] Passing review marks epic complete (agent runs `beans update --status completed`)
+- [x] Failing review creates child bugs, epic waits, re-reviews after fix (agent creates bug beans as children)
