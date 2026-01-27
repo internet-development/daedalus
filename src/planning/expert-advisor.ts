@@ -102,7 +102,7 @@ ${context}`;
         },
       ],
       temperature: 0.7,
-      maxTokens: 300, // Keep expert responses concise
+      maxOutputTokens: 300, // Keep expert responses concise
     });
 
     return {
@@ -177,7 +177,7 @@ Please synthesize this feedback into actionable insights and questions for the u
       },
     ],
     temperature: 0.5,
-    maxTokens: 500,
+    maxOutputTokens: 500,
   });
 
   return result.text.trim();

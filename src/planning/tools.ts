@@ -4,8 +4,8 @@
  * Tool definitions for the Vercel AI SDK. These tools allow the planning agent
  * to read files, search the codebase, run safe commands, and manage beans.
  */
-import { tool } from 'ai';
-import { z } from 'zod';
+import { tool, type Tool } from 'ai';
+import { z, type ZodTypeAny } from 'zod';
 import { readFileSync, readdirSync, statSync, existsSync } from 'fs';
 import { join, relative } from 'path';
 import { execSync } from 'child_process';
@@ -28,25 +28,27 @@ import {
 // Read File Tool
 // =============================================================================
 
+const readFileInputSchema = z.object({
+  path: z
+    .string()
+    .describe(
+      'The path to the file to read, relative to the project root'
+    ),
+  startLine: z
+    .number()
+    .optional()
+    .describe('Optional start line number (1-indexed)'),
+  endLine: z
+    .number()
+    .optional()
+    .describe('Optional end line number (inclusive)'),
+});
+
 export const readFileTool = tool({
   description:
     'Read the contents of a file from the codebase. Use this to understand existing code.',
-  parameters: z.object({
-    path: z
-      .string()
-      .describe(
-        'The path to the file to read, relative to the project root'
-      ),
-    startLine: z
-      .number()
-      .optional()
-      .describe('Optional start line number (1-indexed)'),
-    endLine: z
-      .number()
-      .optional()
-      .describe('Optional end line number (inclusive)'),
-  }),
-  execute: async ({ path, startLine, endLine }) => {
+  inputSchema: readFileInputSchema,
+  execute: async ({ path, startLine, endLine }: z.infer<typeof readFileInputSchema>) => {
     try {
       const fullPath = join(process.cwd(), path);
       if (!existsSync(fullPath)) {
@@ -90,22 +92,24 @@ export const readFileTool = tool({
 // Glob Tool
 // =============================================================================
 
+const globInputSchema = z.object({
+  pattern: z
+    .string()
+    .describe(
+      'The glob pattern to match (e.g., "src/**/*.ts", "*.json")'
+    ),
+  maxResults: z
+    .number()
+    .optional()
+    .default(50)
+    .describe('Maximum number of results to return'),
+});
+
 export const globTool = tool({
   description:
     'Find files matching a glob pattern. Use this to discover files in the codebase.',
-  parameters: z.object({
-    pattern: z
-      .string()
-      .describe(
-        'The glob pattern to match (e.g., "src/**/*.ts", "*.json")'
-      ),
-    maxResults: z
-      .number()
-      .optional()
-      .default(50)
-      .describe('Maximum number of results to return'),
-  }),
-  execute: async ({ pattern, maxResults = 50 }) => {
+  inputSchema: globInputSchema,
+  execute: async ({ pattern, maxResults = 50 }: z.infer<typeof globInputSchema>) => {
     try {
       // Use find command for glob-like matching
       const command = `find . -type f -name "${pattern.replace(/\*\*/g, '*')}" 2>/dev/null | head -${maxResults}`;
@@ -138,24 +142,26 @@ export const globTool = tool({
 // Grep Tool
 // =============================================================================
 
+const grepInputSchema = z.object({
+  pattern: z.string().describe('The regex pattern to search for'),
+  filePattern: z
+    .string()
+    .optional()
+    .describe(
+      'Optional file pattern to limit search (e.g., "*.ts", "src/**/*.tsx")'
+    ),
+  maxResults: z
+    .number()
+    .optional()
+    .default(30)
+    .describe('Maximum number of results'),
+});
+
 export const grepTool = tool({
   description:
     'Search for a pattern in files. Use this to find where things are defined or used.',
-  parameters: z.object({
-    pattern: z.string().describe('The regex pattern to search for'),
-    filePattern: z
-      .string()
-      .optional()
-      .describe(
-        'Optional file pattern to limit search (e.g., "*.ts", "src/**/*.tsx")'
-      ),
-    maxResults: z
-      .number()
-      .optional()
-      .default(30)
-      .describe('Maximum number of results'),
-  }),
-  execute: async ({ pattern, filePattern, maxResults = 30 }) => {
+  inputSchema: grepInputSchema,
+  execute: async ({ pattern, filePattern, maxResults = 30 }: z.infer<typeof grepInputSchema>) => {
     try {
       // Build grep command
       let command = `grep -rn --include="${filePattern ?? '*'}" "${pattern}" . 2>/dev/null | head -${maxResults}`;
@@ -242,13 +248,15 @@ const BLOCKED_COMMANDS = [
   'su',
 ];
 
+const bashReadonlyInputSchema = z.object({
+  command: z.string().describe('The bash command to run'),
+});
+
 export const bashReadonlyTool = tool({
   description:
     'Run a read-only bash command. Use this for commands like ls, git status, tree, etc. Cannot run commands that modify files.',
-  parameters: z.object({
-    command: z.string().describe('The bash command to run'),
-  }),
-  execute: async ({ command }) => {
+  inputSchema: bashReadonlyInputSchema,
+  execute: async ({ command }: z.infer<typeof bashReadonlyInputSchema>) => {
     // Check for blocked commands
     const firstWord = command.trim().split(/\s+/)[0];
     if (BLOCKED_COMMANDS.includes(firstWord)) {
@@ -299,13 +307,15 @@ export const bashReadonlyTool = tool({
 // Web Search Tool (Placeholder)
 // =============================================================================
 
+const webSearchInputSchema = z.object({
+  query: z.string().describe('The search query'),
+});
+
 export const webSearchTool = tool({
   description:
     'Search the web for solutions, patterns, and best practices. (Note: This is a placeholder - implement with actual web search API)',
-  parameters: z.object({
-    query: z.string().describe('The search query'),
-  }),
-  execute: async ({ query }) => {
+  inputSchema: webSearchInputSchema,
+  execute: async ({ query }: z.infer<typeof webSearchInputSchema>) => {
     // This is a placeholder - in a real implementation, you would integrate
     // with a web search API like Serper, Tavily, or Brave Search
     return {
@@ -319,6 +329,53 @@ export const webSearchTool = tool({
 // =============================================================================
 // Beans CLI Tool
 // =============================================================================
+
+const beansCliInputSchema = z.object({
+  action: z
+    .enum(['create', 'update', 'set_parent', 'add_blocking', 'remove_blocking', 'query', 'get'])
+    .describe('The action to perform'),
+  // Create parameters
+  title: z.string().optional().describe('Bean title (for create)'),
+  type: z
+    .enum(['milestone', 'epic', 'feature', 'bug', 'task'])
+    .optional()
+    .describe('Bean type (for create)'),
+  status: z
+    .enum(['draft', 'todo', 'in-progress', 'completed', 'scrapped'])
+    .optional()
+    .describe('Bean status'),
+  priority: z
+    .enum(['critical', 'high', 'normal', 'low', 'deferred'])
+    .optional()
+    .describe('Bean priority'),
+  body: z.string().optional().describe('Bean body/description'),
+  parent: z.string().optional().describe('Parent bean ID (for create)'),
+  blocking: z
+    .array(z.string())
+    .optional()
+    .describe('Array of bean IDs this bean is blocking (for create)'),
+  // Update/Get/Relationship parameters
+  id: z.string().optional().describe('Bean ID (for update/get/relationship actions)'),
+  // Relationship parameters
+  parentId: z
+    .string()
+    .nullable()
+    .optional()
+    .describe('Parent bean ID for set_parent (null to remove parent)'),
+  targetId: z
+    .string()
+    .optional()
+    .describe('Target bean ID for add_blocking/remove_blocking'),
+  // Query parameters
+  filter: z
+    .object({
+      status: z.array(z.string()).optional(),
+      type: z.array(z.string()).optional(),
+      search: z.string().optional(),
+    })
+    .optional()
+    .describe('Filter for query'),
+});
 
 export const beansCliTool = tool({
   description: `Manage beans (issues/tasks). Use this to create, update, query, and manage relationships between beans.
@@ -346,52 +403,7 @@ export const beansCliTool = tool({
 ### Organizing work hierarchy:
 - Set parent: { action: "set_parent", id: "<task-id>", parentId: "<epic-id>" }
 - Remove parent: { action: "set_parent", id: "<task-id>", parentId: null }`,
-  parameters: z.object({
-    action: z
-      .enum(['create', 'update', 'set_parent', 'add_blocking', 'remove_blocking', 'query', 'get'])
-      .describe('The action to perform'),
-    // Create parameters
-    title: z.string().optional().describe('Bean title (for create)'),
-    type: z
-      .enum(['milestone', 'epic', 'feature', 'bug', 'task'])
-      .optional()
-      .describe('Bean type (for create)'),
-    status: z
-      .enum(['draft', 'todo', 'in-progress', 'completed', 'scrapped'])
-      .optional()
-      .describe('Bean status'),
-    priority: z
-      .enum(['critical', 'high', 'normal', 'low', 'deferred'])
-      .optional()
-      .describe('Bean priority'),
-    body: z.string().optional().describe('Bean body/description'),
-    parent: z.string().optional().describe('Parent bean ID (for create)'),
-    blocking: z
-      .array(z.string())
-      .optional()
-      .describe('Array of bean IDs this bean is blocking (for create)'),
-    // Update/Get/Relationship parameters
-    id: z.string().optional().describe('Bean ID (for update/get/relationship actions)'),
-    // Relationship parameters
-    parentId: z
-      .string()
-      .nullable()
-      .optional()
-      .describe('Parent bean ID for set_parent (null to remove parent)'),
-    targetId: z
-      .string()
-      .optional()
-      .describe('Target bean ID for add_blocking/remove_blocking'),
-    // Query parameters
-    filter: z
-      .object({
-        status: z.array(z.string()).optional(),
-        type: z.array(z.string()).optional(),
-        search: z.string().optional(),
-      })
-      .optional()
-      .describe('Filter for query'),
-  }),
+  inputSchema: beansCliInputSchema,
   execute: async ({
     action,
     title,
@@ -405,7 +417,7 @@ export const beansCliTool = tool({
     parentId,
     targetId,
     filter,
-  }) => {
+  }: z.infer<typeof beansCliInputSchema>) => {
     try {
       switch (action) {
         case 'create': {
@@ -553,6 +565,21 @@ export const beansCliTool = tool({
 // Expert Consultation Tool
 // =============================================================================
 
+const consultExpertsInputSchema = z.object({
+  context: z
+    .string()
+    .describe('The plan, approach, or content to get feedback on'),
+  question: z
+    .string()
+    .optional()
+    .describe('Optional specific question to ask the experts'),
+  experts: z
+    .array(
+      z.enum(['pragmatist', 'architect', 'skeptic', 'simplifier', 'security'])
+    )
+    .describe('Which experts to consult'),
+});
+
 /**
  * Note: This tool is a placeholder. The actual expert consultation is handled
  * by the usePlanningAgent hook which has access to the config and can spawn
@@ -561,21 +588,8 @@ export const beansCliTool = tool({
 export const consultExpertsTool = tool({
   description:
     'Consult expert advisors for feedback on a plan or approach. Each expert provides their unique perspective.',
-  parameters: z.object({
-    context: z
-      .string()
-      .describe('The plan, approach, or content to get feedback on'),
-    question: z
-      .string()
-      .optional()
-      .describe('Optional specific question to ask the experts'),
-    experts: z
-      .array(
-        z.enum(['pragmatist', 'architect', 'skeptic', 'simplifier', 'security'])
-      )
-      .describe('Which experts to consult'),
-  }),
-  execute: async ({ context, question, experts }) => {
+  inputSchema: consultExpertsInputSchema,
+  execute: async ({ context, question, experts }: z.infer<typeof consultExpertsInputSchema>) => {
     // This is handled externally by the planning agent hook
     // The tool definition exists for the AI to understand the capability
     return {

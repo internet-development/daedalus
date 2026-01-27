@@ -5,7 +5,7 @@
  * Supports streaming responses and tool calls.
  */
 import { useState, useCallback, useRef } from 'react';
-import { streamText, type CoreMessage } from 'ai';
+import { streamText, stepCountIs, type ModelMessage } from 'ai';
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { createOpenAI } from '@ai-sdk/openai';
 import type { PlanningAgentConfig, ExpertsConfig } from '../../config/index.js';
@@ -71,14 +71,14 @@ function getModel(config: PlanningAgentConfig) {
 // Message Conversion
 // =============================================================================
 
-function convertToCoreMessages(
+function convertToModelMessages(
   messages: ChatMessage[],
   systemPrompt: string
-): CoreMessage[] {
-  const coreMessages: CoreMessage[] = [];
+): ModelMessage[] {
+  const modelMessages: ModelMessage[] = [];
 
   // Add system message
-  coreMessages.push({
+  modelMessages.push({
     role: 'system',
     content: systemPrompt,
   });
@@ -86,12 +86,12 @@ function convertToCoreMessages(
   // Convert chat messages
   for (const msg of messages) {
     if (msg.role === 'user') {
-      coreMessages.push({
+      modelMessages.push({
         role: 'user',
         content: msg.content,
       });
     } else if (msg.role === 'assistant') {
-      coreMessages.push({
+      modelMessages.push({
         role: 'assistant',
         content: msg.content,
       });
@@ -99,7 +99,7 @@ function convertToCoreMessages(
     // Skip system messages (handled separately)
   }
 
-  return coreMessages;
+  return modelMessages;
 }
 
 // =============================================================================
@@ -140,8 +140,8 @@ export function usePlanningAgent({
         // Get enabled tools
         const tools = getEnabledTools(config.tools);
 
-        // Convert history to core messages
-        const messages = convertToCoreMessages(history, systemPrompt);
+        // Convert history to model messages
+        const messages = convertToModelMessages(history, systemPrompt);
 
         // Add the new user message
         messages.push({
@@ -157,7 +157,7 @@ export function usePlanningAgent({
           model,
           messages,
           tools,
-          maxSteps: 10, // Allow multiple tool calls
+          stopWhen: stepCountIs(10), // Allow up to 10 tool call steps
           temperature: config.temperature,
           abortSignal: abortControllerRef.current.signal,
         });
@@ -182,7 +182,7 @@ export function usePlanningAgent({
               for (const tc of step.toolCalls) {
                 toolCalls.push({
                   name: tc.toolName,
-                  args: tc.args as Record<string, unknown>,
+                  args: tc.input as Record<string, unknown>,
                 });
               }
             }

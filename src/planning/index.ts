@@ -36,3 +36,15 @@ export {
   type ExpertConsultationResult,
   type ConsultExpertsOptions,
 } from './expert-advisor.js';
+export {
+  createPlanningAgent,
+  runPlanningAgent,
+  loadSkills,
+  getSystemPromptForMode,
+  getModeDescription,
+  type PlanningMode,
+  type CreatePlanningAgentConfig,
+  type SkillLoadResult,
+  type CombinedTools,
+  type PlanningAgentResult,
+} from './planning-agent.js';
