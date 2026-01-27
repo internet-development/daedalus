@@ -512,8 +512,29 @@ export class Talos extends EventEmitter {
       this.handleCompletionResult(bean, completionResult);
     });
 
-    // Agent errors
-    this.runner.on('error', (error: Error) => {
+    // Agent errors (e.g., spawn failure - command not found)
+    this.runner.on('error', async (error: Error) => {
+      const runningBean = this.findRunningBean();
+      if (runningBean) {
+        const { bean, worktreePath } = runningBean;
+
+        // Write error to output file so crash bean has context
+        this.appendOutput(bean.id, `Spawn error: ${error.message}\n`);
+
+        // Clean up in-progress state
+        this.inProgress.delete(bean.id);
+
+        // Handle as crash (exit code -1 indicates spawn failure)
+        const completionResult = await this.completionHandler.handleCompletion(
+          bean,
+          -1,
+          this.getOutputPath(bean.id),
+          worktreePath
+        );
+
+        this.handleCompletionResult(bean, completionResult);
+      }
+
       this.emit('error', error);
     });
   }

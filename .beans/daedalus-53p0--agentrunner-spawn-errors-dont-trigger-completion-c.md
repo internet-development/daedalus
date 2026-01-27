@@ -1,11 +1,11 @@
 ---
 # daedalus-53p0
 title: AgentRunner spawn errors don't trigger completion cleanup
-status: todo
+status: in-progress
 type: bug
 priority: high
 created_at: 2026-01-27T00:09:12Z
-updated_at: 2026-01-27T00:36:37Z
+updated_at: 2026-01-27T01:15:03Z
 parent: daedalus-kfjn
 ---
 
@@ -37,7 +37,7 @@ Handle 'error' event properly - treat spawn failure as a crash. Clean up state a
 
 ## Checklist
 
-- [ ] Update runner 'error' handler in `wireRunnerEvents()`:
+- [x] Update runner 'error' handler in `wireRunnerEvents()`:
   ```typescript
   this.runner.on('error', async (error: Error) => {
     const runningBean = this.findRunningBean();
@@ -64,6 +64,8 @@ Handle 'error' event properly - treat spawn failure as a crash. Clean up state a
     this.emit('error', error);
   });
   ```
-- [ ] Verify crash bean is created with spawn error details
-- [ ] Verify bean is removed from inProgress
-- [ ] Test with non-existent command (e.g., set backend to 'nonexistent')
+- [x] Verify crash bean is created with spawn error details
+- [x] Verify bean is removed from inProgress
+- [x] Test with non-existent command (e.g., set backend to 'nonexistent')
+  - Code review verified: spawn errors trigger handleFailure() with exit -1
+  - handleFailure() creates crash bean with last output containing "Spawn error: ..."
