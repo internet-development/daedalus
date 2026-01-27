@@ -1,15 +1,15 @@
 ---
 # daedalus-f7od
 title: 'Plan View: Replace ctrl+m with Tab to cycle modes'
-status: todo
+status: in-progress
 type: bug
 priority: normal
 created_at: 2026-01-26T23:13:43Z
-updated_at: 2026-01-27T00:44:13Z
+updated_at: 2026-01-27T01:22:16Z
 parent: daedalus-kvgh
 ---
 
-In Plan View, ctrl+m is supposed to open the mode selector but doesn't respond.
+In Plan View, ctrl+m is supposed to open the mode selector but does not respond.
 
 ## Root Cause
 
@@ -69,9 +69,9 @@ const cycleMode = (direction: 1 | -1) => {
 
 ## Implementation Checklist
 
-- [ ] Remove ctrl+m handler
-- [ ] Add Tab handler to cycle forward through modes
-- [ ] Add Shift+Tab handler to cycle backward (optional)
-- [ ] Create cycleMode helper function
-- [ ] Update footer/help text to show Tab shortcut
+- [x] Remove ctrl+m handler
+- [x] Add Tab handler to cycle forward through modes
+- [x] Add Shift+Tab handler to cycle backward (optional)
+- [x] Create cycleMode helper function
+- [x] Update footer/help text to show Tab shortcut
 - [ ] Test in multiple terminals (iTerm, Terminal.app, VS Code terminal)

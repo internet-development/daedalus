@@ -27,7 +27,10 @@ import type { Bean } from '../../talos/beans-client.js';
 // Types
 // =============================================================================
 
-export type PlanMode = 'new' | 'refine' | 'critique' | 'sweep';
+export type PlanMode = 'new' | 'refine' | 'critique' | 'sweep' | 'brainstorm' | 'breakdown';
+
+// Ordered list of modes for cycling
+const PLAN_MODES: PlanMode[] = ['new', 'refine', 'critique', 'sweep', 'brainstorm', 'breakdown'];
 
 export interface PendingChoice {
   id: string;
@@ -44,6 +47,8 @@ const MODE_LABELS: Record<PlanMode, string> = {
   refine: 'Refine',
   critique: 'Critique',
   sweep: 'Final Sweep',
+  brainstorm: 'Brainstorm',
+  breakdown: 'Breakdown',
 };
 
 // =============================================================================
@@ -180,6 +185,13 @@ export function PlanView() {
     setPendingChoice(null);
   }, [clearMessages]);
 
+  // Cycle through modes (for Tab/Shift+Tab navigation)
+  const cycleMode = useCallback((direction: 1 | -1) => {
+    const currentIndex = PLAN_MODES.indexOf(mode);
+    const nextIndex = (currentIndex + direction + PLAN_MODES.length) % PLAN_MODES.length;
+    setMode(PLAN_MODES[nextIndex]);
+  }, [mode]);
+
   // Keyboard shortcuts
   useInput(
     (input, key) => {
@@ -192,9 +204,15 @@ export function PlanView() {
         return;
       }
 
-      // Ctrl+M: Open mode selector
-      if (key.ctrl && input === 'm') {
-        setShowModeSelector(true);
+      // Tab: Cycle to next mode
+      if (key.tab && !key.shift) {
+        cycleMode(1);
+        return;
+      }
+
+      // Shift+Tab: Cycle to previous mode
+      if (key.tab && key.shift) {
+        cycleMode(-1);
         return;
       }
 
@@ -305,7 +323,7 @@ export function PlanView() {
               • Press <Text color="cyan">Ctrl+P</Text> for custom prompts
             </Text>
             <Text color="gray" dimColor>
-              • Press <Text color="cyan">Ctrl+M</Text> to change mode
+              • Press <Text color="cyan">Tab</Text> to cycle modes
             </Text>
           </Box>
         ) : (
@@ -350,7 +368,7 @@ export function PlanView() {
           {'  '}
           <Text color="cyan">[Ctrl+P]</Text> Prompts
           {'  '}
-          <Text color="cyan">[Ctrl+M]</Text> Mode
+          <Text color="cyan">[Tab]</Text> Mode
           {'  '}
           <Text color="cyan">[Ctrl+L]</Text> Clear
           {'  '}
