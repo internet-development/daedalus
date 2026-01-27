@@ -1,11 +1,11 @@
 ---
 # daedalus-lhly
 title: 'Plan View: AI chat returns ''No output generated'' error'
-status: draft
+status: todo
 type: bug
 priority: high
 created_at: 2026-01-27T02:18:44Z
-updated_at: 2026-01-27T02:33:54Z
+updated_at: 2026-01-27T02:34:30Z
 parent: daedalus-19c1
 blocking:
     - daedalus-2m55
