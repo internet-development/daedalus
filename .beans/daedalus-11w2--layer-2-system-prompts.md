@@ -1,11 +1,11 @@
 ---
 # daedalus-11w2
 title: Layer 2 - System Prompts
-status: in-progress
+status: completed
 type: task
 priority: normal
 created_at: 2026-01-26T23:04:03Z
-updated_at: 2026-01-27T01:32:58Z
+updated_at: 2026-01-27T01:33:08Z
 parent: daedalus-19c1
 blocking:
     - daedalus-rftl
