@@ -1,11 +1,11 @@
 ---
 # daedalus-d7g8
 title: 'TUI: Border overflow - views set conflicting heights'
-status: in-progress
+status: completed
 type: bug
 priority: normal
 created_at: 2026-01-26T23:13:43Z
-updated_at: 2026-01-27T01:45:12Z
+updated_at: 2026-01-27T01:45:25Z
 parent: daedalus-kvgh
 ---
 
