@@ -199,11 +199,19 @@ async function getLastOutputLines(
 export class CompletionHandler extends EventEmitter {
   private config: TalosConfig;
   private options: CompletionHandlerOptions;
+  private errorsEpicId: string | null = null;
 
   constructor(config: TalosConfig, options: CompletionHandlerOptions = {}) {
     super();
     this.config = config;
     this.options = options;
+  }
+
+  /**
+   * Set the Errors epic ID for parenting crash/blocker beans
+   */
+  setErrorsEpicId(epicId: string | null): void {
+    this.errorsEpicId = epicId;
   }
 
   /**
@@ -365,6 +373,7 @@ export class CompletionHandler extends EventEmitter {
           type: 'bug',
           status: 'todo',
           blocking: [bean.id],
+          parent: this.errorsEpicId ?? undefined,
           body: `Agent reported being blocked while working on ${bean.id}.\n\nCheck agent output for details about what caused the block.`,
         });
         result.blockerBeanId = blockerBean.id;
@@ -422,6 +431,7 @@ export class CompletionHandler extends EventEmitter {
         status: 'todo',
         priority: 'high',
         blocking: [bean.id],
+        parent: this.errorsEpicId ?? undefined,
         body: `Agent crashed while working on ${bean.id}.
 
 ## Exit Code

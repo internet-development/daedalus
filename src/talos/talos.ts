@@ -93,6 +93,7 @@ export class Talos extends EventEmitter {
   private inProgress: Map<string, RunningBean> = new Map();
   private recentlyCompleted: Bean[] = [];
   private outputDir: string;
+  private errorsEpicId: string | null = null;
 
   constructor(configPath?: string) {
     super();
@@ -146,6 +147,9 @@ export class Talos extends EventEmitter {
 
     // Ensure output directory exists
     this.ensureOutputDir();
+
+    // Find or create Errors epic for organizing crash/blocker beans
+    await this.ensureErrorsEpic();
 
     // Start watcher (loads initial bean state)
     await this.watcher.start();
@@ -719,6 +723,7 @@ export class Talos extends EventEmitter {
         status: 'todo',
         priority: 'high',
         blocking: [bean.id],
+        parent: this.errorsEpicId ?? undefined,
         body: `Bean was found in 'in-progress' status on startup but no agent was running.
 This likely indicates a crash or unexpected termination.
 
@@ -756,6 +761,36 @@ Title: ${bean.title}`,
   private ensureOutputDir(): void {
     if (!existsSync(this.outputDir)) {
       mkdirSync(this.outputDir, { recursive: true });
+    }
+  }
+
+  /**
+   * Find or create the Errors epic for organizing crash/blocker beans
+   */
+  private async ensureErrorsEpic(): Promise<void> {
+    try {
+      // Search for existing Errors epic
+      const existing = await listBeans({ type: ['epic'], search: 'Errors' });
+      const errorsEpic = existing.find((b) => b.title === 'Errors');
+
+      if (errorsEpic) {
+        this.errorsEpicId = errorsEpic.id;
+      } else {
+        // Create new Errors epic
+        const newEpic = await createBean({
+          title: 'Errors',
+          type: 'epic',
+          status: 'todo',
+          body: 'Container for crash and blocker beans created by Talos.',
+        });
+        this.errorsEpicId = newEpic.id;
+      }
+
+      // Pass to completion handler so it can use it for crash/blocker beans
+      this.completionHandler.setErrorsEpicId(this.errorsEpicId);
+    } catch (error) {
+      // Log but don't fail - errors epic is optional
+      this.emit('error', error instanceof Error ? error : new Error(String(error)));
     }
   }
 

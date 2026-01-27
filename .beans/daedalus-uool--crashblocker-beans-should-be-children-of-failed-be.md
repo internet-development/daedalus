@@ -1,11 +1,11 @@
 ---
 # daedalus-uool
 title: Crash beans should be children of Errors epic
-status: todo
+status: in-progress
 type: bug
 priority: normal
 created_at: 2026-01-27T00:09:12Z
-updated_at: 2026-01-27T00:36:37Z
+updated_at: 2026-01-27T01:25:53Z
 parent: daedalus-kfjn
 ---
 
@@ -38,8 +38,8 @@ Each crash bean still has `blocking` relationship to original bean for dependenc
 ## Checklist
 
 ### Setup
-- [ ] Add `errorsEpicId: string | null` to Talos class state
-- [ ] On `start()`, find existing Errors epic or create one:
+- [x] Add `errorsEpicId: string | null` to Talos class state
+- [x] On `start()`, find existing Errors epic or create one:
   ```typescript
   const existing = await listBeans({ type: ['epic'], search: 'Errors' });
   if (existing.find(b => b.title === 'Errors')) {
@@ -56,13 +56,13 @@ Each crash bean still has `blocking` relationship to original bean for dependenc
   ```
 
 ### Update crash bean creation
-- [ ] Pass errorsEpicId to CompletionHandler (via constructor or method param)
-- [ ] In `handleFailure()`, add `parent: errorsEpicId` when creating Crash bean
-- [ ] In `handleBlocked()`, add `parent: errorsEpicId` when creating blocker bean
-- [ ] In `detectOrphanedBeans()`, add `parent: errorsEpicId` when creating Crash bean
+- [x] Pass errorsEpicId to CompletionHandler (via constructor or method param)
+- [x] In `handleFailure()`, add `parent: errorsEpicId` when creating Crash bean
+- [x] In `handleBlocked()`, add `parent: errorsEpicId` when creating blocker bean
+- [x] In `detectOrphanedBeans()`, add `parent: errorsEpicId` when creating Crash bean
 
 ### Verification
-- [ ] Errors epic is created on first run
-- [ ] Errors epic is reused on subsequent runs
-- [ ] Crash beans appear as children of Errors epic in tree view
-- [ ] Blocking relationship still works (original bean shows as blocked)
+- [x] Errors epic is created on first run
+- [x] Errors epic is reused on subsequent runs
+- [x] Crash beans appear as children of Errors epic in tree view
+- [x] Blocking relationship still works (original bean shows as blocked)
