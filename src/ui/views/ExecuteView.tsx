@@ -441,7 +441,7 @@ export function ExecuteView() {
   const isRunning = !outputState.isCompleted;
 
   return (
-    <Box flexDirection="column" paddingX={1} height={terminalHeight - 5}>
+    <Box flexDirection="column" paddingX={1} flexGrow={1}>
       {/* Header: Bean ID and title */}
       <Box marginBottom={0}>
         <Text color="cyan" bold>

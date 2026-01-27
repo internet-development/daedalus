@@ -58,7 +58,6 @@ const MODE_LABELS: Record<PlanMode, string> = {
 export function PlanView() {
   const { stdout } = useStdout();
   const terminalWidth = stdout?.columns ?? 80;
-  const terminalHeight = stdout?.rows ?? 24;
 
   // Load config for planning agent settings
   const config = useMemo(() => loadConfig().config, []);
@@ -234,11 +233,8 @@ export function PlanView() {
     { isActive: !showPromptSelector && !showModeSelector }
   );
 
-  // Calculate layout dimensions
-  const headerHeight = 1;
-  const footerHeight = 2;
-  const inputHeight = 3;
-  const chatHeight = terminalHeight - headerHeight - footerHeight - inputHeight - 8; // padding/borders
+  // Layout dimensions no longer calculated from terminal height
+  // Views use flexGrow to fill available space instead
 
   // Combine messages with streaming content
   const displayMessages = useMemo(() => {
@@ -303,7 +299,7 @@ export function PlanView() {
       </Box>
 
       {/* Chat history */}
-      <Box flexDirection="column" height={chatHeight} overflowY="hidden">
+      <Box flexDirection="column" flexGrow={1} overflowY="hidden">
         {messages.length === 0 && !isStreaming ? (
           <Box flexDirection="column">
             <Text color="gray">Welcome to the Planning Workbench!</Text>

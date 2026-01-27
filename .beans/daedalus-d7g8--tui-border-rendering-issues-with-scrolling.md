@@ -1,11 +1,11 @@
 ---
 # daedalus-d7g8
 title: 'TUI: Border overflow - views set conflicting heights'
-status: todo
+status: in-progress
 type: bug
 priority: normal
 created_at: 2026-01-26T23:13:43Z
-updated_at: 2026-01-27T00:42:00Z
+updated_at: 2026-01-27T01:45:12Z
 parent: daedalus-kvgh
 ---
 
@@ -112,9 +112,9 @@ Views use this prop instead of calculating from terminal size.
 ## Implementation Checklist
 
 ### Quick Fix (do first)
-- [ ] ExecuteView: Replace `height={terminalHeight - 5}` with `flexGrow={1}`
-- [ ] PlanView: Remove `chatHeight` calculation, use flexGrow
-- [ ] Test if borders now stay visible
+- [x] ExecuteView: Replace `height={terminalHeight - 5}` with `flexGrow={1}`
+- [x] PlanView: Remove `chatHeight` calculation, use flexGrow
+- [x] Test if borders now stay visible
 
 ### Full Fix (if quick fix isn't enough)
 - [ ] App.tsx: Single outer border container
@@ -124,7 +124,15 @@ Views use this prop instead of calculating from terminal size.
 - [ ] Test in multiple terminals
 
 ### Verification
-- [ ] Top border visible on initial render
-- [ ] Bottom border visible during scroll
-- [ ] All three views (Monitor, Execute, Plan) work correctly
-- [ ] Scrolling within views doesn't affect outer borders
+- [x] Top border visible on initial render
+- [x] Bottom border visible during scroll
+- [x] All three views (Monitor, Execute, Plan) work correctly
+- [x] Scrolling within views doesn't affect outer borders
+
+## Fix Applied
+
+Quick fix was sufficient! The issue was that views were calculating their own height using `terminalHeight - N` which caused them to overflow their parent container (which had the same or smaller height). By replacing explicit heights with `flexGrow={1}`, the views now properly fill the available space without overflowing.
+
+Changes made:
+1. ExecuteView.tsx: Changed `height={terminalHeight - 5}` to `flexGrow={1}`
+2. PlanView.tsx: Removed `chatHeight` calculation, changed chat history box to use `flexGrow={1}`
