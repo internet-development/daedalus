@@ -1,11 +1,11 @@
 ---
 # daedalus-m31s
 title: Talos stop() creates spurious Crash bean
-status: in-progress
+status: completed
 type: bug
 priority: high
 created_at: 2026-01-27T00:09:12Z
-updated_at: 2026-01-27T01:19:17Z
+updated_at: 2026-01-27T01:19:30Z
 parent: daedalus-kfjn
 blocking:
     - daedalus-uool
