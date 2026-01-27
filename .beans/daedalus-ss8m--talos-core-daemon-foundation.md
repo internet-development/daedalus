@@ -1,11 +1,11 @@
 ---
 # daedalus-ss8m
 title: 'Talos Core: Daemon Foundation'
-status: todo
+status: completed
 type: epic
 priority: high
 created_at: 2026-01-26T05:38:34Z
-updated_at: 2026-01-26T10:21:13Z
+updated_at: 2026-01-27T01:14:56Z
 parent: daedalus-na2v
 ---
 
