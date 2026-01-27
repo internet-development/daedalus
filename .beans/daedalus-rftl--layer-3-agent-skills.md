@@ -1,11 +1,11 @@
 ---
 # daedalus-rftl
 title: Layer 3 - Agent Skills
-status: in-progress
+status: completed
 type: task
 priority: normal
 created_at: 2026-01-26T23:04:03Z
-updated_at: 2026-01-27T01:41:38Z
+updated_at: 2026-01-27T01:41:55Z
 parent: daedalus-19c1
 blocking:
     - daedalus-vc04
