@@ -9,6 +9,9 @@ export {
   getExpertSystemPrompt,
   getEnabledExperts,
   EXPERT_PROMPTS,
+  basePlanningPrompt,
+  brainstormModePrompt,
+  breakdownModePrompt,
   type ExpertType,
 } from './system-prompts.js';
 export {
