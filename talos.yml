@@ -30,3 +30,30 @@ output:
   dir: .talos/output
   # Automatically mark beans as completed when agent succeeds and no unchecked items
   autoComplete: false
+
+# Planning configuration
+planning:
+  # Directory containing skill files (relative to project root)
+  skills_directory: ./skills
+  
+  # Planning modes
+  modes:
+    # Brainstorm mode for creative exploration
+    brainstorm:
+      enabled: true
+      skill: beans-brainstorming
+      # Bean types that require brainstorming before work
+      enforce_for_types:
+        - feature
+        - epic
+        - milestone
+    
+    # Breakdown mode for task decomposition
+    breakdown:
+      enabled: true
+      skill: beans-breakdown
+      # Ideal task duration range (in minutes)
+      min_task_duration_minutes: 2
+      max_task_duration_minutes: 5
+      # Suggest test beans alongside implementation tasks
+      suggest_test_beans: true

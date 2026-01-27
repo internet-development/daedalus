@@ -135,6 +135,47 @@ const ExpertsConfigSchema = z.object({
 });
 
 /**
+ * Bean types that can trigger brainstorm mode
+ */
+const BrainstormEnforceTypeSchema = z.enum(['feature', 'epic', 'milestone']);
+
+/**
+ * Brainstorm mode configuration
+ */
+const BrainstormModeConfigSchema = z.object({
+  enabled: z.boolean().default(true),
+  skill: z.string().default('beans-brainstorming'),
+  enforce_for_types: z.array(BrainstormEnforceTypeSchema).default(['feature', 'epic', 'milestone']),
+});
+
+/**
+ * Breakdown mode configuration
+ */
+const BreakdownModeConfigSchema = z.object({
+  enabled: z.boolean().default(true),
+  skill: z.string().default('beans-breakdown'),
+  min_task_duration_minutes: z.number().min(1).default(2),
+  max_task_duration_minutes: z.number().min(1).default(5),
+  suggest_test_beans: z.boolean().default(true),
+});
+
+/**
+ * Planning modes configuration
+ */
+const PlanningModesConfigSchema = z.object({
+  brainstorm: BrainstormModeConfigSchema.default({}),
+  breakdown: BreakdownModeConfigSchema.default({}),
+});
+
+/**
+ * Planning configuration (skills directory and modes)
+ */
+const PlanningConfigSchema = z.object({
+  skills_directory: z.string().default('./skills'),
+  modes: PlanningModesConfigSchema.default({}),
+});
+
+/**
  * Watcher settings (legacy, kept for backwards compatibility)
  */
 const WatcherConfigSchema = z.object({
@@ -160,6 +201,7 @@ const TalosConfigSchema = z.object({
   review: ReviewConfigSchema.default({}),
   planning_agent: PlanningAgentConfigSchema.default({}),
   experts: ExpertsConfigSchema.default({}),
+  planning: PlanningConfigSchema.default({}),
   // Legacy fields for backwards compatibility
   watcher: WatcherConfigSchema.default({}),
   output: OutputConfigSchema.default({}),
@@ -180,6 +222,11 @@ export type ExpertsConfig = z.infer<typeof ExpertsConfigSchema>;
 export type CommitStyleConfig = z.infer<typeof CommitStyleConfigSchema>;
 export type PlanningTool = z.infer<typeof PlanningToolSchema>;
 export type Persona = z.infer<typeof PersonaSchema>;
+export type PlanningConfig = z.infer<typeof PlanningConfigSchema>;
+export type PlanningModesConfig = z.infer<typeof PlanningModesConfigSchema>;
+export type BrainstormModeConfig = z.infer<typeof BrainstormModeConfigSchema>;
+export type BreakdownModeConfig = z.infer<typeof BreakdownModeConfigSchema>;
+export type BrainstormEnforceType = z.infer<typeof BrainstormEnforceTypeSchema>;
 
 // =============================================================================
 // Discovered Paths Interface
@@ -396,6 +443,90 @@ export function getDefaultConfig(): TalosConfig {
 }
 
 // =============================================================================
+// Skills Directory Resolution
+// =============================================================================
+
+/**
+ * Resolve the skills directory path relative to the project root
+ * @param skillsDir - The skills directory path from config (relative or absolute)
+ * @param projectRoot - The project root directory
+ * @returns Absolute path to the skills directory
+ */
+export function resolveSkillsDirectory(skillsDir: string, projectRoot: string): string {
+  if (skillsDir.startsWith('/')) {
+    return skillsDir;
+  }
+  return resolve(projectRoot, skillsDir);
+}
+
+/**
+ * Validate that a skill name matches an existing skill in the skills directory
+ * @param skillName - The skill name to validate
+ * @param skillsDir - Absolute path to the skills directory
+ * @returns Object with isValid boolean and error message if invalid
+ */
+export function validateSkillExists(
+  skillName: string,
+  skillsDir: string
+): { isValid: boolean; error?: string } {
+  const skillPath = join(skillsDir, `${skillName}.md`);
+  
+  if (!existsSync(skillsDir)) {
+    return {
+      isValid: false,
+      error: `Skills directory does not exist: ${skillsDir}`,
+    };
+  }
+  
+  if (!existsSync(skillPath)) {
+    return {
+      isValid: false,
+      error: `Skill file not found: ${skillPath}`,
+    };
+  }
+  
+  return { isValid: true };
+}
+
+/**
+ * Validate all skill references in the planning configuration
+ * @param config - The planning configuration
+ * @param projectRoot - The project root directory
+ * @returns Array of validation errors (empty if all valid)
+ */
+export function validatePlanningSkills(
+  config: z.infer<typeof PlanningConfigSchema>,
+  projectRoot: string
+): string[] {
+  const errors: string[] = [];
+  const skillsDir = resolveSkillsDirectory(config.skills_directory, projectRoot);
+  
+  // Only validate skills if the directory exists
+  // If it doesn't exist, that's a soft warning - skills are optional
+  if (!existsSync(skillsDir)) {
+    return []; // Skills directory is optional, no errors
+  }
+  
+  // Validate brainstorm skill if enabled
+  if (config.modes.brainstorm.enabled) {
+    const result = validateSkillExists(config.modes.brainstorm.skill, skillsDir);
+    if (!result.isValid && result.error) {
+      errors.push(`Brainstorm mode: ${result.error}`);
+    }
+  }
+  
+  // Validate breakdown skill if enabled
+  if (config.modes.breakdown.enabled) {
+    const result = validateSkillExists(config.modes.breakdown.skill, skillsDir);
+    if (!result.isValid && result.error) {
+      errors.push(`Breakdown mode: ${result.error}`);
+    }
+  }
+  
+  return errors;
+}
+
+// =============================================================================
 // Commit Type Mapping
 // =============================================================================
 
@@ -526,4 +657,8 @@ export {
   OpenCodeConfigSchema,
   ClaudeConfigSchema,
   CodexConfigSchema,
+  PlanningConfigSchema,
+  PlanningModesConfigSchema,
+  BrainstormModeConfigSchema,
+  BreakdownModeConfigSchema,
 };

@@ -1,11 +1,11 @@
 ---
 # daedalus-k2ha
 title: Configuration
-status: todo
+status: in-progress
 type: task
 priority: normal
 created_at: 2026-01-26T23:04:03Z
-updated_at: 2026-01-27T01:06:12Z
+updated_at: 2026-01-27T01:35:39Z
 parent: daedalus-19c1
 blocking:
     - daedalus-sk55
@@ -20,9 +20,9 @@ Add configuration schema for planning modes and skills.
 
 ## Tasks
 
-1. Add `planning.skills_directory` field (default: `./skills`)
+- [x] Add `planning.skills_directory` field (default: `./skills`)
 
-2. Add `planning.modes.brainstorm` config:
+- [x] Add `planning.modes.brainstorm` config:
    ```yaml
    brainstorm:
      enabled: true
@@ -30,7 +30,7 @@ Add configuration schema for planning modes and skills.
      enforce_for_types: [feature, epic, milestone]
    ```
 
-3. Add `planning.modes.breakdown` config:
+- [x] Add `planning.modes.breakdown` config:
    ```yaml
    breakdown:
      enabled: true
@@ -40,14 +40,14 @@ Add configuration schema for planning modes and skills.
      suggest_test_beans: true
    ```
 
-4. Validate skill names match directory structure
+- [x] Validate skill names match directory structure
 
-5. Update Zod schema with new fields
+- [x] Update Zod schema with new fields
 
 ## Verification
 
-- `talos.yml` loads with new config
-- Invalid config triggers Zod validation errors
-- Skills directory path resolves correctly
-- Mode settings control agent behavior
-- Config changes are picked up on restart
+- [x] `talos.yml` loads with new config
+- [x] Invalid config triggers Zod validation errors
+- [x] Skills directory path resolves correctly
+- [ ] Mode settings control agent behavior
+- [ ] Config changes are picked up on restart
