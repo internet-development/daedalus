@@ -31,6 +31,19 @@ output:
   # Automatically mark beans as completed when agent succeeds and no unchecked items
   autoComplete: false
 
+# Planning agent configuration
+planning_agent:
+  # Provider options:
+  # - claude: Direct Anthropic API (requires ANTHROPIC_API_KEY env var)
+  # - anthropic: Same as claude
+  # - openai: OpenAI API (requires OPENAI_API_KEY env var)
+  # - claude_code: Claude CLI subscription (no API key needed, uses `claude` CLI)
+  provider: claude
+  # Model for API-based providers (not used with claude_code)
+  model: claude-sonnet-4-20250514
+  # Temperature for response generation
+  temperature: 0.7
+
 # Planning configuration
 planning:
   # Directory containing skill files (relative to project root)

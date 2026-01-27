@@ -48,3 +48,13 @@ export {
   type CombinedTools,
   type PlanningAgentResult,
 } from './planning-agent.js';
+export {
+  ClaudeCodeProvider,
+  createClaudeCodeProvider,
+  isClaudeCliAvailable,
+  getClaudeCliVersion,
+  validateProvider,
+  type ClaudeCodeProviderOptions,
+  type ClaudeCodeProviderEvents,
+  type ProviderValidationResult,
+} from './claude-code-provider.js';

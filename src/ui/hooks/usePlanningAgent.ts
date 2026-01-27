@@ -1,8 +1,13 @@
 /**
  * usePlanningAgent Hook
  *
- * Manages interaction with the planning agent via Vercel AI SDK.
+ * Manages interaction with the planning agent via Vercel AI SDK or Claude CLI.
  * Supports streaming responses and tool calls.
+ *
+ * Supported providers:
+ * - 'anthropic' / 'claude': Direct Anthropic API (requires ANTHROPIC_API_KEY)
+ * - 'openai': OpenAI API (requires OPENAI_API_KEY)
+ * - 'claude_code': Claude CLI subscription (uses `claude` CLI)
  */
 import { useState, useCallback, useRef } from 'react';
 import { streamText, stepCountIs, type ModelMessage } from 'ai';
@@ -14,6 +19,7 @@ import type { Bean } from '../../talos/beans-client.js';
 import type { ChatMessage, ToolCall } from '../components/ChatHistory.js';
 import { getPlanningAgentSystemPrompt } from '../../planning/system-prompts.js';
 import { getEnabledTools } from '../../planning/tools.js';
+import { ClaudeCodeProvider } from '../../planning/claude-code-provider.js';
 
 // =============================================================================
 // Types
@@ -116,8 +122,87 @@ export function usePlanningAgent({
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamingContent, setStreamingContent] = useState('');
   const abortControllerRef = useRef<AbortController | null>(null);
+  const claudeCodeProviderRef = useRef<ClaudeCodeProvider | null>(null);
 
-  const sendMessage = useCallback(
+  // Send message using Claude Code CLI provider
+  const sendMessageViaClaude = useCallback(
+    async (message: string, history: ChatMessage[]) => {
+      // Cancel any existing stream
+      if (claudeCodeProviderRef.current?.isActive()) {
+        claudeCodeProviderRef.current.cancel();
+      }
+
+      setIsStreaming(true);
+      setStreamingContent('');
+
+      // Create abort controller for cancellation
+      abortControllerRef.current = new AbortController();
+
+      // Create the provider
+      const provider = new ClaudeCodeProvider({
+        mode,
+        selectedBean,
+        abortSignal: abortControllerRef.current.signal,
+      });
+      claudeCodeProviderRef.current = provider;
+
+      // Track content and tool calls
+      let fullContent = '';
+      const toolCalls: ToolCall[] = [];
+
+      // Set up event handlers
+      provider.on('text', (text: string) => {
+        fullContent += text;
+        setStreamingContent(fullContent);
+      });
+
+      provider.on('toolCall', (tc: { name: string; args: Record<string, unknown> }) => {
+        toolCalls.push({
+          name: tc.name,
+          args: tc.args,
+        });
+      });
+
+      provider.on('error', (err: Error) => {
+        setIsStreaming(false);
+        setStreamingContent('');
+        claudeCodeProviderRef.current = null;
+        onError(err);
+      });
+
+      provider.on('done', () => {
+        setIsStreaming(false);
+        setStreamingContent('');
+        claudeCodeProviderRef.current = null;
+        onMessageComplete(fullContent, toolCalls.length > 0 ? toolCalls : undefined);
+      });
+
+      // Convert history to simple format for Claude CLI
+      const historyForCli = history
+        .filter((msg) => msg.role === 'user' || msg.role === 'assistant')
+        .map((msg) => ({
+          role: msg.role,
+          content: msg.content,
+        }));
+
+      try {
+        await provider.send(message, historyForCli);
+      } catch (err) {
+        // Error is handled via event, but catch any unhandled
+        if (!(err instanceof Error && err.message.includes('aborted'))) {
+          const error = err instanceof Error ? err : new Error(String(err));
+          setIsStreaming(false);
+          setStreamingContent('');
+          claudeCodeProviderRef.current = null;
+          onError(error);
+        }
+      }
+    },
+    [mode, selectedBean, onMessageComplete, onError]
+  );
+
+  // Send message using Vercel AI SDK (API-based providers)
+  const sendMessageViaApi = useCallback(
     async (message: string, history: ChatMessage[]) => {
       // Cancel any existing stream
       if (abortControllerRef.current) {
@@ -208,11 +293,33 @@ export function usePlanningAgent({
     [config, mode, selectedBean, onMessageComplete, onError]
   );
 
+  // Main send function - routes to appropriate provider
+  const sendMessage = useCallback(
+    async (message: string, history: ChatMessage[]) => {
+      const provider = config.provider.toLowerCase();
+      
+      if (provider === 'claude_code') {
+        await sendMessageViaClaude(message, history);
+      } else {
+        await sendMessageViaApi(message, history);
+      }
+    },
+    [config.provider, sendMessageViaClaude, sendMessageViaApi]
+  );
+
   const cancelStream = useCallback(() => {
+    // Cancel API-based stream
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
       abortControllerRef.current = null;
     }
+    
+    // Cancel Claude Code provider
+    if (claudeCodeProviderRef.current?.isActive()) {
+      claudeCodeProviderRef.current.cancel();
+      claudeCodeProviderRef.current = null;
+    }
+    
     setIsStreaming(false);
     setStreamingContent('');
   }, []);

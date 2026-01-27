@@ -1,11 +1,12 @@
 ---
 # daedalus-2m55
 title: 'Planning agent: Add claude_code backend using CLI subscription'
-status: todo
+status: in-progress
 type: feature
 priority: normal
+tags: []
 created_at: 2026-01-27T02:26:58Z
-updated_at: 2026-01-27T02:34:30Z
+updated_at: 2026-01-27T02:43:25Z
 parent: daedalus-19c1
 ---
 
@@ -46,24 +47,24 @@ For beans operations, append instructions to system prompt telling it to use `be
 
 ## Checklist
 
-- [ ] Add `claude_code` to `PlanningAgentConfigSchema` provider enum in `src/config/index.ts`
-- [ ] Create `ClaudeCodeProvider` class or function
+- [x] Add `claude_code` to `PlanningAgentConfigSchema` provider enum in `src/config/index.ts`
+- [x] Create `ClaudeCodeProvider` class or function
   - Spawn `claude --print --output-format stream-json`
   - Pass `--append-system-prompt` with planning agent prompt
   - Use `--allowedTools "Read Glob Grep Bash"` for read-only access
-- [ ] Adapt streaming interface
+- [x] Adapt streaming interface
   - Parse stream-json output format
   - Convert to same interface as Vercel AI SDK responses
   - Handle tool call reporting (for UI indicators)
-- [ ] Update startup validation (from daedalus-lhly)
+- [x] Update startup validation (from daedalus-lhly)
   - Check `which claude` when provider is `claude_code`
   - Show helpful message if claude CLI not found
-- [ ] Add config example to `talos.yml`
+- [x] Add config example to `talos.yml`
   ```yaml
   planning_agent:
     provider: claude_code  # Uses Claude Code subscription
   ```
-- [ ] Test end-to-end: prompt → spawn → stream → display
+- [x] Test end-to-end: prompt → spawn → stream → display
 
 ## Config Behavior
 

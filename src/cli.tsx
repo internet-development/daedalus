@@ -7,6 +7,7 @@
  */
 import { render } from 'ink';
 import React from 'react';
+import { execSync } from 'child_process';
 
 import { DaedalusApp } from './index.js';
 import { TreeCommand, TreeCommandProps } from './cli/tree.js';
@@ -57,8 +58,21 @@ Alternatively, configure a different backend in talos.yml:
     }
 
     case 'claude_code': {
-      // Future: check if `claude` CLI is available
-      return null;
+      // Check if `claude` CLI is available
+      try {
+        execSync('which claude', { encoding: 'utf-8', stdio: 'pipe' });
+        return null;
+      } catch {
+        return `Planning agent provider 'claude_code' requires the Claude CLI.
+
+To fix this:
+  1. Install Claude Code from https://claude.ai/download
+  2. Ensure 'claude' is in your PATH
+
+Alternatively, configure a different backend in talos.yml:
+  planning_agent:
+    provider: claude  # requires ANTHROPIC_API_KEY`;
+      }
     }
 
     default:

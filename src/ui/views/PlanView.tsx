@@ -23,6 +23,7 @@ import { PromptSelector } from '../components/PromptSelector.js';
 import { ModeSelector } from '../components/ModeSelector.js';
 import { useChatHistory } from '../hooks/useChatHistory.js';
 import { usePlanningAgent } from '../hooks/usePlanningAgent.js';
+import { validateProvider, type ProviderValidationResult } from '../../planning/claude-code-provider.js';
 import type { Bean } from '../../talos/beans-client.js';
 
 // =============================================================================
@@ -72,6 +73,12 @@ export function PlanView() {
 
   // Load config for planning agent settings
   const config = useMemo(() => loadConfig().config, []);
+
+  // Validate provider on mount
+  const providerValidation = useMemo<ProviderValidationResult>(
+    () => validateProvider(config.planning_agent.provider),
+    [config.planning_agent.provider]
+  );
 
   // State
   const [mode, setMode] = useState<PlanMode>('new');
@@ -336,6 +343,59 @@ export function PlanView() {
           onSelect={handleModeChange}
           onCancel={() => setShowModeSelector(false)}
         />
+      </Box>
+    );
+  }
+
+  // Provider validation error
+  if (!providerValidation.valid) {
+    return (
+      <Box flexDirection="column" padding={1} width={terminalWidth - 4}>
+        <Box justifyContent="space-between" marginBottom={1}>
+          <Text bold>Plan</Text>
+          <Text color="red">[Configuration Error]</Text>
+        </Box>
+
+        <Box marginBottom={1}>
+          <Text color="gray">{'─'.repeat(Math.min(terminalWidth - 6, 70))}</Text>
+        </Box>
+
+        <Box flexDirection="column" marginBottom={1}>
+          <Text color="red" bold>Planning Agent Not Available</Text>
+          <Box marginTop={1}>
+            <Text color="white">{providerValidation.error}</Text>
+          </Box>
+          {providerValidation.hint && (
+            <Box marginTop={1}>
+              <Text color="gray" dimColor>{providerValidation.hint}</Text>
+            </Box>
+          )}
+        </Box>
+
+        <Box marginTop={2} flexDirection="column">
+          <Text color="cyan" bold>Configuration Options:</Text>
+          <Box marginTop={1} flexDirection="column">
+            <Text color="gray">
+              In talos.yml, set the planning agent provider:
+            </Text>
+            <Box marginTop={1} marginLeft={2} flexDirection="column">
+              <Text color="yellow">planning_agent:</Text>
+              <Text color="yellow">  provider: claude_code  </Text>
+              <Text color="gray" dimColor># Uses Claude Code subscription (no API key needed)</Text>
+            </Box>
+            <Box marginTop={1} marginLeft={2} flexDirection="column">
+              <Text color="yellow">planning_agent:</Text>
+              <Text color="yellow">  provider: claude  </Text>
+              <Text color="gray" dimColor># Uses Anthropic API (requires ANTHROPIC_API_KEY)</Text>
+            </Box>
+          </Box>
+        </Box>
+
+        <Box marginTop={2}>
+          <Text color="gray">
+            <Text color="cyan">[Esc]</Text> Back to Monitor
+          </Text>
+        </Box>
       </Box>
     );
   }
