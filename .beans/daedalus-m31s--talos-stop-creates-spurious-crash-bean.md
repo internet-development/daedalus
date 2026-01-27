@@ -5,8 +5,10 @@ status: todo
 type: bug
 priority: high
 created_at: 2026-01-27T00:09:12Z
-updated_at: 2026-01-27T00:36:37Z
+updated_at: 2026-01-27T01:06:23Z
 parent: daedalus-kfjn
+blocking:
+    - daedalus-uool
 ---
 
 ## Problem

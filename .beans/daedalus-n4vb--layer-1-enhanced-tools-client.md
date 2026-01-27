@@ -3,9 +3,12 @@
 title: Layer 1 - Enhanced Tools & Client
 status: todo
 type: task
+priority: normal
 created_at: 2026-01-26T23:04:03Z
-updated_at: 2026-01-26T23:04:03Z
+updated_at: 2026-01-27T01:06:12Z
 parent: daedalus-19c1
+blocking:
+    - daedalus-11w2
 ---
 
 Enhance beansCliTool and beans-client with relationship management capabilities.

@@ -3,9 +3,12 @@
 title: Layer 2 - System Prompts
 status: todo
 type: task
+priority: normal
 created_at: 2026-01-26T23:04:03Z
-updated_at: 2026-01-26T23:04:03Z
+updated_at: 2026-01-27T01:06:12Z
 parent: daedalus-19c1
+blocking:
+    - daedalus-rftl
 ---
 
 Create mode-specific system prompts for the planning agent.

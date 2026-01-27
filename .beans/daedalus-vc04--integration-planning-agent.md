@@ -3,9 +3,12 @@
 title: Integration - Planning Agent
 status: todo
 type: feature
+priority: normal
 created_at: 2026-01-26T23:04:03Z
-updated_at: 2026-01-26T23:04:03Z
+updated_at: 2026-01-27T01:06:12Z
 parent: daedalus-19c1
+blocking:
+    - daedalus-rbot
 ---
 
 Create the planning agent orchestrator that integrates tools, prompts, and skills.

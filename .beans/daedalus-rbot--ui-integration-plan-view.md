@@ -3,9 +3,12 @@
 title: UI Integration - Plan View
 status: todo
 type: feature
+priority: normal
 created_at: 2026-01-26T23:04:03Z
-updated_at: 2026-01-26T23:04:03Z
+updated_at: 2026-01-27T01:06:12Z
 parent: daedalus-19c1
+blocking:
+    - daedalus-sk55
 ---
 
 Integrate the new planning modes into the existing Plan View UI.
