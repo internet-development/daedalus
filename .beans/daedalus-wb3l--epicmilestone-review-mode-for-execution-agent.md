@@ -5,7 +5,7 @@ status: in-progress
 type: feature
 priority: high
 created_at: 2026-01-27T00:43:16Z
-updated_at: 2026-01-27T01:10:03Z
+updated_at: 2026-01-27T01:11:26Z
 parent: daedalus-ss8m
 ---
 
@@ -77,7 +77,7 @@ If epic has no children, let agent decide:
 
 ### Prompt enhancements
 - [x] Include file paths extracted from child beans
-- [ ] Include git diff or recent commits for context
+- [x] Include git diff or recent commits for context
 - [ ] Specify test commands from config or child beans
 - [ ] Include project conventions/patterns for reference
 

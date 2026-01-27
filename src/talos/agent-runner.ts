@@ -12,10 +12,10 @@
  * - Running time tracking
  * - No timeout (agents can run for hours)
  */
-import { spawn, type ChildProcess } from 'child_process';
+import { spawn, type ChildProcess, execSync } from 'child_process';
 import { EventEmitter } from 'events';
 import type { Bean, BeanWithChildren } from './beans-client.js';
-import { isReviewModeType, getBeanWithChildren } from './beans-client.js';
+import { isReviewModeType, getBeanWithChildren, getCwd } from './beans-client.js';
 
 // =============================================================================
 // Types
@@ -85,6 +85,39 @@ export function isReviewMode(bean: Bean): boolean {
 }
 
 /**
+ * Get recent git commits for context in review mode.
+ * Returns the last N commits with their messages and files changed.
+ */
+function getRecentGitCommits(limit: number = 10): string {
+  try {
+    const result = execSync(
+      `git log --oneline --name-only -${limit} 2>/dev/null | head -100`,
+      { cwd: getCwd(), encoding: 'utf-8' }
+    );
+    return result.trim();
+  } catch {
+    return '';
+  }
+}
+
+/**
+ * Get git diff stat for changes since a given reference (e.g., main branch).
+ */
+function getGitDiffStat(baseRef: string = 'main'): string {
+  try {
+    // First check if the ref exists
+    execSync(`git rev-parse --verify ${baseRef} 2>/dev/null`, { cwd: getCwd() });
+    const result = execSync(
+      `git diff --stat ${baseRef}...HEAD 2>/dev/null | tail -20`,
+      { cwd: getCwd(), encoding: 'utf-8' }
+    );
+    return result.trim();
+  } catch {
+    return '';
+  }
+}
+
+/**
  * Extract file paths from a bean's body content.
  * Looks for common patterns like backtick-quoted paths, src/... patterns, etc.
  */
@@ -137,13 +170,28 @@ ${child.body}
     ? `\n## Files to Review\n\nBased on child beans:\n${uniqueFilePaths.map(p => `- \`${p}\``).join('\n')}\n`
     : '';
 
+  // Get git context for the review
+  const recentCommits = getRecentGitCommits(15);
+  const gitDiff = getGitDiffStat('main');
+  
+  let gitContext = '';
+  if (recentCommits || gitDiff) {
+    gitContext = '\n## Git Context\n';
+    if (recentCommits) {
+      gitContext += `\n### Recent Commits\n\n\`\`\`\n${recentCommits}\n\`\`\`\n`;
+    }
+    if (gitDiff) {
+      gitContext += `\n### Changes Since Main\n\n\`\`\`\n${gitDiff}\n\`\`\`\n`;
+    }
+  }
+
   return `You are a senior engineer reviewing completed work before marking a ${beanType.toLowerCase()} as done.
 
 ## ${beanType}: ${bean.id}
 ### ${bean.title}
 
 ${bean.body}
-${filesQuickRef}
+${filesQuickRef}${gitContext}
 ---
 
 ## Completed Children to Review
