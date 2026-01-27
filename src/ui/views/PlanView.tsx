@@ -108,7 +108,6 @@ export function PlanView() {
     sendMessage,
     isStreaming,
     streamingContent,
-    error,
     cancelStream,
   } = usePlanningAgent({
     config: config.planning_agent,
@@ -430,13 +429,6 @@ export function PlanView() {
             options={pendingChoice.options}
             onSelect={handleChoiceSelect}
           />
-        </Box>
-      )}
-
-      {/* Error display */}
-      {error && (
-        <Box marginY={1}>
-          <Text color="red">Error: {error.message}</Text>
         </Box>
       )}
 

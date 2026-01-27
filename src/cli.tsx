@@ -10,6 +10,62 @@ import React from 'react';
 
 import { DaedalusApp } from './index.js';
 import { TreeCommand, TreeCommandProps } from './cli/tree.js';
+import { loadConfig } from './config/index.js';
+
+// =============================================================================
+// Environment Validation
+// =============================================================================
+
+/**
+ * Validate that required environment variables are set for the planning agent.
+ * Returns an error message if validation fails, null if valid.
+ */
+function validatePlanningAgentEnv(): string | null {
+  const { config } = loadConfig();
+  const provider = config.planning_agent.provider.toLowerCase();
+
+  switch (provider) {
+    case 'anthropic':
+    case 'claude': {
+      if (!process.env.ANTHROPIC_API_KEY) {
+        return `Planning agent requires ANTHROPIC_API_KEY environment variable.
+
+To fix this:
+  1. Get an API key from https://console.anthropic.com/settings/keys
+  2. Set it with: export ANTHROPIC_API_KEY=your-key
+
+Alternatively, configure a different backend in talos.yml:
+  planning_agent:
+    provider: openai  # requires OPENAI_API_KEY`;
+      }
+      return null;
+    }
+
+    case 'openai': {
+      if (!process.env.OPENAI_API_KEY) {
+        return `Planning agent requires OPENAI_API_KEY environment variable.
+
+To fix this:
+  1. Get an API key from https://platform.openai.com/api-keys
+  2. Set it with: export OPENAI_API_KEY=your-key
+
+Alternatively, configure a different backend in talos.yml:
+  planning_agent:
+    provider: claude  # requires ANTHROPIC_API_KEY`;
+      }
+      return null;
+    }
+
+    case 'claude_code': {
+      // Future: check if `claude` CLI is available
+      return null;
+    }
+
+    default:
+      // Unknown provider, assume it's fine
+      return null;
+  }
+}
 
 const args = process.argv.slice(2);
 const command = args[0];
@@ -118,10 +174,18 @@ Environment:
 `);
       break;
 
-    default:
+    default: {
+      // Validate environment before launching UI
+      const envError = validatePlanningAgentEnv();
+      if (envError) {
+        console.error(`\n❌ Configuration Error\n\n${envError}\n`);
+        process.exit(1);
+      }
+
       // Launch main Talos daemon UI with full-screen mode
       render(<DaedalusApp />, { exitOnCtrlC: false });
       break;
+    }
   }
 }
 

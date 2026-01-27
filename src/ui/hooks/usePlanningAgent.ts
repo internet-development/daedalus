@@ -32,7 +32,6 @@ export interface UsePlanningAgentResult {
   sendMessage: (message: string, history: ChatMessage[]) => Promise<void>;
   isStreaming: boolean;
   streamingContent: string;
-  error: Error | null;
   cancelStream: () => void;
 }
 
@@ -116,7 +115,6 @@ export function usePlanningAgent({
 }: UsePlanningAgentOptions): UsePlanningAgentResult {
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamingContent, setStreamingContent] = useState('');
-  const [error, setError] = useState<Error | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
 
   const sendMessage = useCallback(
@@ -131,7 +129,6 @@ export function usePlanningAgent({
 
       setIsStreaming(true);
       setStreamingContent('');
-      setError(null);
 
       try {
         // Get system prompt based on mode
@@ -202,9 +199,9 @@ export function usePlanningAgent({
         }
 
         const error = err instanceof Error ? err : new Error(String(err));
-        setError(error);
         setIsStreaming(false);
         setStreamingContent('');
+        // Only call onError - error shows in chat history, not a separate error box
         onError(error);
       }
     },
@@ -224,7 +221,6 @@ export function usePlanningAgent({
     sendMessage,
     isStreaming,
     streamingContent,
-    error,
     cancelStream,
   };
 }
