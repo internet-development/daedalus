@@ -1,11 +1,11 @@
 ---
 # daedalus-19c1
 title: Beans-Driven Planning Workflow Integration
-status: todo
+status: completed
 type: epic
 priority: normal
 created_at: 2026-01-26T23:02:59Z
-updated_at: 2026-01-27T00:42:00Z
+updated_at: 2026-01-27T02:01:42Z
 parent: daedalus-na2v
 ---
 
