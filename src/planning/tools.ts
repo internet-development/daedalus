@@ -15,6 +15,9 @@ import {
   createBean,
   updateBeanStatus,
   updateBeanBody,
+  setParent,
+  addBlocking,
+  removeBlocking,
   type Bean,
   type BeanStatus,
   type BeanType,
@@ -318,11 +321,34 @@ export const webSearchTool = tool({
 // =============================================================================
 
 export const beansCliTool = tool({
-  description:
-    'Manage beans (issues/tasks). Use this to create, update, and query beans.',
+  description: `Manage beans (issues/tasks). Use this to create, update, query, and manage relationships between beans.
+
+## Actions
+
+- **create**: Create a new bean with title, type, status, priority, body, parent, and blocking relationships
+- **update**: Update bean status or body
+- **set_parent**: Set or clear a bean's parent (for hierarchy: milestone > epic > feature > task/bug)
+- **add_blocking**: Add a blocking relationship (this bean blocks another)
+- **remove_blocking**: Remove a blocking relationship
+- **get**: Get a single bean by ID
+- **query**: Query beans with filters
+
+## Planning Workflow Examples
+
+### Creating a feature with sub-tasks:
+1. Create the feature: { action: "create", title: "Add user auth", type: "feature", status: "draft" }
+2. Create sub-tasks with parent: { action: "create", title: "Implement login", type: "task", parent: "<feature-id>" }
+
+### Creating beans with dependencies:
+- Create a bean that blocks another: { action: "create", title: "Setup DB", type: "task", blocking: ["<dependent-bean-id>"] }
+- Add blocking after creation: { action: "add_blocking", id: "<blocker-id>", targetId: "<blocked-id>" }
+
+### Organizing work hierarchy:
+- Set parent: { action: "set_parent", id: "<task-id>", parentId: "<epic-id>" }
+- Remove parent: { action: "set_parent", id: "<task-id>", parentId: null }`,
   parameters: z.object({
     action: z
-      .enum(['create', 'update', 'query', 'get'])
+      .enum(['create', 'update', 'set_parent', 'add_blocking', 'remove_blocking', 'query', 'get'])
       .describe('The action to perform'),
     // Create parameters
     title: z.string().optional().describe('Bean title (for create)'),
@@ -339,9 +365,23 @@ export const beansCliTool = tool({
       .optional()
       .describe('Bean priority'),
     body: z.string().optional().describe('Bean body/description'),
-    parent: z.string().optional().describe('Parent bean ID'),
-    // Update/Get parameters
-    id: z.string().optional().describe('Bean ID (for update/get)'),
+    parent: z.string().optional().describe('Parent bean ID (for create)'),
+    blocking: z
+      .array(z.string())
+      .optional()
+      .describe('Array of bean IDs this bean is blocking (for create)'),
+    // Update/Get/Relationship parameters
+    id: z.string().optional().describe('Bean ID (for update/get/relationship actions)'),
+    // Relationship parameters
+    parentId: z
+      .string()
+      .nullable()
+      .optional()
+      .describe('Parent bean ID for set_parent (null to remove parent)'),
+    targetId: z
+      .string()
+      .optional()
+      .describe('Target bean ID for add_blocking/remove_blocking'),
     // Query parameters
     filter: z
       .object({
@@ -360,7 +400,10 @@ export const beansCliTool = tool({
     priority,
     body,
     parent,
+    blocking,
     id,
+    parentId,
+    targetId,
     filter,
   }) => {
     try {
@@ -376,6 +419,7 @@ export const beansCliTool = tool({
             priority: priority as BeanPriority | undefined,
             body,
             parent,
+            blocking,
           });
           return {
             success: true,
@@ -384,6 +428,8 @@ export const beansCliTool = tool({
               title: bean.title,
               status: bean.status,
               type: bean.type,
+              parentId: bean.parentId,
+              blockingIds: bean.blockingIds,
             },
           };
         }
@@ -406,6 +452,58 @@ export const beansCliTool = tool({
               id: bean.id,
               title: bean.title,
               status: bean.status,
+            },
+          };
+        }
+
+        case 'set_parent': {
+          if (!id) {
+            return { error: 'Bean ID is required for set_parent' };
+          }
+          // parentId can be null (to remove parent) or a string
+          const bean = await setParent(id, parentId ?? null);
+          return {
+            success: true,
+            bean: {
+              id: bean.id,
+              title: bean.title,
+              parentId: bean.parentId,
+            },
+          };
+        }
+
+        case 'add_blocking': {
+          if (!id) {
+            return { error: 'Bean ID is required for add_blocking' };
+          }
+          if (!targetId) {
+            return { error: 'Target bean ID is required for add_blocking' };
+          }
+          const bean = await addBlocking(id, targetId);
+          return {
+            success: true,
+            bean: {
+              id: bean.id,
+              title: bean.title,
+              blockingIds: bean.blockingIds,
+            },
+          };
+        }
+
+        case 'remove_blocking': {
+          if (!id) {
+            return { error: 'Bean ID is required for remove_blocking' };
+          }
+          if (!targetId) {
+            return { error: 'Target bean ID is required for remove_blocking' };
+          }
+          const bean = await removeBlocking(id, targetId);
+          return {
+            success: true,
+            bean: {
+              id: bean.id,
+              title: bean.title,
+              blockingIds: bean.blockingIds,
             },
           };
         }

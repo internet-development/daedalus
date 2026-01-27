@@ -609,10 +609,59 @@ export async function getIncompleteChildren(id: string): Promise<Bean[]> {
  * Add a blocking relationship: child blocks parent
  * @param childId The child bean that is blocking
  * @param parentId The parent bean that is being blocked
+ * @deprecated Use addBlocking instead
  */
 export async function addBlockingRelationship(childId: string, parentId: string): Promise<void> {
   const args = ['update', childId, '--blocking', parentId];
   await execBeans(args);
+}
+
+/**
+ * Set or clear the parent of a bean
+ * @param id The bean to update
+ * @param parentId The new parent ID, or null to remove parent
+ * @returns The updated bean
+ */
+export async function setParent(id: string, parentId: string | null): Promise<Bean> {
+  const query = `mutation {
+    setParent(id: "${id}", parentId: ${parentId ? `"${parentId}"` : 'null'}) {
+      ${BEAN_FIELDS}
+    }
+  }`;
+  const result = await execBeansQuery<{ setParent: Bean }>(query);
+  return result.setParent;
+}
+
+/**
+ * Add a blocking relationship
+ * @param id The bean that will be blocking another
+ * @param targetId The bean that will be blocked
+ * @returns The updated bean
+ */
+export async function addBlocking(id: string, targetId: string): Promise<Bean> {
+  const query = `mutation {
+    addBlocking(id: "${id}", targetId: "${targetId}") {
+      ${BEAN_FIELDS}
+    }
+  }`;
+  const result = await execBeansQuery<{ addBlocking: Bean }>(query);
+  return result.addBlocking;
+}
+
+/**
+ * Remove a blocking relationship
+ * @param id The bean that is blocking another
+ * @param targetId The bean that will no longer be blocked
+ * @returns The updated bean
+ */
+export async function removeBlocking(id: string, targetId: string): Promise<Bean> {
+  const query = `mutation {
+    removeBlocking(id: "${id}", targetId: "${targetId}") {
+      ${BEAN_FIELDS}
+    }
+  }`;
+  const result = await execBeansQuery<{ removeBlocking: Bean }>(query);
+  return result.removeBlocking;
 }
 
 /**
