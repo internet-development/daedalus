@@ -109,12 +109,10 @@ export function UserMessage({ message, width }: MessageProps) {
   );
 }
 
-export function AssistantMessage({ message, width }: MessageProps) {
-  const maxWidth = width ? width - 10 : 60;
+export function AssistantMessage({ message }: MessageProps) {
   const expertQuotes = parseExpertQuotes(message.content);
   const toolIndicators = parseToolIndicators(message.content);
   const cleanedContent = cleanContent(message.content);
-  const lines = cleanedContent.split('\n');
 
   return (
     <Box flexDirection="column" marginBottom={1}>
@@ -134,12 +132,8 @@ export function AssistantMessage({ message, width }: MessageProps) {
       )}
 
       {/* Main content */}
-      <Box flexDirection="column" marginLeft={2}>
-        {lines.map((line, i) => (
-          <Text key={`line-${i}`} wrap="wrap">
-            {line.slice(0, maxWidth)}
-          </Text>
-        ))}
+      <Box marginLeft={2}>
+        <Text wrap="wrap">{cleanedContent}</Text>
       </Box>
 
       {/* Expert quotes */}
