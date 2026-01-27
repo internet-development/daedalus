@@ -36,6 +36,7 @@ import {
   type BeanStatus,
   listBeans,
   getBean,
+  updateBeanStatus,
   updateBeanTags,
   createBean,
   isStuck,
@@ -165,6 +166,11 @@ export class Talos extends EventEmitter {
 
   /**
    * Stop the Talos daemon gracefully
+   *
+   * On stop:
+   * - Reverts any running bean's status to 'todo' (available for future runs)
+   * - Does NOT create any crash/cancelled beans
+   * - Bean will be picked up on next daemon run
    */
   async stop(): Promise<void> {
     if (!this.running) {
@@ -177,9 +183,22 @@ export class Talos extends EventEmitter {
     // Stop watcher
     this.watcher.stop();
 
-    // Wait for running agent to complete (if any)
+    // Handle any running agent
     if (this.runner.isRunning()) {
-      await this.runner.cancel();
+      // Find the running bean and remove from inProgress BEFORE cancel
+      const runningBean = this.findRunningBean();
+      if (runningBean) {
+        this.inProgress.delete(runningBean.bean.id);
+
+        // Cancel the runner (doesn't emit 'exit' event)
+        await this.runner.cancel();
+
+        // Revert bean status to 'todo' so it can be picked up on next run
+        await updateBeanStatus(runningBean.bean.id, 'todo');
+      } else {
+        // No bean tracked but runner is running - just cancel
+        await this.runner.cancel();
+      }
     }
 
     this.running = false;
@@ -284,6 +303,13 @@ export class Talos extends EventEmitter {
 
   /**
    * Cancel a running agent
+   *
+   * On cancellation:
+   * - Reverts bean status to 'todo' (available for future runs)
+   * - Does NOT create a "Cancelled: ..." bean
+   * - Does NOT add 'failed' tag
+   * - Removes from scheduler queue (no auto-retry in current session)
+   * - User can manually retry with 'r' key
    */
   async cancel(beanId: string): Promise<void> {
     const runningBean = this.inProgress.get(beanId);
@@ -291,25 +317,20 @@ export class Talos extends EventEmitter {
       return;
     }
 
-    // Cancel the runner
-    await this.runner.cancel();
-
-    // Mark as failed (cancelled)
-    const bean = await getBean(beanId);
-    if (bean) {
-      await updateBeanTags(beanId, ['failed']);
-      await createBean({
-        title: `Cancelled: ${bean.title}`,
-        type: 'bug',
-        status: 'todo',
-        blocking: [beanId],
-        body: `Agent was manually cancelled while working on ${beanId}.`,
-      });
-    }
-
-    // Clean up
+    // Remove from inProgress BEFORE calling cancel to prevent race conditions
     this.inProgress.delete(beanId);
+
+    // Cancel the runner and get result (doesn't emit 'exit' event)
+    const result = await this.runner.cancel();
+
+    // Revert bean status to 'todo' so it can be picked up on next run
+    await updateBeanStatus(beanId, 'todo');
+
+    // Clean up scheduler state (prevents auto-retry in current session)
     this.scheduler.markComplete(beanId);
+
+    // Emit queue changed
+    this.emit('queue-changed', this.scheduler.getQueue());
   }
 
   /**

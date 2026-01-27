@@ -39,6 +39,7 @@ export interface ExitResult {
   code: number;
   signal?: string;
   duration: number; // ms
+  cancelled?: boolean;
 }
 
 export interface AgentRunnerEvents {
@@ -393,27 +394,53 @@ export class AgentRunner extends EventEmitter {
   /**
    * Cancel the running agent.
    * Sends SIGTERM first, then SIGKILL after grace period.
+   * Returns the ExitResult directly instead of emitting 'exit' event.
+   * This allows callers to handle cancellation explicitly without triggering
+   * the normal exit flow (completion handler, crash bean creation, etc.).
    */
-  async cancel(): Promise<void> {
+  async cancel(): Promise<ExitResult | null> {
     if (!this.process || !this.process.pid) {
-      return;
+      return null;
     }
 
-    return new Promise<void>((resolve) => {
+    // Capture state before cleanup
+    const startedAt = this.startedAt;
+    const proc = this.process;
+
+    // Remove 'close' event listener to prevent 'exit' event emission
+    // We'll wait for close ourselves and return the result directly
+    proc.removeAllListeners('close');
+
+    return new Promise<ExitResult>((resolve) => {
       // Send SIGTERM
-      this.process!.kill('SIGTERM');
+      proc.kill('SIGTERM');
 
       // Set up SIGKILL after grace period
       this.killTimer = setTimeout(() => {
-        if (this.process && this.process.pid) {
-          this.process.kill('SIGKILL');
+        if (proc.pid && !proc.killed) {
+          proc.kill('SIGKILL');
         }
       }, KILL_GRACE_PERIOD);
 
-      // Wait for process to exit
-      this.process!.on('close', () => {
+      // Wait for process to exit and return result directly
+      proc.on('close', (code, signal) => {
         this.clearKillTimer();
-        resolve();
+        const duration = startedAt ? Date.now() - startedAt : 0;
+
+        // Reset internal state
+        this.cleanup();
+
+        const result: ExitResult = {
+          code: code ?? -1,
+          duration,
+          cancelled: true,
+        };
+
+        if (signal) {
+          result.signal = signal;
+        }
+
+        resolve(result);
       });
     });
   }
