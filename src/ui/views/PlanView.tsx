@@ -10,6 +10,8 @@
  * - refine: Refine existing draft beans
  * - critique: Run draft beans through expert review
  * - sweep: Final consistency check across related beans
+ * - brainstorm: Socratic questioning workflow for design exploration
+ * - breakdown: Task breakdown workflow for implementation planning
  */
 import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { Box, Text, useInput, useStdout } from 'ink';
@@ -51,6 +53,15 @@ const MODE_LABELS: Record<PlanMode, string> = {
   breakdown: 'Breakdown',
 };
 
+const MODE_HINTS: Record<PlanMode, string> = {
+  new: 'Creating new beans through conversation...',
+  refine: 'Refining and improving draft beans...',
+  critique: 'Running expert review...',
+  sweep: 'Checking consistency across beans...',
+  brainstorm: 'Asking Socratic questions...',
+  breakdown: 'Breaking down into child beans...',
+};
+
 // =============================================================================
 // Main Component
 // =============================================================================
@@ -68,6 +79,21 @@ export function PlanView() {
   const [showPromptSelector, setShowPromptSelector] = useState(false);
   const [showModeSelector, setShowModeSelector] = useState(false);
   const [pendingChoice, setPendingChoice] = useState<PendingChoice | null>(null);
+  
+  // Bean operation tracking
+  const [recentBeanOps, setRecentBeanOps] = useState<Array<{
+    action: string;
+    beanId: string;
+    title: string;
+    timestamp: number;
+  }>>([]);
+  
+  // Skill status tracking
+  const [skillStatus, setSkillStatus] = useState<{
+    loaded: boolean;
+    skillName?: string;
+    phase?: string;
+  }>({ loaded: false });
 
   // Chat history hook
   const {
@@ -96,6 +122,42 @@ export function PlanView() {
         toolCalls,
         timestamp: Date.now(),
       });
+
+      // Track bean operations from tool calls
+      if (toolCalls) {
+        const beanOps: typeof recentBeanOps = [];
+        for (const tc of toolCalls) {
+          if (tc.name === 'beans_cli') {
+            const args = tc.args as { action?: string; title?: string; id?: string };
+            if (args.action === 'create' && args.title) {
+              beanOps.push({
+                action: 'created',
+                beanId: 'new', // ID comes from result, not available here
+                title: args.title,
+                timestamp: Date.now(),
+              });
+            } else if (args.action === 'update' && args.id) {
+              beanOps.push({
+                action: 'updated',
+                beanId: args.id,
+                title: args.id,
+                timestamp: Date.now(),
+              });
+            }
+          } else if (tc.name === 'skill') {
+            const args = tc.args as { skillName?: string };
+            if (args.skillName) {
+              setSkillStatus({
+                loaded: true,
+                skillName: args.skillName,
+              });
+            }
+          }
+        }
+        if (beanOps.length > 0) {
+          setRecentBeanOps((prev) => [...beanOps, ...prev].slice(0, 5));
+        }
+      }
 
       // Check if the message contains a multiple choice question
       const choiceMatch = content.match(/\[(\d)\]\s+(.+?)(?:\n|$)/g);
@@ -176,12 +238,16 @@ export function PlanView() {
     setMode(newMode);
     setSelectedBean(bean ?? null);
     setShowModeSelector(false);
+    // Reset skill status when changing modes
+    setSkillStatus({ loaded: false });
   }, []);
 
   // Handle clear chat
   const handleClearChat = useCallback(() => {
     clearMessages();
     setPendingChoice(null);
+    setRecentBeanOps([]);
+    setSkillStatus({ loaded: false });
   }, [clearMessages]);
 
   // Cycle through modes (for Tab/Shift+Tab navigation)
@@ -292,6 +358,35 @@ export function PlanView() {
           <Text color="gray">]</Text>
         </Box>
       </Box>
+
+      {/* Mode-specific hint and skill status */}
+      {isStreaming && (
+        <Box marginBottom={1}>
+          <Text color="yellow" dimColor>
+            {MODE_HINTS[mode]}
+          </Text>
+          {skillStatus.loaded && skillStatus.skillName && (
+            <Text color="magenta" dimColor>
+              {' '}[Skill: {skillStatus.skillName}]
+            </Text>
+          )}
+        </Box>
+      )}
+
+      {/* Recent bean operations */}
+      {recentBeanOps.length > 0 && (
+        <Box flexDirection="column" marginBottom={1}>
+          {recentBeanOps.slice(0, 3).map((op, i) => (
+            <Box key={`${op.beanId}-${op.timestamp}`}>
+              <Text color="green">
+                {op.action === 'created' ? '+' : '~'}
+              </Text>
+              <Text color="gray"> Bean {op.action}: </Text>
+              <Text color="white">{op.title}</Text>
+            </Box>
+          ))}
+        </Box>
+      )}
 
       {/* Separator */}
       <Box marginBottom={1}>
