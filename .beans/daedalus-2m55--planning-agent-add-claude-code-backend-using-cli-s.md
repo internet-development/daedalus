@@ -5,7 +5,7 @@ status: draft
 type: feature
 priority: normal
 created_at: 2026-01-27T02:26:58Z
-updated_at: 2026-01-27T02:29:10Z
+updated_at: 2026-01-27T02:33:54Z
 parent: daedalus-19c1
 ---
 
@@ -27,26 +27,46 @@ The `claude` CLI supports:
 - `--print` - non-interactive mode
 - `--output-format stream-json` - streaming JSON output
 - `--input-format stream-json` - streaming input
-- `--system-prompt` - custom system prompt
+- `--append-system-prompt` - append to system prompt
+- `--allowedTools` - restrict available tools
 
 ### Approach
 
-Similar to how `AgentRunner` spawns claude/opencode for execution, create a new provider that spawns `claude --print` as a subprocess.
+Spawn `claude --print` as a subprocess (similar to `AgentRunner`), using Claude Code's native tools for codebase access. This is an **alternative provider** - only used when explicitly configured.
+
+### Tool Strategy
+
+Use Claude Code's native tools via `--allowedTools`:
+- `Read` - read files (replaces our `read_file`)
+- `Glob` - find files (replaces our `glob`)
+- `Grep` - search code (replaces our `grep`)
+- `Bash` - read-only commands (replaces our `bash_readonly`)
+
+For beans operations, append instructions to system prompt telling it to use `beans` CLI directly via Bash tool.
 
 ## Checklist
 
-- [ ] Add `claude_code` to `PlanningAgentConfigSchema` provider enum
-- [ ] Create `createClaudeCodeModel()` function in `usePlanningAgent.ts`
+- [ ] Add `claude_code` to `PlanningAgentConfigSchema` provider enum in `src/config/index.ts`
+- [ ] Create `ClaudeCodeProvider` class or function
   - Spawn `claude --print --output-format stream-json`
-  - Pass system prompt via `--system-prompt` or `--append-system-prompt`
-  - Stream responses back through the existing interface
-- [ ] Handle tool calls (may need to use claude's built-in tools or disable for now)
-- [ ] Update config validation to check for `claude` CLI when using `claude_code` provider
-- [ ] Add config example in talos.yml comments
-- [ ] Test streaming response handling
+  - Pass `--append-system-prompt` with planning agent prompt
+  - Use `--allowedTools "Read Glob Grep Bash"` for read-only access
+- [ ] Adapt streaming interface
+  - Parse stream-json output format
+  - Convert to same interface as Vercel AI SDK responses
+  - Handle tool call reporting (for UI indicators)
+- [ ] Update startup validation (from daedalus-lhly)
+  - Check `which claude` when provider is `claude_code`
+  - Show helpful message if claude CLI not found
+- [ ] Add config example to `talos.yml`
+  ```yaml
+  planning_agent:
+    provider: claude_code  # Uses Claude Code subscription
+  ```
+- [ ] Test end-to-end: prompt → spawn → stream → display
 
-## Notes
+## Config Behavior
 
-- Tool calls may need special handling since claude CLI has its own tool system
-- Consider whether to use claude's native tools or disable tools for this backend
-- May need to use `--allowedTools` to restrict to read-only operations
+- `claude_code` is **only used when explicitly set** in config
+- Default remains `claude` (direct API)
+- Startup validation checks appropriate credentials for configured provider

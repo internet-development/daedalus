@@ -3,9 +3,9 @@
 title: 'Plan View: AI chat returns ''No output generated'' error'
 status: draft
 type: bug
-priority: normal
+priority: high
 created_at: 2026-01-27T02:18:44Z
-updated_at: 2026-01-27T02:29:10Z
+updated_at: 2026-01-27T02:33:54Z
 parent: daedalus-19c1
 blocking:
     - daedalus-2m55
@@ -34,13 +34,17 @@ User prompt: 'Currently, when in the monitor view we don't see completed beans i
 
 ## Checklist
 
-- [ ] Add startup validation for planning agent credentials
-  - Check if `ANTHROPIC_API_KEY` is set when provider is `anthropic`/`claude`
-  - Check if `OPENAI_API_KEY` is set when provider is `openai`
-  - Show clear error message in TUI if missing
-- [ ] Fix double error display in `usePlanningAgent.ts`
-  - Remove either `setError(error)` or `onError(error)` call (not both)
-  - Recommend keeping `onError` for chat history, remove separate error box
-- [ ] Improve error message for missing API key
-  - Catch authentication errors specifically
-  - Show "Missing ANTHROPIC_API_KEY" instead of generic "No output generated"
+- [ ] Add startup validation in `src/cli.tsx` before TUI launches
+  - Check provider from config (`planning_agent.provider`)
+  - If `anthropic`/`claude`: verify `ANTHROPIC_API_KEY` is set
+  - If `openai`: verify `OPENAI_API_KEY` is set
+  - If `claude_code`: verify `claude` CLI is available (future)
+- [ ] Block launch and show helpful error message
+  - Exit with clear message: "Planning agent requires ANTHROPIC_API_KEY. Set it with: export ANTHROPIC_API_KEY=your-key"
+  - Include link to Anthropic console for getting API key
+  - Suggest `claude_code` backend as alternative (once implemented)
+- [ ] Fix double error display in `usePlanningAgent.ts:204-208`
+  - Remove `setError(error)` call, keep only `onError(error)`
+  - Error will show in chat history, not separate error box
+- [ ] Remove error box from `PlanView.tsx:437-441`
+  - No longer needed since errors go to chat history
