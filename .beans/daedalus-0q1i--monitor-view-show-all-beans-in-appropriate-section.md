@@ -1,11 +1,11 @@
 ---
 # daedalus-0q1i
 title: 'Monitor View: UX improvements (naming, ordering, space utilization)'
-status: todo
+status: in-progress
 type: bug
 priority: normal
 created_at: 2026-01-26T23:13:43Z
-updated_at: 2026-01-27T00:42:00Z
+updated_at: 2026-01-27T01:27:30Z
 parent: daedalus-kvgh
 ---
 
@@ -87,10 +87,14 @@ File: `src/ui/views/MonitorView.tsx:396-476` (groups array construction)
 
 ## Implementation Checklist
 
-- [ ] Fix IN PROGRESS to only show actually running beans (not "next up")
-- [ ] Rename QUEUE to TODO QUEUE
-- [ ] Reorder groups (IN PROGRESS first)
-- [ ] Show drafts by default (flip toggle default)
-- [ ] Ensure Watcher events propagate to MonitorView for auto-refresh
-- [ ] Add status summary to title bar (todo · running · stuck counts)
-- [ ] Reduce vertical spacing between sections
+- [x] Fix IN PROGRESS to only show actually running beans (not "next up")
+  - Verified: `talos.getInProgress()` correctly returns only beans with actively running agents
+  - The "next up" indicator (●) only appears in TODO QUEUE section
+- [x] Rename QUEUE to TODO QUEUE
+- [x] Reorder groups (IN PROGRESS first)
+- [x] Show drafts by default (flip toggle default)
+- [x] Ensure Watcher events propagate to MonitorView for auto-refresh
+  - Watcher events flow through Talos → MonitorView via event handlers
+  - Added draft refresh on queue-changed and bean-completed events
+- [x] Add status summary to title bar (todo · running · stuck counts)
+- [x] Reduce vertical spacing between sections

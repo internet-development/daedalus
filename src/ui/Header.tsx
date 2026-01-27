@@ -14,6 +14,8 @@ export type ViewType = 'monitor' | 'execute' | 'plan';
 export interface HeaderProps {
   currentView: ViewType;
   queueCount: number;
+  runningCount: number;
+  stuckCount: number;
   isPaused: boolean;
 }
 
@@ -37,7 +39,7 @@ function Tab({ label, hotkey, isActive }: TabProps) {
   );
 }
 
-export function Header({ currentView, queueCount, isPaused }: HeaderProps) {
+export function Header({ currentView, queueCount, runningCount, stuckCount, isPaused }: HeaderProps) {
   return (
     <Box
       borderStyle="single"
@@ -45,7 +47,7 @@ export function Header({ currentView, queueCount, isPaused }: HeaderProps) {
       paddingX={1}
       justifyContent="space-between"
     >
-      {/* Left: App Title */}
+      {/* Left: App Title + Status Summary */}
       <Box>
         <Text bold color="cyan">
           DAEDALUS
@@ -56,6 +58,12 @@ export function Header({ currentView, queueCount, isPaused }: HeaderProps) {
             [PAUSED]
           </Text>
         )}
+        <Text color="gray"> | </Text>
+        <Text color="gray">{queueCount} todo</Text>
+        <Text color="gray"> · </Text>
+        <Text color={runningCount > 0 ? 'green' : 'gray'}>{runningCount} running</Text>
+        <Text color="gray"> · </Text>
+        <Text color={stuckCount > 0 ? 'yellow' : 'gray'}>{stuckCount} stuck</Text>
       </Box>
 
       {/* Center: View Tabs */}
@@ -65,14 +73,18 @@ export function Header({ currentView, queueCount, isPaused }: HeaderProps) {
         <Tab label="Plan" hotkey="3" isActive={currentView === 'plan'} />
       </Box>
 
-      {/* Right: Queue Status */}
+      {/* Right: Queue Status (keep for backwards compat, shows running indicator) */}
       <Box>
-        {queueCount > 0 ? (
+        {runningCount > 0 ? (
           <Text color="green">
-            <Text bold>⚡</Text> {queueCount}
+            <Text bold>▶</Text>
+          </Text>
+        ) : queueCount > 0 ? (
+          <Text color="green">
+            <Text bold>⚡</Text>
           </Text>
         ) : (
-          <Text color="gray">⚡ 0</Text>
+          <Text color="gray">○</Text>
         )}
       </Box>
     </Box>

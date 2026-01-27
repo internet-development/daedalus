@@ -39,6 +39,8 @@ export function App({ initialView }: AppProps) {
 
   const [view, setView] = useState<ViewType>(initialView ?? getDefaultView());
   const [queueCount, setQueueCount] = useState(talos.getQueue().length);
+  const [runningCount, setRunningCount] = useState(talos.getInProgress().size);
+  const [stuckCount, setStuckCount] = useState(talos.getStuck().length);
   const [isPaused, setIsPaused] = useState(talos.isPaused());
   const [showHelp, setShowHelp] = useState(false);
 
@@ -46,19 +48,43 @@ export function App({ initialView }: AppProps) {
   useEffect(() => {
     const handleQueueChanged = () => {
       setQueueCount(talos.getQueue().length);
+      setRunningCount(talos.getInProgress().size);
+      setStuckCount(talos.getStuck().length);
     };
 
     const handleBeanStarted = () => {
       // Auto-switch to Execute view when an agent starts
       setView('execute');
+      setRunningCount(talos.getInProgress().size);
+    };
+
+    const handleBeanCompleted = () => {
+      setRunningCount(talos.getInProgress().size);
+      setStuckCount(talos.getStuck().length);
+    };
+
+    const handleBeanBlocked = () => {
+      setRunningCount(talos.getInProgress().size);
+      setStuckCount(talos.getStuck().length);
+    };
+
+    const handleBeanFailed = () => {
+      setRunningCount(talos.getInProgress().size);
+      setStuckCount(talos.getStuck().length);
     };
 
     talos.on('queue-changed', handleQueueChanged);
     talos.on('bean-started', handleBeanStarted);
+    talos.on('bean-completed', handleBeanCompleted);
+    talos.on('bean-blocked', handleBeanBlocked);
+    talos.on('bean-failed', handleBeanFailed);
 
     return () => {
       talos.off('queue-changed', handleQueueChanged);
       talos.off('bean-started', handleBeanStarted);
+      talos.off('bean-completed', handleBeanCompleted);
+      talos.off('bean-blocked', handleBeanBlocked);
+      talos.off('bean-failed', handleBeanFailed);
     };
   }, [talos]);
 
@@ -114,7 +140,7 @@ export function App({ initialView }: AppProps) {
   if (showHelp) {
     return (
       <Box flexDirection="column" height={terminalHeight}>
-        <Header currentView={view} queueCount={queueCount} isPaused={isPaused} />
+        <Header currentView={view} queueCount={queueCount} runningCount={runningCount} stuckCount={stuckCount} isPaused={isPaused} />
         <Box
           flexDirection="column"
           borderStyle="single"
@@ -157,7 +183,7 @@ export function App({ initialView }: AppProps) {
 
   return (
     <Box flexDirection="column" height={terminalHeight}>
-      <Header currentView={view} queueCount={queueCount} isPaused={isPaused} />
+      <Header currentView={view} queueCount={queueCount} runningCount={runningCount} stuckCount={stuckCount} isPaused={isPaused} />
 
       {/* Main content area */}
       <Box

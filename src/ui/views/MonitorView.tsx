@@ -3,19 +3,20 @@
  *
  * Bean list grouped by status with queue information and navigation.
  * 
- * Groups displayed:
- * - QUEUE: Beans with 'todo' status waiting to be worked on
- * - IN PROGRESS: Currently running beans
- * - STUCK: In-progress beans with 'blocked' or 'failed' tags
+ * Groups displayed (in order):
+ * - IN PROGRESS: Currently running beans (actively being worked on by agent)
+ * - TODO QUEUE: Beans with 'todo' status waiting to be worked on
+ * - STUCK: Beans with 'blocked' or 'failed' tags
  * - RECENTLY COMPLETED: Last 5 completed beans
- * - DRAFTS: (toggleable) Beans in 'draft' status
+ * - DRAFTS: (toggleable, shown by default) Beans in 'draft' status
  * 
  * Status Icons:
- * - ○ Queued (todo status)
- * - ● Next up (first in queue)
  * - ▶ In progress (running)
- * - ⚠ Stuck (in-progress with 'blocked' or 'failed' tag)
+ * - ● Next up (first in queue)
+ * - ○ Queued (todo status)
+ * - ⚠ Stuck (with 'blocked' or 'failed' tag)
  * - ✓ Completed (in recent section)
+ * - ◌ Draft
  * 
  * Tree View (toggle with 't'):
  * - Shows parent/child hierarchy
@@ -177,7 +178,7 @@ function BeanListGroup({
   globalIndexOffset,
 }: BeanListGroupProps) {
   return (
-    <Box flexDirection="column" marginBottom={1}>
+    <Box flexDirection="column" marginBottom={0}>
       {/* Group header */}
       <Text bold color="cyan">
         {group.title}
@@ -293,7 +294,7 @@ export function MonitorView() {
   );
   const [drafts, setDrafts] = useState<Bean[]>([]);
   const [allBeans, setAllBeans] = useState<Bean[]>([]);
-  const [showDrafts, setShowDrafts] = useState(false);
+  const [showDrafts, setShowDrafts] = useState(true);
   const [showTreeView, setShowTreeView] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [selectedTreeIndex, setSelectedTreeIndex] = useState(0);
@@ -346,9 +347,19 @@ export function MonitorView() {
 
   // Subscribe to Talos events
   useEffect(() => {
+    // Helper to refresh drafts when beans change
+    const refreshDrafts = () => {
+      if (showDrafts) {
+        listBeans({ status: ['draft'] })
+          .then(setDrafts)
+          .catch(() => setDrafts([]));
+      }
+    };
+
     const handleQueueChanged = () => {
       setQueue(talos.getQueue());
       setStuck(talos.getStuck());
+      refreshDrafts();
     };
 
     const handleBeanStarted = () => {
@@ -358,6 +369,7 @@ export function MonitorView() {
     const handleBeanCompleted = () => {
       setInProgress(talos.getInProgress());
       setRecentlyCompleted(talos.getRecentlyCompleted());
+      refreshDrafts();
     };
 
     const handleBeanBlocked = () => {
@@ -383,7 +395,7 @@ export function MonitorView() {
       talos.off('bean-blocked', handleBeanBlocked);
       talos.off('bean-failed', handleBeanFailed);
     };
-  }, [talos]);
+  }, [talos, showDrafts]);
 
   // Timer for elapsed time updates
   useEffect(() => {
@@ -397,19 +409,7 @@ export function MonitorView() {
   const groups = useMemo((): BeanGroup[] => {
     const result: BeanGroup[] = [];
 
-    // Queue group
-    const queueDisplayBeans: DisplayBean[] = queue.map((bean, i) => ({
-      bean,
-      icon: i === 0 ? STATUS_ICONS.nextUp : STATUS_ICONS.queued,
-      iconColor: i === 0 ? 'green' : 'gray',
-    }));
-    result.push({
-      title: 'QUEUE',
-      beans: queueDisplayBeans,
-      emptyMessage: 'No beans in queue',
-    });
-
-    // In Progress group
+    // In Progress group (FIRST - most important)
     const inProgressDisplayBeans: DisplayBean[] = [];
     for (const [, running] of inProgress) {
       inProgressDisplayBeans.push({
@@ -423,6 +423,18 @@ export function MonitorView() {
       title: 'IN PROGRESS',
       beans: inProgressDisplayBeans,
       emptyMessage: 'No beans running',
+    });
+
+    // Todo Queue group
+    const queueDisplayBeans: DisplayBean[] = queue.map((bean, i) => ({
+      bean,
+      icon: i === 0 ? STATUS_ICONS.nextUp : STATUS_ICONS.queued,
+      iconColor: i === 0 ? 'green' : 'gray',
+    }));
+    result.push({
+      title: 'TODO QUEUE',
+      beans: queueDisplayBeans,
+      emptyMessage: 'No beans in queue',
     });
 
     // Stuck group
@@ -458,7 +470,7 @@ export function MonitorView() {
       emptyMessage: 'No recent completions',
     });
 
-    // Drafts group (if toggled)
+    // Drafts group (toggleable, shown by default)
     if (showDrafts) {
       const draftDisplayBeans: DisplayBean[] = drafts.map((bean) => ({
         bean,
