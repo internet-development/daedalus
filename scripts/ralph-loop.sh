@@ -116,21 +116,28 @@ select_bean() {
     return
   fi
 
-  # Query for todo and in-progress beans, excluding milestones and epics
-  # Include blockedBy to filter out beans with incomplete blockers
-  local query='{ beans(filter: { status: ["todo", "in-progress"], excludeType: ["milestone", "epic"] }) { id title type priority status tags blockedBy { status } } }'
+  # Query for todo and in-progress beans (including epics/milestones)
+  # Include blockedBy and children to check eligibility
+  local query='{ beans(filter: { status: ["todo", "in-progress"] }) { id title type priority status tags blockedBy { status } children { status } } }'
   local result
   result=$(beans query "$query" --json 2>/dev/null)
 
   # Filter out stuck beans (blocked/failed tags) and beans with incomplete blockers
+  # For epic/milestone: also require all children to be completed
   # Prioritize in-progress over todo, then by priority
   echo "$result" | jq -r '
     .beans
     | map(select(.id != null))
     | map(select(
+        # Not stuck (no blocked/failed tags)
         ((.tags // []) | map(select(. == "blocked" or . == "failed")) | length == 0) and
+        # Not blocked by incomplete beans
         ((.blockedBy | length == 0) or
-         (.blockedBy | all(.status == "completed" or .status == "scrapped")))
+         (.blockedBy | all(.status == "completed" or .status == "scrapped"))) and
+        # For epic/milestone: all children must be complete
+        (if .type == "epic" or .type == "milestone" then
+           (.children | length == 0) or (.children | all(.status == "completed" or .status == "scrapped"))
+         else true end)
       ))
     | sort_by(
         (if .status == "in-progress" then 0 else 1 end),
@@ -148,7 +155,13 @@ select_bean() {
 # Get bean details
 get_bean() {
   local bean_id="$1"
-  beans query "{ bean(id: \"$bean_id\") { id title status type priority body parent { id title type body } children { id title status type } } }" --json 2>/dev/null
+  beans query "{ bean(id: \"$bean_id\") { id title status type priority body parent { id title type body } children { id title status type body } } }" --json 2>/dev/null
+}
+
+# Check if bean is epic or milestone (needs review mode)
+is_review_mode() {
+  local bean_type="$1"
+  [[ "$bean_type" == "epic" || "$bean_type" == "milestone" ]]
 }
 
 # Check if bean is stuck (has blocked or failed tag)
@@ -171,8 +184,8 @@ get_status() {
   beans query "{ bean(id: \"$bean_id\") { status } }" --json 2>/dev/null | jq -r '.bean.status'
 }
 
-# Generate prompt for agent
-generate_prompt() {
+# Generate prompt for agent (implementation mode)
+generate_impl_prompt() {
   local bean_json="$1"
   local bean_id bean_title bean_body parent_title parent_body children
 
@@ -184,7 +197,7 @@ generate_prompt() {
   children=$(echo "$bean_json" | jq -r '.bean.children // [] | .[] | "- [\(.status)] \(.id): \(.title)"' 2>/dev/null)
 
   cat <<EOF
-You are an autonomous coding agent in a ralph loop. You will be re-prompted 
+You are an autonomous coding agent in a ralph loop. You will be re-prompted
 with this same task until you mark it complete. Your previous work is visible
 in the codebase and git history.
 
@@ -243,6 +256,81 @@ If you hit a blocker you cannot resolve:
 EOF
 }
 
+# Generate prompt for agent (review mode for epic/milestone)
+generate_review_prompt() {
+  local bean_json="$1"
+  local bean_id bean_title bean_type bean_body
+
+  bean_id=$(echo "$bean_json" | jq -r '.bean.id')
+  bean_title=$(echo "$bean_json" | jq -r '.bean.title')
+  bean_type=$(echo "$bean_json" | jq -r '.bean.type')
+  bean_body=$(echo "$bean_json" | jq -r '.bean.body')
+
+  # Get children with their bodies for review
+  local children_details
+  children_details=$(echo "$bean_json" | jq -r '
+    .bean.children // [] | .[] |
+    "### \(.id): \(.title)\nType: \(.type) | Status: \(.status)\n\n\(.body)\n\n---\n"
+  ' 2>/dev/null)
+
+  cat <<EOF
+You are a senior engineer reviewing completed work before marking a ${bean_type} as done.
+
+## ${bean_type^}: $bean_id
+### $bean_title
+
+$bean_body
+
+---
+
+## Completed Children to Review
+
+$children_details
+
+---
+
+## Your Review Process
+
+1. **Read each child bean** to understand what should have been implemented
+2. **Read the actual code** - find the files mentioned in each child bean
+3. **Sanity check** the implementations:
+   - Does the code make sense?
+   - Any obvious bugs or issues?
+   - Does it follow project patterns and conventions?
+4. **Run the test suite**: \`npm test\` (or appropriate command)
+5. **Verify integration** between components works correctly
+
+## Outcome
+
+**If everything looks good:**
+- \`beans update $bean_id --status completed\`
+
+**If you find issues:**
+- Create bug beans as children describing each issue:
+  \`beans create "Issue: {description}" -t bug --parent $bean_id -d "..."\`
+- Exit cleanly - the ${bean_type} will wait for bugs to be fixed, then re-review
+
+## Remember
+
+- You are reviewing, not implementing
+- Be thorough but practical
+- Focus on correctness and integration, not style nitpicks
+EOF
+}
+
+# Generate prompt based on bean type
+generate_prompt() {
+  local bean_json="$1"
+  local bean_type
+  bean_type=$(echo "$bean_json" | jq -r '.bean.type')
+
+  if is_review_mode "$bean_type"; then
+    generate_review_prompt "$bean_json"
+  else
+    generate_impl_prompt "$bean_json"
+  fi
+}
+
 # Run the agent
 run_agent() {
   local prompt="$1"
@@ -285,7 +373,15 @@ work_on_bean() {
   local start_time
   start_time=$(date +%s)
 
-  log "Working on bean: $bean_id"
+  # Check bean type for mode
+  local bean_type
+  bean_type=$(beans query "{ bean(id: \"$bean_id\") { type } }" --json 2>/dev/null | jq -r '.bean.type')
+
+  if is_review_mode "$bean_type"; then
+    log "Reviewing ${bean_type}: $bean_id"
+  else
+    log "Working on bean: $bean_id"
+  fi
 
   # Mark as in-progress
   beans update "$bean_id" --status in-progress >/dev/null 2>&1 || true
