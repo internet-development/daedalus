@@ -1,11 +1,11 @@
 ---
 # daedalus-wb3l
 title: Epic/milestone review mode for execution agent
-status: todo
+status: in-progress
 type: feature
 priority: high
 created_at: 2026-01-27T00:43:16Z
-updated_at: 2026-01-27T00:53:03Z
+updated_at: 2026-01-27T01:10:03Z
 parent: daedalus-ss8m
 ---
 
@@ -66,48 +66,17 @@ If epic has no children, let agent decide:
 ## Checklist
 
 ### Blocking setup (talos.ts)
-- [ ] In `wireWatcherEvents` or `enqueue`, detect epic/milestone
-- [ ] Query children: `bean.children`
-- [ ] For each incomplete child, add blocking: child blocks parent
-- [ ] Use beans CLI: `beans update <child-id> --blocking <parent-id>`
+- [x] In `wireWatcherEvents` or `enqueue`, detect epic/milestone
+- [x] Query children: `bean.children`
+- [x] For each incomplete child, add blocking: child blocks parent
+- [x] Use beans CLI: `beans update <child-id> --blocking <parent-id>`
 
 ### Review mode prompt (agent-runner.ts)
-- [ ] Add `isReviewMode(bean)` - true for epic/milestone
-- [ ] Add `generateReviewPrompt(bean)` with:
-  ```
-  You are a senior engineer reviewing work before it ships.
-  
-  ## Epic: {bean.id}: {bean.title}
-  
-  {bean.body}
-  
-  ### Completed children to review:
-  {for each child}
-  - {child.id}: {child.title}
-    {child.body}
-  {end for}
-  
-  ### Your review process:
-  1. Read each child bean to understand what should have been implemented
-  2. Read the actual code files mentioned in each child bean
-  3. Sanity check the implementations:
-     - Does the code make sense?
-     - Any obvious bugs or issues?
-     - Does it follow project patterns and conventions?
-     - Is error handling appropriate?
-  4. Run the test suite: npm test
-  5. Verify integration between components works correctly
-  
-  ### Outcome:
-  - If everything looks good: exit 0 (epic will be marked complete)
-  - If issues found: 
-    - Create bug beans as children describing each issue:
-      beans create "Issue: ..." -t bug --parent {bean.id} -d "Description..."
-    - Exit 0 (epic will wait for bugs to be fixed, then re-review)
-  ```
+- [x] Add `isReviewMode(bean)` - true for epic/milestone
+- [x] Add `generateReviewPrompt(bean)` with review instructions
 
 ### Prompt enhancements
-- [ ] Include file paths extracted from child beans
+- [x] Include file paths extracted from child beans
 - [ ] Include git diff or recent commits for context
 - [ ] Specify test commands from config or child beans
 - [ ] Include project conventions/patterns for reference

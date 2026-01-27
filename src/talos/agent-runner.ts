@@ -14,7 +14,8 @@
  */
 import { spawn, type ChildProcess } from 'child_process';
 import { EventEmitter } from 'events';
-import type { Bean } from './beans-client.js';
+import type { Bean, BeanWithChildren } from './beans-client.js';
+import { isReviewModeType, getBeanWithChildren } from './beans-client.js';
 
 // =============================================================================
 // Types
@@ -76,6 +77,128 @@ Instructions:
 5. When complete, exit with code 0`;
 }
 
+/**
+ * Check if a bean requires review mode (epic or milestone)
+ */
+export function isReviewMode(bean: Bean): boolean {
+  return isReviewModeType(bean.type);
+}
+
+/**
+ * Extract file paths from a bean's body content.
+ * Looks for common patterns like backtick-quoted paths, src/... patterns, etc.
+ */
+function extractFilePaths(body: string): string[] {
+  const paths = new Set<string>();
+  
+  // Match backtick-quoted paths: `src/path/file.ts`
+  const backtickMatches = body.matchAll(/`([^`]*\.(ts|tsx|js|jsx|json|md|yml|yaml))`/g);
+  for (const match of backtickMatches) {
+    paths.add(match[1]);
+  }
+  
+  // Match bare paths: src/path/file.ts
+  const bareMatches = body.matchAll(/(?:^|\s)((?:src|lib|test|tests|scripts)\/[^\s,)]+\.(ts|tsx|js|jsx|json|md|yml|yaml))/gm);
+  for (const match of bareMatches) {
+    paths.add(match[1]);
+  }
+  
+  return Array.from(paths);
+}
+
+/**
+ * Generate a review mode prompt for epic/milestone beans.
+ * The agent acts as a senior engineer reviewing completed work.
+ */
+export function generateReviewPrompt(bean: BeanWithChildren): string {
+  const beanType = bean.type.charAt(0).toUpperCase() + bean.type.slice(1);
+  
+  // Format child beans for review
+  const childrenDetails = bean.children
+    .map(child => {
+      const filePaths = extractFilePaths(child.body);
+      const filesSection = filePaths.length > 0
+        ? `\nFiles mentioned: ${filePaths.join(', ')}`
+        : '';
+      return `### ${child.id}: ${child.title}
+Type: ${child.type} | Status: ${child.status}
+${filesSection}
+
+${child.body}
+
+---`;
+    })
+    .join('\n\n');
+
+  // Collect all file paths from children for quick reference
+  const allFilePaths = bean.children.flatMap(child => extractFilePaths(child.body));
+  const uniqueFilePaths = [...new Set(allFilePaths)];
+  const filesQuickRef = uniqueFilePaths.length > 0
+    ? `\n## Files to Review\n\nBased on child beans:\n${uniqueFilePaths.map(p => `- \`${p}\``).join('\n')}\n`
+    : '';
+
+  return `You are a senior engineer reviewing completed work before marking a ${beanType.toLowerCase()} as done.
+
+## ${beanType}: ${bean.id}
+### ${bean.title}
+
+${bean.body}
+${filesQuickRef}
+---
+
+## Completed Children to Review
+
+${childrenDetails || 'No child beans found.'}
+
+---
+
+## Your Review Process
+
+1. **Read each child bean** to understand what should have been implemented
+2. **Read the actual code** - find the files mentioned in each child bean
+3. **Sanity check** the implementations:
+   - Does the code make sense?
+   - Any obvious bugs or issues?
+   - Does it follow project patterns and conventions?
+   - Is error handling appropriate?
+4. **Run the test suite**: \`npm test\` (or appropriate command)
+5. **Verify integration** between components works correctly
+
+## Outcome
+
+**If everything looks good:**
+- \`beans update ${bean.id} --status completed\`
+
+**If you find issues:**
+- Create bug beans as children describing each issue:
+  \`beans create "Issue: {description}" -t bug --parent ${bean.id} -d "..."\`
+- Exit cleanly - the ${beanType.toLowerCase()} will wait for bugs to be fixed, then re-review
+
+## Remember
+
+- You are reviewing, not implementing
+- Be thorough but practical
+- Focus on correctness and integration, not style nitpicks
+- Exit with code 0 when done`;
+}
+
+/**
+ * Generate prompt for a bean, using review mode for epics/milestones
+ * and implementation mode for other types.
+ */
+export async function generatePromptForBean(bean: Bean): Promise<string> {
+  if (isReviewMode(bean)) {
+    // Fetch bean with children for review mode
+    const beanWithChildren = await getBeanWithChildren(bean.id);
+    if (beanWithChildren) {
+      return generateReviewPrompt(beanWithChildren);
+    }
+    // Fallback to regular prompt if children can't be fetched
+    return generatePrompt(bean);
+  }
+  return generatePrompt(bean);
+}
+
 // =============================================================================
 // Agent Runner Class
 // =============================================================================
@@ -104,7 +227,7 @@ export class AgentRunner extends EventEmitter {
    * @param bean The bean to work on
    * @param worktreePath Optional working directory (for parallel execution)
    */
-  run(bean: Bean, worktreePath?: string): void {
+  async run(bean: Bean, worktreePath?: string): Promise<void> {
     if (this.process) {
       this.emit(
         'error',
@@ -113,7 +236,8 @@ export class AgentRunner extends EventEmitter {
       return;
     }
 
-    const prompt = generatePrompt(bean);
+    // Generate prompt (async for review mode which fetches children)
+    const prompt = await generatePromptForBean(bean);
     const { command, args } = this.buildCommand(prompt);
     const cwd = worktreePath ?? process.cwd();
 

@@ -567,6 +567,61 @@ export async function getEpicAncestor(beanId: string): Promise<Bean | null> {
   return null;
 }
 
+/** Extended bean with children for review mode */
+export interface BeanWithChildren extends Bean {
+  children: Bean[];
+}
+
+/**
+ * Get a bean with its children
+ * @returns The bean with children array, or null if not found
+ */
+export async function getBeanWithChildren(id: string): Promise<BeanWithChildren | null> {
+  const query = `{
+    bean(id: "${id}") {
+      ${BEAN_FIELDS}
+      children {
+        ${BEAN_FIELDS}
+      }
+    }
+  }`;
+  const result = await execBeansQuery<{ bean: BeanWithChildren | null }>(query);
+  return result.bean;
+}
+
+/**
+ * Get incomplete children of a bean
+ * @returns Array of children that are not completed/scrapped
+ */
+export async function getIncompleteChildren(id: string): Promise<Bean[]> {
+  const query = `{
+    bean(id: "${id}") {
+      children(filter: { excludeStatus: ["completed", "scrapped"] }) {
+        ${BEAN_FIELDS}
+      }
+    }
+  }`;
+  const result = await execBeansQuery<{ bean: { children: Bean[] } | null }>(query);
+  return result.bean?.children ?? [];
+}
+
+/**
+ * Add a blocking relationship: child blocks parent
+ * @param childId The child bean that is blocking
+ * @param parentId The parent bean that is being blocked
+ */
+export async function addBlockingRelationship(childId: string, parentId: string): Promise<void> {
+  const args = ['update', childId, '--blocking', parentId];
+  await execBeans(args);
+}
+
+/**
+ * Check if bean type requires review mode (epic or milestone)
+ */
+export function isReviewModeType(type: BeanType): boolean {
+  return type === 'epic' || type === 'milestone';
+}
+
 // =============================================================================
 // Legacy Class (for backwards compatibility during migration)
 // =============================================================================

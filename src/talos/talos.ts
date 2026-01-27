@@ -39,6 +39,9 @@ import {
   updateBeanTags,
   createBean,
   isStuck,
+  isReviewModeType,
+  getIncompleteChildren,
+  addBlockingRelationship,
   setCwd,
 } from './beans-client.js';
 
@@ -373,20 +376,24 @@ export class Talos extends EventEmitter {
    */
   private wireWatcherEvents(): void {
     // New bean created
-    this.watcher.on('created', (bean: Bean) => {
+    this.watcher.on('created', async (bean: Bean) => {
       if (this.shouldEnqueue(bean)) {
+        // Set up blocking for epics/milestones
+        await this.setupEpicBlocking(bean);
         this.scheduler.enqueue(bean);
         this.emit('queue-changed', this.scheduler.getQueue());
       }
     });
 
     // Bean updated
-    this.watcher.on('updated', (bean: Bean) => {
+    this.watcher.on('updated', async (bean: Bean) => {
       // Update bean in queue if it's there
       this.scheduler.updateBean(bean);
 
       // Check if bean became actionable
       if (this.shouldEnqueue(bean)) {
+        // Set up blocking for epics/milestones
+        await this.setupEpicBlocking(bean);
         this.scheduler.enqueue(bean);
         this.emit('queue-changed', this.scheduler.getQueue());
       }
@@ -551,6 +558,34 @@ export class Talos extends EventEmitter {
   // ===========================================================================
   // Private Helpers
   // ===========================================================================
+
+  /**
+   * Set up blocking relationships for epic/milestone beans.
+   * Each incomplete child blocks the parent, so the parent can only be
+   * worked on (in review mode) when all children are complete.
+   */
+  private async setupEpicBlocking(bean: Bean): Promise<void> {
+    // Only process epics and milestones
+    if (!isReviewModeType(bean.type)) {
+      return;
+    }
+
+    try {
+      // Get all incomplete children
+      const incompleteChildren = await getIncompleteChildren(bean.id);
+
+      // Add blocking relationship: each child blocks the parent
+      for (const child of incompleteChildren) {
+        // Check if the child already has this blocking relationship
+        if (!child.blockingIds.includes(bean.id)) {
+          await addBlockingRelationship(child.id, bean.id);
+        }
+      }
+    } catch (error) {
+      // Log but don't fail - blocking is optional optimization
+      this.emit('error', error instanceof Error ? error : new Error(String(error)));
+    }
+  }
 
   /**
    * Handle completion result and update internal state
