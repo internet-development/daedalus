@@ -1,11 +1,11 @@
 ---
 # daedalus-0q1i
 title: 'Monitor View: UX improvements (naming, ordering, space utilization)'
-status: in-progress
+status: completed
 type: bug
 priority: normal
 created_at: 2026-01-26T23:13:43Z
-updated_at: 2026-01-27T01:27:30Z
+updated_at: 2026-01-27T01:30:49Z
 parent: daedalus-kvgh
 ---
 
