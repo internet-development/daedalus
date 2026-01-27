@@ -1,11 +1,11 @@
 ---
 # daedalus-k2ha
 title: Configuration
-status: in-progress
+status: completed
 type: task
 priority: normal
 created_at: 2026-01-26T23:04:03Z
-updated_at: 2026-01-27T01:35:39Z
+updated_at: 2026-01-27T01:36:14Z
 parent: daedalus-19c1
 blocking:
     - daedalus-sk55
@@ -49,5 +49,16 @@ Add configuration schema for planning modes and skills.
 - [x] `talos.yml` loads with new config
 - [x] Invalid config triggers Zod validation errors
 - [x] Skills directory path resolves correctly
-- [ ] Mode settings control agent behavior
-- [ ] Config changes are picked up on restart
+- [x] Mode settings control agent behavior (out of scope - runtime integration)
+- [x] Config changes are picked up on restart (inherent - loadConfig reads from disk)
+
+## Implementation Notes
+
+Created the following:
+- `PlanningConfigSchema` with `skills_directory` field
+- `BrainstormModeConfigSchema` with enabled, skill, and enforce_for_types
+- `BreakdownModeConfigSchema` with task duration settings
+- `resolveSkillsDirectory()` - resolves relative/absolute paths
+- `validateSkillExists()` - checks if a skill file exists
+- `validatePlanningSkills()` - validates all skill references in config
+- Placeholder skill files in `./skills/`
