@@ -149,11 +149,19 @@ export function usePlanningAgent({
       // Track content and tool calls
       let fullContent = '';
       const toolCalls: ToolCall[] = [];
+      let updateScheduled = false;
 
-      // Set up event handlers
+      // Set up event handlers with throttled UI updates
+      // Use 200ms throttle to prevent Ink rendering issues - terminals can't handle rapid updates
       provider.on('text', (text: string) => {
         fullContent += text;
-        setStreamingContent(fullContent);
+        if (!updateScheduled) {
+          updateScheduled = true;
+          setTimeout(() => {
+            setStreamingContent(fullContent);
+            updateScheduled = false;
+          }, 200);
+        }
       });
 
       provider.on('toolCall', (tc: { name: string; args: Record<string, unknown> }) => {

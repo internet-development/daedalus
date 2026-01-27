@@ -13,10 +13,13 @@
  * - brainstorm: Socratic questioning workflow for design exploration
  * - breakdown: Task breakdown workflow for implementation planning
  */
-import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, memo } from 'react';
 import { Box, Text, useInput, useStdout } from 'ink';
 import { loadConfig } from '../../config/index.js';
-import { ChatHistory, type ChatMessage, type ToolCall } from '../components/ChatHistory.js';
+import { ChatHistory, StreamingMessage, type ChatMessage, type ToolCall } from '../components/ChatHistory.js';
+
+// Memoized ChatHistory - only re-renders when messages array changes (not during streaming)
+const MemoizedChatHistory = memo(ChatHistory);
 import { ChatInput } from '../components/ChatInput.js';
 import { MultipleChoice } from '../components/MultipleChoice.js';
 import { PromptSelector } from '../components/PromptSelector.js';
@@ -308,20 +311,6 @@ export function PlanView() {
   // Layout dimensions no longer calculated from terminal height
   // Views use flexGrow to fill available space instead
 
-  // Combine messages with streaming content
-  const displayMessages = useMemo(() => {
-    const result = [...messages];
-    if (isStreaming && streamingContent) {
-      result.push({
-        role: 'assistant',
-        content: streamingContent,
-        timestamp: Date.now(),
-        isStreaming: true,
-      });
-    }
-    return result;
-  }, [messages, isStreaming, streamingContent]);
-
   // Prompt selector overlay
   if (showPromptSelector) {
     return (
@@ -419,18 +408,16 @@ export function PlanView() {
       </Box>
 
       {/* Mode-specific hint and skill status */}
-      {isStreaming && (
-        <Box marginBottom={1}>
-          <Text color="yellow" dimColor>
-            {MODE_HINTS[mode]}
+      <Box marginBottom={1}>
+        <Text color="yellow" dimColor>
+          {MODE_HINTS[mode]}
+        </Text>
+        {skillStatus.loaded && skillStatus.skillName && (
+          <Text color="magenta" dimColor>
+            {' '}[Skill: {skillStatus.skillName}]
           </Text>
-          {skillStatus.loaded && skillStatus.skillName && (
-            <Text color="magenta" dimColor>
-              {' '}[Skill: {skillStatus.skillName}]
-            </Text>
-          )}
-        </Box>
-      )}
+        )}
+      </Box>
 
       {/* Recent bean operations */}
       {recentBeanOps.length > 0 && (
@@ -477,7 +464,15 @@ export function PlanView() {
             </Text>
           </Box>
         ) : (
-          <ChatHistory messages={displayMessages} width={terminalWidth - 8} />
+          <Box flexDirection="column">
+            {/* Completed messages - memoized to prevent re-render during streaming */}
+            <MemoizedChatHistory messages={messages} width={terminalWidth - 8} />
+
+            {/* Active streaming message - only this re-renders during streaming */}
+            {isStreaming && (
+              <StreamingMessage content={streamingContent} width={terminalWidth - 8} />
+            )}
+          </Box>
         )}
       </Box>
 

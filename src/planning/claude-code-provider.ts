@@ -98,7 +98,7 @@ export interface ClaudeCodeProviderEvents {
  * A single event from the Claude CLI stream-json output
  */
 interface ClaudeStreamEvent {
-  type: 'system' | 'assistant' | 'result' | 'user';
+  type: 'system' | 'assistant' | 'result' | 'user' | 'stream_event';
   subtype?: string;
   message?: {
     content?: Array<{ type: string; text?: string; name?: string; input?: unknown }>;
@@ -107,6 +107,19 @@ interface ClaudeStreamEvent {
   };
   result?: string;
   session_id?: string;
+  // For stream_event type (with --include-partial-messages)
+  event?: {
+    type: string;
+    index?: number;
+    delta?: {
+      type: string;
+      text?: string;
+    };
+    content_block?: {
+      type: string;
+      text?: string;
+    };
+  };
 }
 
 /**
@@ -386,16 +399,17 @@ export class ClaudeCodeProvider extends EventEmitter {
       : message;
     debug('send', 'Built full prompt', { promptLength: fullPrompt.length, prompt: fullPrompt.slice(0, 500) });
 
-    // Build CLI arguments
+    // Build CLI arguments - prompt MUST come first due to CLI parsing issues with long args
     const args = [
+      fullPrompt, // Prompt first - required when using long --append-system-prompt
       '--print',
       '--output-format', 'stream-json',
       '--verbose',
+      '--include-partial-messages', // Enable streaming text deltas
       '--append-system-prompt', fullSystemPrompt,
       '--allowedTools', 'Read,Glob,Grep,Bash',
-      fullPrompt,
     ];
-    debug('spawn', 'CLI arguments', { argsCount: args.length, args: args.map((a, i) => i === 5 ? '[system-prompt]' : a) });
+    debug('spawn', 'CLI arguments', { argsCount: args.length, promptLength: fullPrompt.length });
 
     // Spawn the process
     return new Promise((resolve, reject) => {
@@ -403,7 +417,7 @@ export class ClaudeCodeProvider extends EventEmitter {
 
       this.process = spawn('claude', args, {
         cwd: process.cwd(),
-        stdio: ['pipe', 'pipe', 'pipe'],
+        stdio: ['ignore', 'pipe', 'pipe'], // stdin ignored - prompt passed as argument
         env: {
           ...process.env,
           FORCE_COLOR: '0', // Disable colors for clean parsing
@@ -423,6 +437,7 @@ export class ClaudeCodeProvider extends EventEmitter {
       this.fullContent = '';
       let eventCount = 0;
       let stdoutChunks = 0;
+      let doneEmitted = false;
 
       // Handle stdout (stream-json events)
       this.process.stdout?.on('data', (data: Buffer) => {
@@ -453,13 +468,29 @@ export class ClaudeCodeProvider extends EventEmitter {
             hasResult: !!event.result,
           });
 
-          // Handle assistant text
+          // Handle streaming text deltas (with --include-partial-messages)
+          if (event.type === 'stream_event' && event.event) {
+            if (event.event.type === 'content_block_delta' && event.event.delta?.type === 'text_delta') {
+              const text = event.event.delta.text ?? '';
+              if (text) {
+                debug('stream', 'Received text delta', { textLength: text.length, preview: text.slice(0, 50) });
+                this.fullContent += text;
+                this.emit('text', text);
+              }
+            }
+          }
+
+          // Handle assistant text (final message without streaming)
           if (event.type === 'assistant') {
-            const text = extractTextContent(event);
-            if (text) {
-              debug('text', 'Extracted text from assistant message', { textLength: text.length, preview: text.slice(0, 100) });
-              this.fullContent += text;
-              this.emit('text', text);
+            // Only extract text if we haven't been getting stream events
+            // (stream events already built up fullContent incrementally)
+            if (this.fullContent === '') {
+              const text = extractTextContent(event);
+              if (text) {
+                debug('text', 'Extracted text from assistant message (non-streaming)', { textLength: text.length, preview: text.slice(0, 100) });
+                this.fullContent = text;
+                this.emit('text', text);
+              }
             }
 
             // Handle tool calls
@@ -471,9 +502,10 @@ export class ClaudeCodeProvider extends EventEmitter {
           }
 
           // Handle final result
-          if (event.type === 'result') {
+          if (event.type === 'result' && !doneEmitted) {
             debug('result', 'Received result event', { fullContentLength: this.fullContent.length });
             // Result event means we're done
+            doneEmitted = true;
             this.emit('done', this.fullContent);
           }
         }
@@ -514,11 +546,12 @@ export class ClaudeCodeProvider extends EventEmitter {
           this.emit('error', error);
           reject(error);
         } else {
-          // Ensure done is emitted even if no result event
-          if (this.fullContent) {
+          // Ensure done is emitted even if no result event (but only once)
+          if (this.fullContent && !doneEmitted) {
             debug('done', 'Emitting done (from close handler)', { fullContentLength: this.fullContent.length });
+            doneEmitted = true;
             this.emit('done', this.fullContent);
-          } else {
+          } else if (!this.fullContent) {
             debug('warn', 'Process completed but no content was extracted', { eventCount, stdoutChunks });
           }
           resolve();
