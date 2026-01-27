@@ -1,11 +1,11 @@
 ---
 # daedalus-53p0
 title: AgentRunner spawn errors don't trigger completion cleanup
-status: in-progress
+status: completed
 type: bug
 priority: high
 created_at: 2026-01-27T00:09:12Z
-updated_at: 2026-01-27T01:15:03Z
+updated_at: 2026-01-27T01:17:08Z
 parent: daedalus-kfjn
 ---
 
