@@ -18,14 +18,14 @@ import type { Bean, BeanType } from '../talos/beans-client.js';
  * OpenCode backend configuration
  */
 const OpenCodeConfigSchema = z.object({
-  model: z.string().default('anthropic/claude-sonnet-4-20250514'),
+  model: z.string().default('anthropic/claude-opus-4-5-20250514'),
 });
 
 /**
  * Claude backend configuration
  */
 const ClaudeConfigSchema = z.object({
-  model: z.string().default('claude-sonnet-4-20250514'),
+  model: z.string().default('claude-opus-4-5-20250514'),
   dangerously_skip_permissions: z.boolean().default(true),
 });
 
@@ -40,7 +40,7 @@ const CodexConfigSchema = z.object({
  * Agent backend configuration
  */
 const AgentConfigSchema = z.object({
-  backend: z.enum(['opencode', 'claude', 'codex']).default('opencode'),
+  backend: z.enum(['opencode', 'claude', 'codex']).default('claude'),
   opencode: OpenCodeConfigSchema.optional(),
   claude: ClaudeConfigSchema.optional(),
   codex: CodexConfigSchema.optional(),
@@ -108,7 +108,7 @@ const PlanningToolSchema = z.enum([
  */
 const PlanningAgentConfigSchema = z.object({
   provider: z.enum(['anthropic', 'claude', 'openai', 'claude_code']).default('claude'),
-  model: z.string().default('claude-sonnet-4-20250514'),
+  model: z.string().default('claude-opus-4-5-20250514'),
   temperature: z.number().min(0).max(2).default(0.7),
   tools: z.array(PlanningToolSchema).default([
     'read_file',
