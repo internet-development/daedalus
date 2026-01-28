@@ -76,3 +76,10 @@ export {
   type ClaudeCodeProviderEvents,
   type ProviderValidationResult,
 } from './claude-code-provider.js';
+export {
+  PlanningSession,
+  type PlanMode,
+  type PlanningSessionOptions,
+  type PlanningSessionEvents,
+  type TypedPlanningSession,
+} from './planning-session.js';

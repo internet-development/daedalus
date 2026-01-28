@@ -1,10 +1,11 @@
 ---
 # daedalus-9i8d
 title: Create planning-session.ts
-status: todo
+status: completed
 type: task
+priority: normal
 created_at: 2026-01-28T04:03:23Z
-updated_at: 2026-01-28T04:03:23Z
+updated_at: 2026-01-28T04:09:57Z
 parent: daedalus-bji1
 ---
 
@@ -113,16 +114,16 @@ Extract logic from: `src/ui/hooks/usePlanningAgent.ts` (entire file)
 
 ## Checklist
 
-- [ ] Define PlanMode type (or import from system-prompts)
-- [ ] Define PlanningSessionOptions interface
-- [ ] Define PlanningSessionEvents interface
-- [ ] Implement PlanningSession class constructor
-- [ ] Implement setMode/getMode
-- [ ] Implement setSelectedBean/getSelectedBean
-- [ ] Implement isStreaming
-- [ ] Implement sendMessage for claude_code provider
-- [ ] Implement sendMessage for API providers
-- [ ] Implement cancel
-- [ ] Add proper TypeScript event typing
-- [ ] Add exports to src/planning/index.ts
-- [ ] Verify no React imports
+- [x] Define PlanMode type (or import from system-prompts)
+- [x] Define PlanningSessionOptions interface
+- [x] Define PlanningSessionEvents interface
+- [x] Implement PlanningSession class constructor
+- [x] Implement setMode/getMode
+- [x] Implement setSelectedBean/getSelectedBean
+- [x] Implement isStreaming
+- [x] Implement sendMessage for claude_code provider
+- [x] Implement sendMessage for API providers
+- [x] Implement cancel
+- [x] Add proper TypeScript event typing
+- [x] Add exports to src/planning/index.ts
+- [x] Verify no React imports
