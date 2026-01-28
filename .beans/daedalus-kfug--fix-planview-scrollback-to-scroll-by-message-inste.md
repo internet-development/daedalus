@@ -1,10 +1,11 @@
 ---
 # daedalus-kfug
 title: Fix PlanView scrollback to scroll by message instead of by line
-status: completed
+status: scrapped
 type: bug
+priority: normal
 created_at: 2026-01-28T02:18:04Z
-updated_at: 2026-01-28T02:18:04Z
+updated_at: 2026-01-28T03:03:55Z
 ---
 
 ## Problem
