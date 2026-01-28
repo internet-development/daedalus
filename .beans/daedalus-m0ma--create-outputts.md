@@ -1,10 +1,11 @@
 ---
 # daedalus-m0ma
 title: Create output.ts
-status: todo
+status: completed
 type: task
+priority: normal
 created_at: 2026-01-28T04:03:40Z
-updated_at: 2026-01-28T04:03:40Z
+updated_at: 2026-01-28T04:11:13Z
 parent: daedalus-bji1
 ---
 
@@ -118,19 +119,19 @@ export function wrapText(text: string, width: number, indent?: number): string
 
 ## Checklist
 
-- [ ] Define COLORS constant
-- [ ] Implement formatUserMessage
-- [ ] Implement formatAssistantMessage
-- [ ] Implement formatSystemMessage
-- [ ] Implement formatError
-- [ ] Implement formatHeader
-- [ ] Implement formatPrompt
-- [ ] Implement formatDivider
-- [ ] Implement formatHelp
-- [ ] Implement formatSessionList
-- [ ] Implement formatModeList
-- [ ] Implement formatPromptList
-- [ ] Implement formatStatus
-- [ ] Implement formatRelativeTime
-- [ ] Implement wrapText (optional)
-- [ ] Export all functions
+- [x] Define COLORS constant
+- [x] Implement formatUserMessage
+- [x] Implement formatAssistantMessage
+- [x] Implement formatSystemMessage
+- [x] Implement formatError
+- [x] Implement formatHeader
+- [x] Implement formatPrompt
+- [x] Implement formatDivider
+- [x] Implement formatHelp
+- [x] Implement formatSessionList
+- [x] Implement formatModeList
+- [x] Implement formatPromptList
+- [x] Implement formatStatus
+- [x] Implement formatRelativeTime
+- [x] Implement wrapText
+- [x] Export all functions
