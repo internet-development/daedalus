@@ -15,7 +15,7 @@ Integration of superpowers-style planning workflow into daedalus using a three-l
 
 1. Add brainstorm and breakdown modes to Plan View
 2. Use Agent Skills format for portable, reusable workflows
-3. All planning outputs become beans (not markdown files)
+3. All planning outputs become beans (not other types of markdown files)
 4. Hybrid rigor: systematic planning for complex work, flexible for simple tasks
 
 ## Three-Layer Architecture
