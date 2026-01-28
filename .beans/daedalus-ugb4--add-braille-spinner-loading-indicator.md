@@ -1,11 +1,11 @@
 ---
 # daedalus-ugb4
 title: Add braille spinner loading indicator
-status: in-progress
+status: completed
 type: feature
 priority: normal
 created_at: 2026-01-28T01:01:53Z
-updated_at: 2026-01-28T01:29:56Z
+updated_at: 2026-01-28T01:30:21Z
 ---
 
 Add a ThinkingIndicator component that shows an animated braille spinner (⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏) while the AI is processing, before streaming content starts appearing.
@@ -94,9 +94,9 @@ In `src/ui/views/PlanView.tsx`, find the streaming message section (around line 
 - [x] In `src/ui/views/PlanView.tsx`, add import for ThinkingIndicator
 - [x] Update streaming render section to show ThinkingIndicator when `isStreaming && !streamingContent`
 - [x] Run `npm run typecheck` to verify no type errors
-- [ ] Test: send a message, verify spinner shows before text streams
-- [ ] Test: verify spinner disappears when streaming content starts appearing
-- [ ] Commit: `feat(ui): add braille spinner loading indicator`
+- [x] Test: send a message, verify spinner shows before text streams
+- [x] Test: verify spinner disappears when streaming content starts appearing
+- [x] Commit: `feat(ui): add braille spinner loading indicator`
 
 ---
 
