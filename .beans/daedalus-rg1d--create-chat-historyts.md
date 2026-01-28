@@ -1,10 +1,11 @@
 ---
 # daedalus-rg1d
 title: Create chat-history.ts
-status: todo
+status: completed
 type: task
+priority: normal
 created_at: 2026-01-28T04:03:05Z
-updated_at: 2026-01-28T04:03:05Z
+updated_at: 2026-01-28T04:08:54Z
 parent: daedalus-bji1
 ---
 
@@ -99,18 +100,18 @@ Extract logic from: `src/ui/hooks/useChatHistory.ts` (lines 57-122 for helpers, 
 
 ## Checklist
 
-- [ ] Define all types (ChatMessage, ToolCall, ChatSession, ChatHistoryState)
-- [ ] Implement getChatHistoryPath()
-- [ ] Implement loadChatHistory()
-- [ ] Implement saveChatHistory()
-- [ ] Implement generateSessionId()
-- [ ] Implement addMessage()
-- [ ] Implement clearMessages()
-- [ ] Implement switchSession()
-- [ ] Implement createSession()
-- [ ] Implement deleteSession()
-- [ ] Implement renameSession()
-- [ ] Implement getCurrentSession()
-- [ ] Implement getSessionsSortedByDate()
-- [ ] Add exports to src/planning/index.ts
-- [ ] Verify no React imports
+- [x] Define all types (ChatMessage, ToolCall, ChatSession, ChatHistoryState)
+- [x] Implement getChatHistoryPath()
+- [x] Implement loadChatHistory()
+- [x] Implement saveChatHistory()
+- [x] Implement generateSessionId()
+- [x] Implement addMessage()
+- [x] Implement clearMessages()
+- [x] Implement switchSession()
+- [x] Implement createSession()
+- [x] Implement deleteSession()
+- [x] Implement renameSession()
+- [x] Implement getCurrentSession()
+- [x] Implement getSessionsSortedByDate()
+- [x] Add exports to src/planning/index.ts
+- [x] Verify no React imports

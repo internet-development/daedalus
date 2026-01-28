@@ -3,6 +3,24 @@
  *
  * Export all planning-related modules.
  */
+export {
+  getChatHistoryPath,
+  loadChatHistory,
+  saveChatHistory,
+  generateSessionId,
+  addMessage,
+  clearMessages,
+  switchSession,
+  createSession,
+  deleteSession,
+  renameSession,
+  getCurrentSession,
+  getSessionsSortedByDate,
+  type ToolCall,
+  type ChatMessage,
+  type ChatSession,
+  type ChatHistoryState,
+} from './chat-history.js';
 export { loadPrompts, savePrompt, getDefaultPrompts, type CustomPrompt } from './prompts.js';
 export {
   getPlanningAgentSystemPrompt,
