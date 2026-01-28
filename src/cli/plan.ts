@@ -25,7 +25,6 @@ import { Talos } from '../talos/talos.js';
 import {
   formatHeader,
   formatPrompt,
-  formatUserMessage,
   formatError,
   formatSessionList,
 } from './output.js';
@@ -41,6 +40,42 @@ export interface PlanOptions {
   prompt?: string;
   new?: boolean;
   list?: boolean;
+}
+
+// =============================================================================
+// Spinner
+// =============================================================================
+
+const SPINNER_FRAMES = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
+
+interface Spinner {
+  start: () => void;
+  stop: () => void;
+}
+
+function createSpinner(): Spinner {
+  let frameIndex = 0;
+  let intervalId: NodeJS.Timeout | null = null;
+
+  return {
+    start() {
+      if (intervalId) return;
+      process.stdout.write('\x1b[36m' + SPINNER_FRAMES[0] + '\x1b[0m Thinking...');
+      intervalId = setInterval(() => {
+        frameIndex = (frameIndex + 1) % SPINNER_FRAMES.length;
+        // Move cursor back, clear line, write new frame
+        process.stdout.write('\r\x1b[36m' + SPINNER_FRAMES[frameIndex] + '\x1b[0m Thinking...');
+      }, 80);
+    },
+    stop() {
+      if (intervalId) {
+        clearInterval(intervalId);
+        intervalId = null;
+        // Clear the spinner line
+        process.stdout.write('\r\x1b[K');
+      }
+    },
+  };
 }
 
 // =============================================================================
@@ -220,17 +255,13 @@ async function mainLoop(
 // =============================================================================
 
 async function sendAndStream(message: string, ctx: CommandContext): Promise<void> {
-  // Add user message to history
+  // Add user message to history (readline already echoed the input)
   ctx.history = addMessage(ctx.history, {
     role: 'user',
     content: message,
     timestamp: Date.now(),
   });
   ctx.saveHistory();
-
-  // Print user message
-  console.log(formatUserMessage(message));
-  console.log();
 
   // Set up streaming output
   let fullContent = '';
@@ -239,9 +270,14 @@ async function sendAndStream(message: string, ctx: CommandContext): Promise<void
   // Track if we've started writing output
   let hasOutput = false;
 
+  // Start spinner while waiting for first response
+  const spinner = createSpinner();
+  spinner.start();
+
   const textHandler = (text: string) => {
     if (!hasOutput) {
-      // Print prefix once at start
+      // Stop spinner and print prefix once at start
+      spinner.stop();
       process.stdout.write('\x1b[36m\x1b[1mPlanner:\x1b[0m ');
       hasOutput = true;
     }
@@ -267,6 +303,9 @@ async function sendAndStream(message: string, ctx: CommandContext): Promise<void
       ctx.session.sendMessage(message, messages).catch(reject);
     });
 
+    // Stop spinner if still running (no output case)
+    spinner.stop();
+
     // Add newlines after streaming
     if (hasOutput) {
       console.log();
@@ -282,13 +321,16 @@ async function sendAndStream(message: string, ctx: CommandContext): Promise<void
     });
     ctx.saveHistory();
   } catch (err) {
+    // Stop spinner
+    spinner.stop();
+
     // Add newline if we had partial output
     if (hasOutput) {
       console.log();
     }
 
-    const message = err instanceof Error ? err.message : String(err);
-    console.log(formatError(message));
+    const errMessage = err instanceof Error ? err.message : String(err);
+    console.log(formatError(errMessage));
     console.log();
   } finally {
     // Remove listeners for next message

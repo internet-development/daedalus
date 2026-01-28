@@ -2,6 +2,7 @@
  * Session Selector
  *
  * Interactive prompt for selecting or creating chat sessions.
+ * Supports arrow key navigation for better UX.
  */
 import * as readline from 'readline';
 import type { ChatSession } from '../planning/chat-history.js';
@@ -17,7 +18,7 @@ export interface SessionSelection {
 }
 
 // =============================================================================
-// ANSI Helpers (inline to avoid circular deps)
+// ANSI Helpers
 // =============================================================================
 
 const supportsColor = process.stdout.isTTY !== false;
@@ -31,6 +32,149 @@ const bold = (s: string) => c('1', s);
 const dim = (s: string) => c('2', s);
 const green = (s: string) => c('32', s);
 const cyan = (s: string) => c('36', s);
+const inverse = (s: string) => c('7', s);
+
+// ANSI escape codes
+const CLEAR_LINE = '\x1b[2K';
+const CURSOR_UP = (n: number) => `\x1b[${n}A`;
+const CURSOR_DOWN = (n: number) => `\x1b[${n}B`;
+const CURSOR_TO_START = '\r';
+const HIDE_CURSOR = '\x1b[?25l';
+const SHOW_CURSOR = '\x1b[?25h';
+
+// =============================================================================
+// Interactive Selector
+// =============================================================================
+
+interface SelectOption {
+  label: string;
+  value: string | null; // null for "new session"
+  meta?: string;
+}
+
+async function interactiveSelect(
+  title: string,
+  options: SelectOption[],
+  defaultIndex = 0
+): Promise<string | null> {
+  if (!process.stdin.isTTY) {
+    // Fallback to simple number input if not a TTY
+    return simpleSelect(title, options);
+  }
+
+  let selectedIndex = defaultIndex;
+
+  // Render the menu
+  const render = () => {
+    // Move cursor up to redraw (except first render)
+    process.stdout.write(CURSOR_TO_START);
+
+    for (let i = 0; i < options.length; i++) {
+      const opt = options[i];
+      const isSelected = i === selectedIndex;
+      const pointer = isSelected ? green('>') : ' ';
+      const label = isSelected ? bold(opt.label) : opt.label;
+      const meta = opt.meta ? ` ${dim(opt.meta)}` : '';
+
+      process.stdout.write(CLEAR_LINE);
+      console.log(`${pointer} ${label}${meta}`);
+    }
+
+    // Instructions
+    process.stdout.write(CLEAR_LINE);
+    console.log(dim('\n  ↑/↓ to move, Enter to select, q to quit'));
+  };
+
+  // Initial render
+  console.log();
+  console.log(bold(title));
+  console.log(formatDivider(40));
+  process.stdout.write(HIDE_CURSOR);
+  render();
+
+  return new Promise((resolve) => {
+    // Enable raw mode for keypress detection
+    if (process.stdin.setRawMode) {
+      process.stdin.setRawMode(true);
+    }
+    process.stdin.resume();
+
+    const cleanup = () => {
+      process.stdout.write(SHOW_CURSOR);
+      if (process.stdin.setRawMode) {
+        process.stdin.setRawMode(false);
+      }
+      process.stdin.pause();
+      process.stdin.removeListener('data', onKeypress);
+    };
+
+    const onKeypress = (data: Buffer) => {
+      const key = data.toString();
+
+      // Arrow up or k
+      if (key === '\x1b[A' || key === 'k') {
+        selectedIndex = selectedIndex > 0 ? selectedIndex - 1 : options.length - 1;
+        // Move cursor up to redraw
+        process.stdout.write(CURSOR_UP(options.length + 2));
+        render();
+      }
+      // Arrow down or j
+      else if (key === '\x1b[B' || key === 'j') {
+        selectedIndex = selectedIndex < options.length - 1 ? selectedIndex + 1 : 0;
+        process.stdout.write(CURSOR_UP(options.length + 2));
+        render();
+      }
+      // Enter
+      else if (key === '\r' || key === '\n') {
+        cleanup();
+        console.log(); // Extra newline after selection
+        resolve(options[selectedIndex].value);
+      }
+      // q or Escape or Ctrl+C
+      else if (key === 'q' || key === '\x1b' || key === '\x03') {
+        cleanup();
+        console.log();
+        // Default to first option on quit
+        resolve(options[0].value);
+      }
+    };
+
+    process.stdin.on('data', onKeypress);
+  });
+}
+
+// Fallback for non-TTY
+async function simpleSelect(
+  title: string,
+  options: SelectOption[]
+): Promise<string | null> {
+  console.log();
+  console.log(bold(title));
+  console.log(formatDivider(40));
+
+  options.forEach((opt, i) => {
+    const meta = opt.meta ? ` ${dim(opt.meta)}` : '';
+    console.log(`  ${dim(`[${i + 1}]`)} ${opt.label}${meta}`);
+  });
+  console.log();
+
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  });
+
+  return new Promise((resolve) => {
+    rl.question(`Select [1-${options.length}]: `, (answer) => {
+      rl.close();
+      const num = parseInt(answer.trim(), 10);
+      if (num >= 1 && num <= options.length) {
+        resolve(options[num - 1].value);
+      } else {
+        resolve(options[0].value);
+      }
+    });
+  });
+}
 
 // =============================================================================
 // Main Function
@@ -48,72 +192,41 @@ export async function selectSession(
   // Sort sessions by updatedAt descending (most recent first)
   const sorted = [...sessions].sort((a, b) => b.updatedAt - a.updatedAt);
 
-  // Display header
-  console.log();
-  console.log(bold('Planning Sessions'));
-  console.log(formatDivider(40));
-
-  // Display sessions
-  sorted.forEach((session, index) => {
-    const isCurrent = session.id === currentSessionId;
-    const marker = isCurrent ? green('*') : ' ';
-    const num = `[${index + 1}]`;
-    const name = isCurrent ? bold(session.name) : session.name;
+  // Build options
+  const options: SelectOption[] = sorted.map((session) => {
     const msgCount = `${session.messages.length} msg${session.messages.length !== 1 ? 's' : ''}`;
     const timeAgo = formatRelativeTime(session.updatedAt);
+    const current = session.id === currentSessionId ? ' (current)' : '';
 
-    console.log(`${marker} ${dim(num)} ${name} ${dim(`(${msgCount}, ${timeAgo})`)}`);
+    return {
+      label: session.name + current,
+      value: session.id,
+      meta: `${msgCount}, ${timeAgo}`,
+    };
   });
 
   // Add "new session" option
-  const newOptionNum = sorted.length + 1;
-  console.log(`  ${dim(`[${newOptionNum}]`)} ${cyan('Start new session')}`);
-  console.log();
-
-  // Create readline interface
-  const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout,
+  options.push({
+    label: cyan('Start new session'),
+    value: null,
   });
 
-  // Prompt for selection
-  return new Promise((resolve) => {
-    const prompt = () => {
-      rl.question(`Select [1-${newOptionNum}]: `, (answer) => {
-        const trimmed = answer.trim();
+  // Find default (current session or most recent)
+  const defaultIndex = currentSessionId
+    ? sorted.findIndex((s) => s.id === currentSessionId)
+    : 0;
 
-        // Handle empty input - default to most recent session
-        if (trimmed === '' && sorted.length > 0) {
-          rl.close();
-          resolve({ action: 'continue', sessionId: sorted[0].id });
-          return;
-        }
+  const result = await interactiveSelect(
+    'Planning Sessions',
+    options,
+    defaultIndex >= 0 ? defaultIndex : 0
+  );
 
-        const num = parseInt(trimmed, 10);
+  if (result === null) {
+    return { action: 'new' };
+  }
 
-        if (num >= 1 && num <= sorted.length) {
-          // Selected an existing session
-          rl.close();
-          resolve({ action: 'continue', sessionId: sorted[num - 1].id });
-        } else if (num === newOptionNum) {
-          // Selected "new session"
-          rl.close();
-          resolve({ action: 'new' });
-        } else {
-          // Invalid input
-          console.log(dim('Invalid selection, try again.'));
-          prompt();
-        }
-      });
-    };
-
-    // Handle Ctrl+C
-    rl.on('close', () => {
-      // If closed without selection, default to new session
-    });
-
-    prompt();
-  });
+  return { action: 'continue', sessionId: result };
 }
 
 /**
