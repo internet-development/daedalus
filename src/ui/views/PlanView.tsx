@@ -1,9 +1,12 @@
 /**
- * PlanView
+ * PlanView - Hybrid Approach
  *
  * AI-powered planning workbench for creating, refining, and critiquing beans.
- * Central to the Daedalus workflow - all beans originate through structured
- * conversation with a dedicated planning agent and its expert advisors.
+ * 
+ * Uses a hybrid rendering approach:
+ * - Ink renders: header, footer, input, overlays (mode/prompt selectors)
+ * - Raw stdout: chat messages (via useStdout().write())
+ * - This avoids Ink's scroll/overflow limitations
  *
  * Modes:
  * - new: Create new beans through conversation
@@ -13,11 +16,10 @@
  * - brainstorm: Socratic questioning workflow for design exploration
  * - breakdown: Task breakdown workflow for implementation planning
  */
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { Box, Text, useInput, useStdout } from 'ink';
 import { loadConfig } from '../../config/index.js';
-import { ChatHistory, StreamingMessage, type ChatMessage, type ToolCall } from '../components/ChatHistory.js';
-
+import { StreamingMessage, type ToolCall, type ChatMessage } from '../components/ChatHistory.js';
 
 import { ChatInput } from '../components/ChatInput.js';
 import { MultipleChoice } from '../components/MultipleChoice.js';
@@ -28,6 +30,30 @@ import { useChatHistory } from '../hooks/useChatHistory.js';
 import { usePlanningAgent } from '../hooks/usePlanningAgent.js';
 import { validateProvider, type ProviderValidationResult } from '../../planning/claude-code-provider.js';
 import type { Bean } from '../../talos/beans-client.js';
+
+// =============================================================================
+// Helper: Format message for stdout
+// =============================================================================
+
+function formatMessageForStdout(role: 'user' | 'assistant' | 'system', content: string): string {
+  const CYAN = '\x1b[36m';
+  const GREEN = '\x1b[32m';
+  const YELLOW = '\x1b[33m';
+  const BOLD = '\x1b[1m';
+  const RESET = '\x1b[0m';
+  const DIM = '\x1b[2m';
+
+  switch (role) {
+    case 'user':
+      return `${GREEN}${BOLD}You:${RESET} ${content}\n`;
+    case 'assistant':
+      return `${CYAN}${BOLD}Planner:${RESET}\n  ${content.split('\n').join('\n  ')}\n`;
+    case 'system':
+      return `${YELLOW}${DIM}${content}${RESET}\n`;
+    default:
+      return `${content}\n`;
+  }
+}
 
 // =============================================================================
 // Types
@@ -66,16 +92,12 @@ const MODE_HINTS: Record<PlanMode, string> = {
   breakdown: 'Breaking down into child beans...',
 };
 
-// =============================================================================
-// Constants for scrolling
-// =============================================================================
-
-// Number of messages to show at once in the chat view
-const MESSAGES_PER_PAGE = 10;
-
 export function PlanView() {
-  const { stdout } = useStdout();
+  const { stdout, write } = useStdout();
   const terminalWidth = stdout?.columns ?? 80;
+  
+  // Track which messages have been written to stdout
+  const writtenMessagesRef = useRef<Set<number>>(new Set());
 
   // Load config for planning agent settings
   const config = useMemo(() => loadConfig().config, []);
@@ -108,9 +130,6 @@ export function PlanView() {
     phase?: string;
   }>({ loaded: false });
 
-  // Scroll state for chat history
-  const [scrollOffset, setScrollOffset] = useState(0);
-
   // Chat history hook
   const {
     messages,
@@ -119,25 +138,18 @@ export function PlanView() {
     isLoading: historyLoading,
   } = useChatHistory();
 
-  // Calculate visible window for scrolling (message-based)
-  // scrollOffset = number of messages hidden below the view (0 = showing most recent)
-  const { visibleMessages, hasMoreAbove, hasMoreBelow, hiddenAbove, hiddenBelow } = useMemo(() => {
-    if (messages.length === 0) {
-      return { visibleMessages: [] as ChatMessage[], hasMoreAbove: false, hasMoreBelow: false, hiddenAbove: 0, hiddenBelow: 0 };
+  // Write new messages to stdout (hybrid approach)
+  // Messages are written directly to terminal, not rendered by Ink
+  useEffect(() => {
+    if (!write) return;
+    
+    for (const message of messages) {
+      if (!writtenMessagesRef.current.has(message.timestamp)) {
+        writtenMessagesRef.current.add(message.timestamp);
+        write(formatMessageForStdout(message.role, message.content));
+      }
     }
-
-    // Calculate visible range based on message offset
-    const endIdx = messages.length - scrollOffset;
-    const startIdx = Math.max(0, endIdx - MESSAGES_PER_PAGE);
-
-    return {
-      visibleMessages: messages.slice(startIdx, endIdx),
-      hasMoreAbove: startIdx > 0,
-      hasMoreBelow: scrollOffset > 0,
-      hiddenAbove: startIdx,
-      hiddenBelow: scrollOffset,
-    };
-  }, [messages, scrollOffset]);
+  }, [messages, write]);
 
   // Planning agent hook
   const {
@@ -283,6 +295,7 @@ export function PlanView() {
     setPendingChoice(null);
     setRecentBeanOps([]);
     setSkillStatus({ loaded: false });
+    writtenMessagesRef.current.clear();
   }, [clearMessages]);
 
   // Cycle through modes (for Tab/Shift+Tab navigation)
@@ -329,44 +342,6 @@ export function PlanView() {
           handleChoiceSelect(pendingChoice.options[index].value);
         }
         return;
-      }
-
-      // Scroll controls (don't handle when choice is pending)
-      // scrollOffset = messages hidden below (0 = at bottom, showing most recent)
-      if (!pendingChoice) {
-        // Max offset is total messages minus what we show per page (can't scroll past the top)
-        const maxOffset = Math.max(0, messages.length - MESSAGES_PER_PAGE);
-
-        if (key.upArrow && !key.ctrl) {
-          // Scroll up = increase offset (hide more messages below, show older messages)
-          setScrollOffset(o => Math.min(o + 1, maxOffset));
-          return;
-        }
-        if (key.downArrow && !key.ctrl) {
-          // Scroll down = decrease offset (show more recent messages)
-          setScrollOffset(o => Math.max(o - 1, 0));
-          return;
-        }
-        if (key.pageUp) {
-          // Jump up by page size
-          setScrollOffset(o => Math.min(o + MESSAGES_PER_PAGE, maxOffset));
-          return;
-        }
-        if (key.pageDown) {
-          // Jump down by page size
-          setScrollOffset(o => Math.max(o - MESSAGES_PER_PAGE, 0));
-          return;
-        }
-        if (input === 'Home' || (key.ctrl && key.upArrow)) {
-          // Jump to top (oldest messages)
-          setScrollOffset(maxOffset);
-          return;
-        }
-        if (input === 'End' || (key.ctrl && key.downArrow)) {
-          // Jump to bottom (most recent messages)
-          setScrollOffset(0);
-          return;
-        }
       }
     },
     { isActive: !showPromptSelector && !showModeSelector }
@@ -529,42 +504,26 @@ export function PlanView() {
           </Box>
         ) : (
           <Box flexDirection="column">
-            {/* Scroll indicator - above */}
-            {hasMoreAbove && (
+            {/* Messages are written to stdout via useEffect, not rendered here */}
+            {/* Only show streaming content and thinking indicator in Ink */}
+            
+            {messages.length > 0 && !isStreaming && (
               <Box marginLeft={2}>
                 <Text color="gray" dimColor>
-                  ↑ {hiddenAbove} message{hiddenAbove !== 1 ? 's' : ''} above (↑/PgUp to scroll)
+                  {messages.length} message{messages.length !== 1 ? 's' : ''} (scroll up to view history)
                 </Text>
               </Box>
             )}
-
-            {/* Visible messages */}
-            <ChatHistory messages={visibleMessages} width={terminalWidth - 8} />
 
             {/* Active streaming / thinking indicator */}
             {isStreaming && (
-              scrollOffset === 0 ? (
-                streamingContent ? (
-                  <StreamingMessage content={streamingContent} width={terminalWidth - 8} />
-                ) : (
-                  <Box marginLeft={2}>
-                    <ThinkingIndicator />
-                  </Box>
-                )
+              streamingContent ? (
+                <StreamingMessage content={streamingContent} width={terminalWidth - 8} />
               ) : (
                 <Box marginLeft={2}>
-                  <Text color="yellow" dimColor>● New content arriving... (End to view)</Text>
+                  <ThinkingIndicator />
                 </Box>
               )
-            )}
-
-            {/* Scroll indicator - below */}
-            {hasMoreBelow && !isStreaming && (
-              <Box marginLeft={2}>
-                <Text color="gray" dimColor>
-                  ↓ {hiddenBelow} message{hiddenBelow !== 1 ? 's' : ''} below (↓/End to scroll)
-                </Text>
-              </Box>
             )}
           </Box>
         )}
