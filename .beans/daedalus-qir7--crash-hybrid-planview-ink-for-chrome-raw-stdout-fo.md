@@ -1,11 +1,11 @@
 ---
 # daedalus-qir7
 title: 'Crash: Hybrid PlanView: Ink for chrome, raw stdout for chat'
-status: todo
+status: scrapped
 type: bug
 priority: high
 created_at: 2026-01-28T03:31:51Z
-updated_at: 2026-01-28T03:32:01Z
+updated_at: 2026-01-28T04:23:52Z
 parent: daedalus-lfsz
 blocking:
     - daedalus-jk4h

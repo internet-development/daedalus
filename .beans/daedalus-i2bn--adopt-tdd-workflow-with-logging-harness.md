@@ -30,7 +30,6 @@ Shift the daedalus project to use Test-Driven Development (TDD) practices, and b
 - Debug mode that captures detailed traces
 
 ## Dependencies
-- Depends on: Research testing strategy bean (need to know testing approach first)
 - Blocks: Future feature development should follow TDD
 
 ## Checklist

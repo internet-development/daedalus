@@ -1,10 +1,11 @@
 ---
 # daedalus-chpa
 title: Research and implement testing strategy for Ink-based TUI
-status: draft
+status: scrapped
 type: task
+priority: normal
 created_at: 2026-01-27T09:28:23Z
-updated_at: 2026-01-27T09:28:23Z
+updated_at: 2026-01-28T04:23:52Z
 ---
 
 Research how other Ink-based CLI tools handle testing, and develop a testing strategy for daedalus.

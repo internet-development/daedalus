@@ -1,11 +1,11 @@
 ---
 # daedalus-1m6o
 title: 'Crash: Phase 1: Use Static component for chat messages'
-status: todo
+status: scrapped
 type: bug
 priority: high
 created_at: 2026-01-28T03:08:39Z
-updated_at: 2026-01-28T03:13:22Z
+updated_at: 2026-01-28T04:23:52Z
 parent: daedalus-lfsz
 blocking:
     - daedalus-9vn5
