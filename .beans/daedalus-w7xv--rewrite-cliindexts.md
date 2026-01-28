@@ -1,10 +1,11 @@
 ---
 # daedalus-w7xv
 title: Rewrite cli/index.ts
-status: todo
+status: completed
 type: task
+priority: normal
 created_at: 2026-01-28T04:05:27Z
-updated_at: 2026-01-28T04:05:27Z
+updated_at: 2026-01-28T04:15:14Z
 parent: daedalus-gu7g
 ---
 

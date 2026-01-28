@@ -1,10 +1,11 @@
 ---
 # daedalus-kgmw
 title: Create commands.ts
-status: todo
+status: completed
 type: task
+priority: normal
 created_at: 2026-01-28T04:04:19Z
-updated_at: 2026-01-28T04:04:19Z
+updated_at: 2026-01-28T04:12:44Z
 parent: daedalus-gu7g
 ---
 

@@ -1,10 +1,11 @@
 ---
 # daedalus-eecu
 title: Create session-selector.ts
-status: todo
+status: completed
 type: task
+priority: normal
 created_at: 2026-01-28T04:03:53Z
-updated_at: 2026-01-28T04:03:53Z
+updated_at: 2026-01-28T04:11:55Z
 parent: daedalus-gu7g
 ---
 

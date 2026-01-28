@@ -1,11 +1,11 @@
 ---
 # daedalus-gu7g
 title: 'Phase 2: Create New CLI'
-status: todo
+status: completed
 type: feature
 priority: normal
 created_at: 2026-01-28T04:02:28Z
-updated_at: 2026-01-28T04:02:47Z
+updated_at: 2026-01-28T04:15:18Z
 parent: daedalus-ty5h
 blocking:
     - daedalus-qj38

@@ -1,11 +1,11 @@
 ---
 # daedalus-bji1
 title: 'Phase 1: Extract Core Logic'
-status: todo
+status: completed
 type: feature
 priority: normal
 created_at: 2026-01-28T04:02:20Z
-updated_at: 2026-01-28T04:02:47Z
+updated_at: 2026-01-28T04:11:18Z
 parent: daedalus-ty5h
 blocking:
     - daedalus-gu7g

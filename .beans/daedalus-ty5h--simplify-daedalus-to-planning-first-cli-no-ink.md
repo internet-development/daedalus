@@ -1,10 +1,11 @@
 ---
 # daedalus-ty5h
 title: Simplify Daedalus to planning-first CLI (no Ink)
-status: in-progress
+status: todo
 type: epic
+priority: normal
 created_at: 2026-01-28T03:48:42Z
-updated_at: 2026-01-28T04:30:00Z
+updated_at: 2026-01-28T04:13:28Z
 ---
 
 ## Summary
