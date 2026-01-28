@@ -1,11 +1,11 @@
 ---
 # daedalus-jhxb
 title: 'Crash: Recently completed beans not shown on monitor startup'
-status: todo
+status: completed
 type: bug
 priority: high
 created_at: 2026-01-28T01:31:04Z
-updated_at: 2026-01-28T01:31:04Z
+updated_at: 2026-01-28T01:32:20Z
 parent: daedalus-lfsz
 blocking:
     - daedalus-sb04
