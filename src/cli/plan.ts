@@ -263,6 +263,9 @@ async function sendAndStream(message: string, ctx: CommandContext): Promise<void
   });
   ctx.saveHistory();
 
+  // Add blank line after user input
+  console.log();
+
   // Set up streaming output
   let fullContent = '';
   const toolCalls: ToolCall[] = [];
