@@ -4,16 +4,18 @@
   "description": "Agentic coding orchestration platform with Talos daemon",
   "type": "module",
   "bin": {
-    "daedalus": "./dist/cli.js"
+    "daedalus": "./dist/cli/index.js"
   },
   "engines": {
     "node": ">=20"
   },
   "license": "MIT",
   "scripts": {
-    "dev": "tsx src/cli.tsx",
+    "dev": "tsx src/cli/index.ts",
+    "dev:old": "tsx src/cli.tsx",
     "build": "tsc",
-    "start": "node dist/cli.js",
+    "start": "node dist/cli/index.js",
+    "start:old": "node dist/cli.js",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
