@@ -13,13 +13,12 @@
  * - brainstorm: Socratic questioning workflow for design exploration
  * - breakdown: Task breakdown workflow for implementation planning
  */
-import React, { useState, useCallback, useMemo, memo } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { Box, Text, useInput, useStdout } from 'ink';
 import { loadConfig } from '../../config/index.js';
 import { ChatHistory, StreamingMessage, type ChatMessage, type ToolCall } from '../components/ChatHistory.js';
 
-// Memoized ChatHistory - only re-renders when messages array changes (not during streaming)
-const MemoizedChatHistory = memo(ChatHistory);
+
 import { ChatInput } from '../components/ChatInput.js';
 import { MultipleChoice } from '../components/MultipleChoice.js';
 import { PromptSelector } from '../components/PromptSelector.js';
@@ -70,9 +69,22 @@ const MODE_HINTS: Record<PlanMode, string> = {
 // Main Component
 // =============================================================================
 
+// Helper function to estimate how many terminal lines a message occupies
+function estimateMessageLines(message: ChatMessage, width: number): number {
+  const contentWidth = width - 10; // Account for margins
+  const lines = message.content.split('\n');
+  let total = 1; // Header line
+  for (const line of lines) {
+    total += Math.max(1, Math.ceil(line.length / contentWidth));
+  }
+  return total + 1; // +1 for margin
+}
+
 export function PlanView() {
   const { stdout } = useStdout();
   const terminalWidth = stdout?.columns ?? 80;
+  const terminalHeight = stdout?.rows ?? 24;
+  const visibleHeight = Math.max(terminalHeight - 10, 5); // Reserve space for header/input/padding
 
   // Load config for planning agent settings
   const config = useMemo(() => loadConfig().config, []);
@@ -105,6 +117,9 @@ export function PlanView() {
     phase?: string;
   }>({ loaded: false });
 
+  // Scroll state for chat history
+  const [scrollOffset, setScrollOffset] = useState(0);
+
   // Chat history hook
   const {
     messages,
@@ -112,6 +127,42 @@ export function PlanView() {
     clearMessages,
     isLoading: historyLoading,
   } = useChatHistory();
+
+  // Calculate visible window for scrolling
+  const { visibleMessages, totalContentLines, hasMoreAbove, hasMoreBelow } = useMemo(() => {
+    if (messages.length === 0) {
+      return { visibleMessages: [] as ChatMessage[], totalContentLines: 0, hasMoreAbove: false, hasMoreBelow: false };
+    }
+
+    // Calculate cumulative line counts from bottom
+    const messageSizes = messages.map(m => estimateMessageLines(m, terminalWidth - 8));
+    const totalLines = messageSizes.reduce((a, b) => a + b, 0);
+
+    // Find visible range based on scrollOffset
+    let linesFromBottom = 0;
+    let startIdx = messages.length;
+    let endIdx = messages.length;
+
+    // Find end index (skip scrollOffset lines from bottom)
+    for (let i = messages.length - 1; i >= 0 && linesFromBottom < scrollOffset; i--) {
+      linesFromBottom += messageSizes[i];
+      endIdx = i;
+    }
+
+    // Find start index (include visibleHeight lines)
+    let visibleLines = 0;
+    for (let i = endIdx - 1; i >= 0 && visibleLines < visibleHeight; i--) {
+      visibleLines += messageSizes[i];
+      startIdx = i;
+    }
+
+    return {
+      visibleMessages: messages.slice(startIdx, endIdx),
+      totalContentLines: totalLines,
+      hasMoreAbove: startIdx > 0,
+      hasMoreBelow: scrollOffset > 0,
+    };
+  }, [messages, scrollOffset, visibleHeight, terminalWidth]);
 
   // Planning agent hook
   const {
@@ -304,6 +355,36 @@ export function PlanView() {
         }
         return;
       }
+
+      // Scroll controls (don't handle when choice is pending)
+      if (!pendingChoice) {
+        const maxOffset = Math.max(0, totalContentLines - visibleHeight);
+
+        if (key.upArrow && !key.ctrl) {
+          setScrollOffset(o => Math.min(o + 1, maxOffset));
+          return;
+        }
+        if (key.downArrow && !key.ctrl) {
+          setScrollOffset(o => Math.max(o - 1, 0));
+          return;
+        }
+        if (key.pageUp) {
+          setScrollOffset(o => Math.min(o + visibleHeight, maxOffset));
+          return;
+        }
+        if (key.pageDown) {
+          setScrollOffset(o => Math.max(o - visibleHeight, 0));
+          return;
+        }
+        if (input === 'Home' || (key.ctrl && key.upArrow)) {
+          setScrollOffset(maxOffset);
+          return;
+        }
+        if (input === 'End' || (key.ctrl && key.downArrow)) {
+          setScrollOffset(0); // Jump to bottom, re-enable auto-scroll
+          return;
+        }
+      }
     },
     { isActive: !showPromptSelector && !showModeSelector }
   );
@@ -465,12 +546,26 @@ export function PlanView() {
           </Box>
         ) : (
           <Box flexDirection="column">
-            {/* Completed messages - memoized to prevent re-render during streaming */}
-            <MemoizedChatHistory messages={messages} width={terminalWidth - 8} />
+            {/* Scroll indicator - above */}
+            {hasMoreAbove && (
+              <Box marginLeft={2}>
+                <Text color="gray" dimColor>↑ More messages above (Page Up to scroll)</Text>
+              </Box>
+            )}
 
-            {/* Active streaming message - only this re-renders during streaming */}
+            {/* Visible messages */}
+            <ChatHistory messages={visibleMessages} width={terminalWidth - 8} />
+
+            {/* Active streaming / thinking indicator */}
             {isStreaming && (
               <StreamingMessage content={streamingContent} width={terminalWidth - 8} />
+            )}
+
+            {/* Scroll indicator - below */}
+            {hasMoreBelow && (
+              <Box marginLeft={2}>
+                <Text color="gray" dimColor>↓ More messages below (End to jump to bottom)</Text>
+              </Box>
             )}
           </Box>
         )}
