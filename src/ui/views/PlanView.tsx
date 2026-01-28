@@ -67,25 +67,15 @@ const MODE_HINTS: Record<PlanMode, string> = {
 };
 
 // =============================================================================
-// Main Component
+// Constants for scrolling
 // =============================================================================
 
-// Helper function to estimate how many terminal lines a message occupies
-function estimateMessageLines(message: ChatMessage, width: number): number {
-  const contentWidth = width - 10; // Account for margins
-  const lines = message.content.split('\n');
-  let total = 1; // Header line
-  for (const line of lines) {
-    total += Math.max(1, Math.ceil(line.length / contentWidth));
-  }
-  return total + 1; // +1 for margin
-}
+// Number of messages to show at once in the chat view
+const MESSAGES_PER_PAGE = 10;
 
 export function PlanView() {
   const { stdout } = useStdout();
   const terminalWidth = stdout?.columns ?? 80;
-  const terminalHeight = stdout?.rows ?? 24;
-  const visibleHeight = Math.max(terminalHeight - 10, 5); // Reserve space for header/input/padding
 
   // Load config for planning agent settings
   const config = useMemo(() => loadConfig().config, []);
@@ -129,41 +119,25 @@ export function PlanView() {
     isLoading: historyLoading,
   } = useChatHistory();
 
-  // Calculate visible window for scrolling
-  const { visibleMessages, totalContentLines, hasMoreAbove, hasMoreBelow } = useMemo(() => {
+  // Calculate visible window for scrolling (message-based)
+  // scrollOffset = number of messages hidden below the view (0 = showing most recent)
+  const { visibleMessages, hasMoreAbove, hasMoreBelow, hiddenAbove, hiddenBelow } = useMemo(() => {
     if (messages.length === 0) {
-      return { visibleMessages: [] as ChatMessage[], totalContentLines: 0, hasMoreAbove: false, hasMoreBelow: false };
+      return { visibleMessages: [] as ChatMessage[], hasMoreAbove: false, hasMoreBelow: false, hiddenAbove: 0, hiddenBelow: 0 };
     }
 
-    // Calculate cumulative line counts from bottom
-    const messageSizes = messages.map(m => estimateMessageLines(m, terminalWidth - 8));
-    const totalLines = messageSizes.reduce((a, b) => a + b, 0);
-
-    // Find visible range based on scrollOffset
-    let linesFromBottom = 0;
-    let startIdx = messages.length;
-    let endIdx = messages.length;
-
-    // Find end index (skip scrollOffset lines from bottom)
-    for (let i = messages.length - 1; i >= 0 && linesFromBottom < scrollOffset; i--) {
-      linesFromBottom += messageSizes[i];
-      endIdx = i;
-    }
-
-    // Find start index (include visibleHeight lines)
-    let visibleLines = 0;
-    for (let i = endIdx - 1; i >= 0 && visibleLines < visibleHeight; i--) {
-      visibleLines += messageSizes[i];
-      startIdx = i;
-    }
+    // Calculate visible range based on message offset
+    const endIdx = messages.length - scrollOffset;
+    const startIdx = Math.max(0, endIdx - MESSAGES_PER_PAGE);
 
     return {
       visibleMessages: messages.slice(startIdx, endIdx),
-      totalContentLines: totalLines,
       hasMoreAbove: startIdx > 0,
       hasMoreBelow: scrollOffset > 0,
+      hiddenAbove: startIdx,
+      hiddenBelow: scrollOffset,
     };
-  }, [messages, scrollOffset, visibleHeight, terminalWidth]);
+  }, [messages, scrollOffset]);
 
   // Planning agent hook
   const {
@@ -358,31 +332,39 @@ export function PlanView() {
       }
 
       // Scroll controls (don't handle when choice is pending)
+      // scrollOffset = messages hidden below (0 = at bottom, showing most recent)
       if (!pendingChoice) {
-        const maxOffset = Math.max(0, totalContentLines - visibleHeight);
+        // Max offset is total messages minus what we show per page (can't scroll past the top)
+        const maxOffset = Math.max(0, messages.length - MESSAGES_PER_PAGE);
 
         if (key.upArrow && !key.ctrl) {
+          // Scroll up = increase offset (hide more messages below, show older messages)
           setScrollOffset(o => Math.min(o + 1, maxOffset));
           return;
         }
         if (key.downArrow && !key.ctrl) {
+          // Scroll down = decrease offset (show more recent messages)
           setScrollOffset(o => Math.max(o - 1, 0));
           return;
         }
         if (key.pageUp) {
-          setScrollOffset(o => Math.min(o + visibleHeight, maxOffset));
+          // Jump up by page size
+          setScrollOffset(o => Math.min(o + MESSAGES_PER_PAGE, maxOffset));
           return;
         }
         if (key.pageDown) {
-          setScrollOffset(o => Math.max(o - visibleHeight, 0));
+          // Jump down by page size
+          setScrollOffset(o => Math.max(o - MESSAGES_PER_PAGE, 0));
           return;
         }
         if (input === 'Home' || (key.ctrl && key.upArrow)) {
+          // Jump to top (oldest messages)
           setScrollOffset(maxOffset);
           return;
         }
         if (input === 'End' || (key.ctrl && key.downArrow)) {
-          setScrollOffset(0); // Jump to bottom, re-enable auto-scroll
+          // Jump to bottom (most recent messages)
+          setScrollOffset(0);
           return;
         }
       }
@@ -550,7 +532,9 @@ export function PlanView() {
             {/* Scroll indicator - above */}
             {hasMoreAbove && (
               <Box marginLeft={2}>
-                <Text color="gray" dimColor>↑ More messages above (Page Up to scroll)</Text>
+                <Text color="gray" dimColor>
+                  ↑ {hiddenAbove} message{hiddenAbove !== 1 ? 's' : ''} above (↑/PgUp to scroll)
+                </Text>
               </Box>
             )}
 
@@ -559,19 +543,27 @@ export function PlanView() {
 
             {/* Active streaming / thinking indicator */}
             {isStreaming && (
-              streamingContent ? (
-                <StreamingMessage content={streamingContent} width={terminalWidth - 8} />
+              scrollOffset === 0 ? (
+                streamingContent ? (
+                  <StreamingMessage content={streamingContent} width={terminalWidth - 8} />
+                ) : (
+                  <Box marginLeft={2}>
+                    <ThinkingIndicator />
+                  </Box>
+                )
               ) : (
                 <Box marginLeft={2}>
-                  <ThinkingIndicator />
+                  <Text color="yellow" dimColor>● New content arriving... (End to view)</Text>
                 </Box>
               )
             )}
 
             {/* Scroll indicator - below */}
-            {hasMoreBelow && (
+            {hasMoreBelow && !isStreaming && (
               <Box marginLeft={2}>
-                <Text color="gray" dimColor>↓ More messages below (End to jump to bottom)</Text>
+                <Text color="gray" dimColor>
+                  ↓ {hiddenBelow} message{hiddenBelow !== 1 ? 's' : ''} below (↓/End to scroll)
+                </Text>
               </Box>
             )}
           </Box>
