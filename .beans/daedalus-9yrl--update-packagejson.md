@@ -1,10 +1,11 @@
 ---
 # daedalus-9yrl
 title: Update package.json
-status: todo
+status: completed
 type: task
+priority: normal
 created_at: 2026-01-28T04:05:59Z
-updated_at: 2026-01-28T04:05:59Z
+updated_at: 2026-01-28T04:19:10Z
 parent: daedalus-qj38
 ---
 

@@ -16,7 +16,7 @@ import { spawn, type ChildProcess, execSync } from 'child_process';
 import { EventEmitter } from 'events';
 import { appendFileSync, mkdirSync, existsSync } from 'fs';
 import { join } from 'path';
-import type { PlanMode } from '../ui/views/PlanView.js';
+import type { PlanMode } from './planning-session.js';
 import type { Bean } from '../talos/beans-client.js';
 import { getPlanningAgentSystemPrompt } from './system-prompts.js';
 

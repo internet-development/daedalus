@@ -14,12 +14,9 @@
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,
-    "jsx": "react-jsx",
-    "jsxImportSource": "react",
     "baseUrl": ".",
     "paths": {
       "@talos/*": ["./src/talos/*"],
-      "@ui/*": ["./src/ui/*"],
       "@config/*": ["./src/config/*"],
       "@cli/*": ["./src/cli/*"]
     }

@@ -1,10 +1,11 @@
 ---
 # daedalus-lz47
 title: Delete src/index.tsx and src/cli.tsx
-status: todo
+status: completed
 type: task
+priority: normal
 created_at: 2026-01-28T04:05:47Z
-updated_at: 2026-01-28T04:05:47Z
+updated_at: 2026-01-28T04:18:52Z
 parent: daedalus-qj38
 ---
 

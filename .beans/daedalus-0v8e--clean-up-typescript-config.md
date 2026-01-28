@@ -1,10 +1,11 @@
 ---
 # daedalus-0v8e
 title: Clean up TypeScript config
-status: todo
+status: completed
 type: task
+priority: normal
 created_at: 2026-01-28T04:06:06Z
-updated_at: 2026-01-28T04:06:06Z
+updated_at: 2026-01-28T04:19:47Z
 parent: daedalus-qj38
 ---
 

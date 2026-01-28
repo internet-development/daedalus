@@ -12,7 +12,7 @@
  * Mode prompts extend the base prompt to provide specialized behavior.
  */
 
-import type { PlanMode } from '../ui/views/PlanView.js';
+import type { PlanMode } from './planning-session.js';
 import type { Bean } from '../talos/beans-client.js';
 
 // =============================================================================
