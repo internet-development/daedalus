@@ -140,16 +140,25 @@ export function PlanView() {
 
   // Write new messages to stdout (hybrid approach)
   // Messages are written directly to terminal, not rendered by Ink
+  const lastWrittenCount = useRef(0);
+  
   useEffect(() => {
     if (!write) return;
     
-    for (const message of messages) {
-      if (!writtenMessagesRef.current.has(message.timestamp)) {
-        writtenMessagesRef.current.add(message.timestamp);
-        write(formatMessageForStdout(message.role, message.content));
-      }
+    // Only write new messages (messages added since last write)
+    const newMessages = messages.slice(lastWrittenCount.current);
+    for (const message of newMessages) {
+      write('\n' + formatMessageForStdout(message.role, message.content));
     }
+    lastWrittenCount.current = messages.length;
   }, [messages, write]);
+  
+  // Reset counter when messages are cleared
+  useEffect(() => {
+    if (messages.length === 0) {
+      lastWrittenCount.current = 0;
+    }
+  }, [messages.length]);
 
   // Planning agent hook
   const {

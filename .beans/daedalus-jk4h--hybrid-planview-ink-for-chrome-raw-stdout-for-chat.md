@@ -3,8 +3,11 @@
 title: 'Hybrid PlanView: Ink for chrome, raw stdout for chat'
 status: in-progress
 type: feature
+priority: normal
+tags:
+    - failed
 created_at: 2026-01-28T03:25:42Z
-updated_at: 2026-01-28T03:25:42Z
+updated_at: 2026-01-28T03:31:51Z
 ---
 
 ## Summary
