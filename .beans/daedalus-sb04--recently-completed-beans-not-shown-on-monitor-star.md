@@ -1,13 +1,13 @@
 ---
 # daedalus-sb04
 title: Recently completed beans not shown on monitor startup
-status: in-progress
+status: completed
 type: bug
 priority: normal
 tags:
     - failed
 created_at: 2026-01-27T08:53:14Z
-updated_at: 2026-01-28T01:31:27Z
+updated_at: 2026-01-28T01:31:37Z
 ---
 
 ## Problem
