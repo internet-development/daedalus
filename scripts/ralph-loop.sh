@@ -13,7 +13,8 @@ NC='\033[0m' # No Color
 
 # Configuration
 AGENT="${TALOS_AGENT:-opencode}"
-MODEL="${TALOS_MODEL:-anthropic/claude-opus-4-5-20251101}"
+OPENCODE_AGENT="${OPENCODE_AGENT:-code}"  # Use the 'code' agent by default
+MODEL="${TALOS_MODEL:-anthropic/claude-sonnet-4-5}"
 MAX_ITERATIONS="${MAX_ITERATIONS:-50}"
 DRY_RUN=false
 ONCE=false
@@ -43,13 +44,14 @@ while [[ $# -gt 0 ]]; do
     echo ""
     echo "Options:"
     echo "  --max-iterations N  Max iterations per bean (default: 50)"
-    echo "  --model, -m MODEL  Model to use (default: anthropic/claude-opus-4-5-20251101)"
+    echo "  --model, -m MODEL  Model to use (default: anthropic/claude-sonnet-4-5)"
     echo "  --dry-run          Show what would be selected, don't run"
     echo "  --once             Complete one bean then exit"
     echo ""
     echo "Environment:"
     echo "  TALOS_AGENT        Agent to use: opencode, claude, codex (default: opencode)"
-    echo "  TALOS_MODEL        Model to use (default: anthropic/claude-opus-4-5-20251101)"
+    echo "  TALOS_MODEL        Model to use (default: anthropic/claude-sonnet-4-5)
+  OPENCODE_AGENT     OpenCode agent to use (default: code)"
     exit 0
     ;;
   -*)
@@ -197,22 +199,24 @@ generate_impl_prompt() {
   children=$(echo "$bean_json" | jq -r '.bean.children // [] | .[] | "- [\(.status)] \(.id): \(.title)"' 2>/dev/null)
 
   cat <<EOF
-You are an autonomous coding agent in a ralph loop. You will be re-prompted
-with this same task until you mark it complete. Your previous work is visible
-in the codebase and git history.
+# Ralph Loop - Autonomous Implementation
+
+You are in a ralph loop implementing bean **$bean_id**. You will be re-prompted
+until the bean is marked complete. Your previous work persists in the codebase
+and git history.
 
 EOF
 
   if [[ -n "$parent_title" ]]; then
     cat <<EOF
-## Context: $parent_title
+## Parent Context: $parent_title
 $parent_body
 
 EOF
   fi
 
   cat <<EOF
-## Current Task: $bean_id
+## Bean: $bean_id
 ### $bean_title
 
 $bean_body
@@ -230,29 +234,28 @@ EOF
   cat <<EOF
 ---
 
-## Your Mission
+## Ralph Loop Protocol
 
-1. Implement the checklist items in the task above
-2. As you complete items, update the bean:
-   \`beans update $bean_id --body "..."\` (change [ ] to [x])
-3. Commit your work with conventional commits:
-   - Type: feature→feat, bug→fix, task→chore
-   - Include "Bean: $bean_id" in the commit body
-4. When ALL items are done: \`beans update $bean_id --status completed\`
+1. **Check git log** to see what you did in previous iterations
+2. **Implement** following TDD (your agent has the workflow built-in)
+3. **Update the bean** as you complete checklist items
+4. **Write changelog** before marking complete (document deviations from spec!)
+5. **Mark complete** when ALL checklist items are done AND changelog is written
 
-## If You Get Stuck
+## If Blocked
 
 If you hit a blocker you cannot resolve:
-1. \`beans update $bean_id --tag blocked\`
-2. \`beans create "Blocker: {description}" -t bug --blocking $bean_id -d "..."\`
-3. Exit cleanly - the loop will stop and a human can help
+\`\`\`bash
+beans update $bean_id --tag blocked
+beans create "Blocker: {description}" -t bug --blocking $bean_id -d "..."
+\`\`\`
+Then exit cleanly - the loop will pause for human help.
 
-## Remember
+## Key Reminders
 
-- You will be re-run if the task isn't complete yet
-- Your changes persist between runs (check git log)
-- Focus on one checklist item at a time
-- Test your changes before marking complete
+- You WILL be re-run if the bean isn't complete
+- Check \`git log --oneline -10\` to see previous iteration work
+- The changelog is MANDATORY before completion
 EOF
 }
 
@@ -274,7 +277,9 @@ generate_review_prompt() {
   ' 2>/dev/null)
 
   cat <<EOF
-You are a senior engineer reviewing completed work before marking a ${bean_type} as done.
+# Ralph Loop - ${bean_type^} Review
+
+You are reviewing **$bean_id** before marking it complete. All children are done.
 
 ## ${bean_type^}: $bean_id
 ### $bean_title
@@ -283,38 +288,38 @@ $bean_body
 
 ---
 
-## Completed Children to Review
+## Completed Children
 
 $children_details
 
 ---
 
-## Your Review Process
+## Review Process
 
-1. **Read each child bean** to understand what should have been implemented
-2. **Read the actual code** - find the files mentioned in each child bean
-3. **Sanity check** the implementations:
-   - Does the code make sense?
-   - Any obvious bugs or issues?
-   - Does it follow project patterns and conventions?
-4. **Run the test suite**: \`npm test\` (or appropriate command)
-5. **Verify integration** between components works correctly
+1. **Read each child's changelog** - understand what was actually implemented
+2. **Verify the code** - check files mentioned in changelogs exist and make sense
+3. **Run the test suite**: \`npm test\`
+4. **Check for integration issues** - do the pieces work together?
 
 ## Outcome
 
-**If everything looks good:**
-- \`beans update $bean_id --status completed\`
+**All good?**
+\`\`\`bash
+beans update $bean_id --status completed
+\`\`\`
 
-**If you find issues:**
-- Create bug beans as children describing each issue:
-  \`beans create "Issue: {description}" -t bug --parent $bean_id -d "..."\`
-- Exit cleanly - the ${bean_type} will wait for bugs to be fixed, then re-review
+**Found issues?**
+\`\`\`bash
+beans create "Issue: {description}" -t bug --parent $bean_id -d "..."
+\`\`\`
+Then exit - the ${bean_type} will wait for fixes.
 
-## Remember
+## Review Guidelines
 
-- You are reviewing, not implementing
-- Be thorough but practical
-- Focus on correctness and integration, not style nitpicks
+- Focus on correctness and integration, not style
+- Check changelogs for deviations from spec
+- Verify tests actually run and pass
+- Be practical - ship if it works
 EOF
 }
 
@@ -337,7 +342,8 @@ run_agent() {
 
   case "$AGENT" in
   opencode)
-    opencode run "$prompt" -m "$MODEL"
+    # Use the 'code' agent which has TDD workflow and changelog requirements built-in
+    opencode run "$prompt" -m "$MODEL" --agent "$OPENCODE_AGENT"
     ;;
   claude)
     claude -p "$prompt" --dangerously-skip-permissions
