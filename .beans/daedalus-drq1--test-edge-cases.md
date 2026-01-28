@@ -1,10 +1,11 @@
 ---
 # daedalus-drq1
 title: Test edge cases
-status: todo
+status: completed
 type: task
+priority: normal
 created_at: 2026-01-28T04:06:47Z
-updated_at: 2026-01-28T04:06:47Z
+updated_at: 2026-01-28T04:20:22Z
 parent: daedalus-fl9w
 ---
 

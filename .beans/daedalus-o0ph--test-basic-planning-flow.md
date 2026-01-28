@@ -1,10 +1,11 @@
 ---
 # daedalus-o0ph
 title: Test basic planning flow
-status: todo
+status: completed
 type: task
+priority: normal
 created_at: 2026-01-28T04:06:16Z
-updated_at: 2026-01-28T04:06:16Z
+updated_at: 2026-01-28T04:20:22Z
 parent: daedalus-fl9w
 ---
 
