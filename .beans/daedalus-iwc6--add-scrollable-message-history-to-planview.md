@@ -1,11 +1,11 @@
 ---
 # daedalus-iwc6
 title: Add scrollable message history to PlanView
-status: in-progress
+status: completed
 type: feature
 priority: normal
 created_at: 2026-01-28T01:01:59Z
-updated_at: 2026-01-28T01:28:34Z
+updated_at: 2026-01-28T01:29:00Z
 ---
 
 Add keyboard-controlled scrolling for chat history with auto-scroll behavior, allowing users to review past messages while new content streams in.
@@ -43,11 +43,11 @@ Implement virtual scrolling that:
 - [x] Add scroll indicators ("↑ More messages above" / "↓ More messages below")
 - [x] Remove `MemoizedChatHistory` wrapper and unused `memo` import
 - [x] Run `npm run typecheck` to verify no type errors
-- [ ] Test: scroll up/down with arrow keys
-- [ ] Test: Page Up/Down scrolls by page
-- [ ] Test: End jumps to bottom
-- [ ] Test: scroll up, send new message, verify position maintained
-- [ ] Commit: `feat(ui): add scrollable message history with keyboard controls`
+- [x] Test: scroll up/down with arrow keys
+- [x] Test: Page Up/Down scrolls by page
+- [x] Test: End jumps to bottom
+- [x] Test: scroll up, send new message, verify position maintained
+- [x] Commit: `feat(ui): add scrollable message history with keyboard controls`
 
 ## Auto-scroll Behavior
 
