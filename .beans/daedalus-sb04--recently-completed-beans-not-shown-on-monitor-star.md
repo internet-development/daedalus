@@ -1,11 +1,13 @@
 ---
 # daedalus-sb04
 title: Recently completed beans not shown on monitor startup
-status: todo
+status: in-progress
 type: bug
 priority: normal
+tags:
+    - failed
 created_at: 2026-01-27T08:53:14Z
-updated_at: 2026-01-27T08:54:06Z
+updated_at: 2026-01-28T01:31:27Z
 ---
 
 ## Problem
@@ -29,10 +31,10 @@ When the Monitor view opens, the "Recently Completed" section should show up to 
 
 ## Checklist
 
-- [ ] Query completed beans at startup in Talos constructor or `start()` method
+- [x] Query completed beans at startup in Talos constructor or `start()` method
   - Filter: `status: ['completed']`
   - Sort by: `updatedAt` descending  
   - Limit: 5 beans
-- [ ] Initialize `recentlyCompleted` with query results
-- [ ] Consider using `listBeans()` from beans-client with appropriate filters
-- [ ] Test: Start Daedalus with completed beans → verify they appear in Monitor
+- [x] Initialize `recentlyCompleted` with query results
+- [x] Consider using `listBeans()` from beans-client with appropriate filters
+- [x] Test: Start Daedalus with completed beans → verify they appear in Monitor

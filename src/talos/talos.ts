@@ -154,6 +154,9 @@ export class Talos extends EventEmitter {
     // Start watcher (loads initial bean state)
     await this.watcher.start();
 
+    // Load recently completed beans from database
+    await this.loadRecentlyCompleted();
+
     // Detect orphaned in-progress beans (crash recovery)
     await this.detectOrphanedBeans();
 
@@ -748,6 +751,31 @@ Title: ${bean.title}`,
     // Keep only last 5
     if (this.recentlyCompleted.length > 5) {
       this.recentlyCompleted = this.recentlyCompleted.slice(0, 5);
+    }
+  }
+
+  /**
+   * Load recently completed beans from the database at startup
+   * Sorted by updatedAt descending, limited to 5
+   */
+  private async loadRecentlyCompleted(): Promise<void> {
+    try {
+      const completedBeans = await listBeans({
+        status: ['completed'],
+      });
+
+      // Sort by updatedAt descending (most recent first)
+      completedBeans.sort((a, b) => {
+        const dateA = new Date(a.updatedAt).getTime();
+        const dateB = new Date(b.updatedAt).getTime();
+        return dateB - dateA;
+      });
+
+      // Take only the first 5
+      this.recentlyCompleted = completedBeans.slice(0, 5);
+    } catch (error) {
+      // Log but don't fail startup - this is non-critical
+      this.emit('error', error instanceof Error ? error : new Error(String(error)));
     }
   }
 
