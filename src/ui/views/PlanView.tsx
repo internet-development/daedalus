@@ -23,6 +23,7 @@ import { ChatInput } from '../components/ChatInput.js';
 import { MultipleChoice } from '../components/MultipleChoice.js';
 import { PromptSelector } from '../components/PromptSelector.js';
 import { ModeSelector } from '../components/ModeSelector.js';
+import { ThinkingIndicator } from '../components/ThinkingIndicator.js';
 import { useChatHistory } from '../hooks/useChatHistory.js';
 import { usePlanningAgent } from '../hooks/usePlanningAgent.js';
 import { validateProvider, type ProviderValidationResult } from '../../planning/claude-code-provider.js';
@@ -558,7 +559,13 @@ export function PlanView() {
 
             {/* Active streaming / thinking indicator */}
             {isStreaming && (
-              <StreamingMessage content={streamingContent} width={terminalWidth - 8} />
+              streamingContent ? (
+                <StreamingMessage content={streamingContent} width={terminalWidth - 8} />
+              ) : (
+                <Box marginLeft={2}>
+                  <ThinkingIndicator />
+                </Box>
+              )
             )}
 
             {/* Scroll indicator - below */}
