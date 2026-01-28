@@ -1,11 +1,11 @@
 ---
 # daedalus-qi88
 title: Simplify PlanView with Static component and session management
-status: draft
+status: scrapped
 type: epic
 priority: normal
 created_at: 2026-01-28T02:58:07Z
-updated_at: 2026-01-28T03:02:35Z
+updated_at: 2026-01-28T03:18:20Z
 ---
 
 ## Summary

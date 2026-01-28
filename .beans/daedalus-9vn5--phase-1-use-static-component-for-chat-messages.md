@@ -1,11 +1,11 @@
 ---
 # daedalus-9vn5
 title: 'Phase 1: Use Static component for chat messages'
-status: todo
+status: scrapped
 type: task
 priority: normal
 created_at: 2026-01-28T03:02:55Z
-updated_at: 2026-01-28T03:03:42Z
+updated_at: 2026-01-28T03:18:16Z
 parent: daedalus-qi88
 blocking:
     - daedalus-09lr

@@ -1,11 +1,11 @@
 ---
 # daedalus-70ye
 title: 'Phase 3: Add /mode and /prompt commands'
-status: todo
+status: scrapped
 type: task
 priority: normal
 created_at: 2026-01-28T03:03:21Z
-updated_at: 2026-01-28T03:03:42Z
+updated_at: 2026-01-28T03:18:23Z
 parent: daedalus-qi88
 blocking:
     - daedalus-w63x

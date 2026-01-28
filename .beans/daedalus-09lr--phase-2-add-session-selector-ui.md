@@ -1,11 +1,11 @@
 ---
 # daedalus-09lr
 title: 'Phase 2: Add session selector UI'
-status: todo
+status: scrapped
 type: task
 priority: normal
 created_at: 2026-01-28T03:03:12Z
-updated_at: 2026-01-28T03:03:42Z
+updated_at: 2026-01-28T03:18:23Z
 parent: daedalus-qi88
 blocking:
     - daedalus-70ye

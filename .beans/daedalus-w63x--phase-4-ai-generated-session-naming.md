@@ -1,10 +1,11 @@
 ---
 # daedalus-w63x
 title: 'Phase 4: AI-generated session naming'
-status: todo
+status: scrapped
 type: task
+priority: normal
 created_at: 2026-01-28T03:03:37Z
-updated_at: 2026-01-28T03:03:37Z
+updated_at: 2026-01-28T03:18:23Z
 parent: daedalus-qi88
 ---
 
