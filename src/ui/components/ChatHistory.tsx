@@ -116,9 +116,7 @@ export function AssistantMessage({ message }: MessageProps) {
 
   return (
     <Box flexDirection="column" marginBottom={1}>
-      <Box>
-        <Text bold color="cyan">Planner: </Text>
-      </Box>
+      <Text bold color="cyan">Planner: </Text>
 
       {/* Tool indicators */}
       {toolIndicators.length > 0 && (
@@ -190,7 +188,7 @@ export function StreamingMessage({ content }: StreamingMessageProps) {
 
   return (
     <Box flexDirection="column" marginBottom={1}>
-      <Text bold color="cyan">Planner: <Text color="yellow" dimColor>(typing...)</Text></Text>
+      <Text bold color="cyan">Planner: </Text>
       <Box marginLeft={2}>
         <Text wrap="wrap">{content}</Text>
       </Box>
