@@ -487,54 +487,24 @@ export function PlanView() {
         <Text color="gray">{'─'.repeat(Math.min(terminalWidth - 6, 70))}</Text>
       </Box>
 
-      {/* Chat history */}
-      <Box flexDirection="column" flexGrow={1} overflowY="hidden">
-        {messages.length === 0 && !isStreaming ? (
-          <Box flexDirection="column">
+      {/* Chat area - messages written to stdout, only streaming shown here */}
+      <Box flexDirection="column">
+        {messages.length === 0 && !isStreaming && (
+          <Box flexDirection="column" marginBottom={1}>
             <Text color="gray">Welcome to the Planning Workbench!</Text>
             <Text color="gray" dimColor>
               Describe what you want to build, and I'll help you plan it.
             </Text>
-            <Box marginTop={1}>
-              <Text color="gray">Tips:</Text>
-            </Box>
-            <Text color="gray" dimColor>
-              • Be specific about the problem you're solving
-            </Text>
-            <Text color="gray" dimColor>
-              • I'll research your codebase and consult expert advisors
-            </Text>
-            <Text color="gray" dimColor>
-              • Press <Text color="cyan">Ctrl+P</Text> for custom prompts
-            </Text>
-            <Text color="gray" dimColor>
-              • Press <Text color="cyan">Tab</Text> to cycle modes
-            </Text>
           </Box>
-        ) : (
-          <Box flexDirection="column">
-            {/* Messages are written to stdout via useEffect, not rendered here */}
-            {/* Only show streaming content and thinking indicator in Ink */}
-            
-            {messages.length > 0 && !isStreaming && (
-              <Box marginLeft={2}>
-                <Text color="gray" dimColor>
-                  {messages.length} message{messages.length !== 1 ? 's' : ''} (scroll up to view history)
-                </Text>
-              </Box>
-            )}
+        )}
 
-            {/* Active streaming / thinking indicator */}
-            {isStreaming && (
-              streamingContent ? (
-                <StreamingMessage content={streamingContent} width={terminalWidth - 8} />
-              ) : (
-                <Box marginLeft={2}>
-                  <ThinkingIndicator />
-                </Box>
-              )
-            )}
-          </Box>
+        {/* Streaming content / thinking indicator */}
+        {isStreaming && (
+          streamingContent ? (
+            <StreamingMessage content={streamingContent} width={terminalWidth - 8} />
+          ) : (
+            <ThinkingIndicator />
+          )
         )}
       </Box>
 

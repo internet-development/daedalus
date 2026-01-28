@@ -181,6 +181,17 @@ export function App({ initialView }: AppProps) {
     );
   }
 
+  // Plan view uses hybrid rendering - no fixed height so stdout writes work
+  if (view === 'plan') {
+    return (
+      <Box flexDirection="column">
+        <Header currentView={view} queueCount={queueCount} runningCount={runningCount} stuckCount={stuckCount} isPaused={isPaused} />
+        <PlanView />
+        <StatusBar currentView={view} isPaused={isPaused} />
+      </Box>
+    );
+  }
+
   return (
     <Box flexDirection="column" height={terminalHeight}>
       <Header currentView={view} queueCount={queueCount} runningCount={runningCount} stuckCount={stuckCount} isPaused={isPaused} />
@@ -196,7 +207,6 @@ export function App({ initialView }: AppProps) {
       >
         {view === 'monitor' && <MonitorView />}
         {view === 'execute' && <ExecuteView />}
-        {view === 'plan' && <PlanView />}
       </Box>
 
       <StatusBar currentView={view} isPaused={isPaused} />
