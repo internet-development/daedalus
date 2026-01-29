@@ -186,8 +186,37 @@ program
 program
   .command('stop')
   .description('Stop the Talos daemon')
-  .action(async () => {
-    console.log('stop command - to be implemented');
+  .option('-f, --force', 'Force kill if graceful shutdown fails')
+  .option('-t, --timeout <seconds>', 'Shutdown timeout in seconds', '30')
+  .action(async (options) => {
+    const manager = new DaemonManager();
+
+    // Check if running
+    if (!manager.isRunning()) {
+      console.log('Daemon is not running');
+      process.exit(0);
+    }
+
+    const status = manager.getStatus();
+    console.log('Stopping daemon (PID: %d)...', status?.pid);
+
+    // Attempt graceful shutdown
+    const timeout = parseInt(options.timeout, 10) * 1000;
+    const stopped = await manager.stop(timeout);
+
+    if (stopped) {
+      console.log('Daemon stopped successfully');
+    } else {
+      if (options.force) {
+        console.log('Graceful shutdown failed, force killing...');
+        // Force kill is already done in manager.stop() after timeout
+        console.log('Daemon killed');
+      } else {
+        console.error('Failed to stop daemon gracefully');
+        console.error('Use --force to kill forcefully');
+        process.exit(1);
+      }
+    }
   });
 
 program

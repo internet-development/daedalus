@@ -210,11 +210,25 @@ describe('talos CLI', () => {
       expect(result.stdout).toContain('Stop the Talos daemon');
     });
 
-    test('runs stub action', async () => {
+    test('accepts --force option', async () => {
+      const result = await runTalosCli(['stop', '--help']);
+      
+      expect(result.stdout).toContain('--force');
+      expect(result.stdout).toContain('-f');
+    });
+
+    test('accepts --timeout option', async () => {
+      const result = await runTalosCli(['stop', '--help']);
+      
+      expect(result.stdout).toContain('--timeout');
+      expect(result.stdout).toContain('-t');
+    });
+
+    test('reports daemon not running when no PID file', async () => {
       const result = await runTalosCli(['stop']);
       
       expect(result.exitCode).toBe(0);
-      expect(result.stdout).toContain('stop command - to be implemented');
+      expect(result.stdout).toContain('not running');
     });
   });
 
