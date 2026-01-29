@@ -5,7 +5,8 @@ status: todo
 type: feature
 priority: high
 created_at: 2026-01-28T21:45:46Z
-updated_at: 2026-01-28T22:13:08Z
+updated_at: 2026-01-29T00:13:48Z
+parent: daedalus-5k7n
 ---
 
 Create an OpenCode provider as an alternative to the Claude Code provider for the planning agent. This allows using OpenCode's CLI instead of Claude's CLI for planning sessions.

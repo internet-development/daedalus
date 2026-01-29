@@ -1,11 +1,12 @@
 ---
 # daedalus-963f
 title: Fix beans prime injection for planning vs execution agents
-status: todo
+status: completed
 type: bug
 priority: high
 created_at: 2026-01-28T23:27:37Z
-updated_at: 2026-01-28T23:40:51Z
+updated_at: 2026-01-29T00:13:18Z
+parent: daedalus-5k7n
 ---
 
 ## Problem

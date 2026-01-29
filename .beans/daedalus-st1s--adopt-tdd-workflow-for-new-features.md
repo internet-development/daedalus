@@ -5,7 +5,8 @@ status: todo
 type: epic
 priority: high
 created_at: 2026-01-28T22:15:23Z
-updated_at: 2026-01-28T23:02:04Z
+updated_at: 2026-01-29T00:13:15Z
+parent: daedalus-5k7n
 ---
 
 Establish Test-Driven Development as the standard practice for all new feature work in Daedalus.

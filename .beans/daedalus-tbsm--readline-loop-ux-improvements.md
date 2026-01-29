@@ -5,7 +5,8 @@ status: in-progress
 type: epic
 priority: high
 created_at: 2026-01-28T20:08:18Z
-updated_at: 2026-01-28T22:13:22Z
+updated_at: 2026-01-29T00:13:16Z
+parent: daedalus-5k7n
 ---
 
 Epic for improving the readline-based CLI experience in Daedalus.

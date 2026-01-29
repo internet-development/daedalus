@@ -5,7 +5,8 @@ status: todo
 type: feature
 priority: normal
 created_at: 2026-01-27T09:28:23Z
-updated_at: 2026-01-28T22:16:15Z
+updated_at: 2026-01-29T00:13:48Z
+parent: daedalus-5k7n
 ---
 
 Create a dedicated CLI tool for running and managing the talos daemon, separate from the main daedalus planning CLI.

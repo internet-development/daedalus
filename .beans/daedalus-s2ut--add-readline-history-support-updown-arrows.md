@@ -5,10 +5,9 @@ status: in-progress
 type: feature
 priority: high
 created_at: 2026-01-28T20:06:42Z
-updated_at: 2026-01-28T23:59:11Z
+updated_at: 2026-01-29T00:17:17Z
 parent: daedalus-tbsm
 blocking:
-    - daedalus-m8v6
     - daedalus-4jz1
 ---
 

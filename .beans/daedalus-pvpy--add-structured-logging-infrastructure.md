@@ -1,11 +1,12 @@
 ---
 # daedalus-pvpy
 title: Add structured logging infrastructure
-status: draft
+status: todo
 type: epic
 priority: normal
 created_at: 2026-01-28T22:15:35Z
-updated_at: 2026-01-28T22:15:35Z
+updated_at: 2026-01-29T00:17:20Z
+parent: daedalus-5k7n
 ---
 
 Build a proper logging system to support debugging, monitoring, and development workflows.
