@@ -5,7 +5,7 @@ status: todo
 type: feature
 priority: normal
 created_at: 2026-01-28T20:06:51Z
-updated_at: 2026-01-28T20:08:22Z
+updated_at: 2026-01-29T00:52:36Z
 parent: daedalus-tbsm
 ---
 

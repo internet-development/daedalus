@@ -1,11 +1,11 @@
 ---
 # daedalus-st1s
 title: Adopt TDD workflow for new features
-status: todo
+status: in-progress
 type: epic
 priority: high
 created_at: 2026-01-28T22:15:23Z
-updated_at: 2026-01-29T00:13:15Z
+updated_at: 2026-01-29T00:52:44Z
 parent: daedalus-5k7n
 ---
 
