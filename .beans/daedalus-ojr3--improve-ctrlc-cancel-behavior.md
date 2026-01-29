@@ -1,11 +1,11 @@
 ---
 # daedalus-ojr3
 title: Improve Ctrl+C cancel behavior
-status: in-progress
+status: completed
 type: feature
 priority: low
 created_at: 2026-01-28T20:07:00Z
-updated_at: 2026-01-29T06:41:31Z
+updated_at: 2026-01-29T06:45:55Z
 parent: daedalus-tbsm
 ---
 
