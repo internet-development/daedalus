@@ -240,11 +240,25 @@ describe('talos CLI', () => {
       expect(result.stdout).toContain('Show daemon status');
     });
 
-    test('runs stub action', async () => {
+    test('accepts --json option', async () => {
+      const result = await runTalosCli(['status', '--help']);
+      
+      expect(result.stdout).toContain('--json');
+    });
+
+    test('shows stopped when daemon not running', async () => {
       const result = await runTalosCli(['status']);
       
       expect(result.exitCode).toBe(0);
-      expect(result.stdout).toContain('status command - to be implemented');
+      expect(result.stdout).toContain('stopped');
+    });
+
+    test('outputs JSON when --json flag used and daemon not running', async () => {
+      const result = await runTalosCli(['status', '--json']);
+      
+      expect(result.exitCode).toBe(0);
+      const parsed = JSON.parse(result.stdout);
+      expect(parsed.running).toBe(false);
     });
   });
 

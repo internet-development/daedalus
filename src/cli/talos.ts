@@ -72,6 +72,30 @@ function getLastLines(content: string, n: number): string[] {
   return nonEmptyLines.slice(-n);
 }
 
+/**
+ * Format uptime in milliseconds to human-readable string
+ */
+function formatUptime(ms: number): string {
+  const seconds = Math.floor(ms / 1000);
+  const minutes = Math.floor(seconds / 60);
+  const hours = Math.floor(minutes / 60);
+  const days = Math.floor(hours / 24);
+
+  if (days > 0) {
+    const remainingHours = hours % 24;
+    return `${days}d ${remainingHours}h`;
+  }
+  if (hours > 0) {
+    const remainingMinutes = minutes % 60;
+    return `${hours}h ${remainingMinutes}m`;
+  }
+  if (minutes > 0) {
+    const remainingSeconds = seconds % 60;
+    return `${minutes}m ${remainingSeconds}s`;
+  }
+  return `${seconds}s`;
+}
+
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const packageJson = JSON.parse(
   readFileSync(join(__dirname, '../../package.json'), 'utf-8')
@@ -222,8 +246,45 @@ program
 program
   .command('status')
   .description('Show daemon status')
-  .action(async () => {
-    console.log('status command - to be implemented');
+  .option('--json', 'Output as JSON')
+  .action(async (options) => {
+    const manager = new DaemonManager();
+
+    if (!manager.isRunning()) {
+      if (options.json) {
+        console.log(JSON.stringify({ running: false }, null, 2));
+      } else {
+        console.log('Status: stopped');
+      }
+      process.exit(0);
+    }
+
+    const status = manager.getStatus();
+    if (!status) {
+      console.error('Daemon is running but status unavailable');
+      process.exit(1);
+    }
+
+    const uptime = Date.now() - status.startedAt;
+    const uptimeStr = formatUptime(uptime);
+
+    if (options.json) {
+      console.log(JSON.stringify({
+        running: true,
+        pid: status.pid,
+        startedAt: status.startedAt,
+        uptime: uptime,
+        configPath: status.configPath,
+      }, null, 2));
+    } else {
+      console.log('Status: running');
+      console.log('PID: %d', status.pid);
+      console.log('Uptime: %s', uptimeStr);
+      if (status.configPath) {
+        console.log('Config: %s', status.configPath);
+      }
+      console.log('\nUse "talos logs -f" to view output');
+    }
   });
 
 program
