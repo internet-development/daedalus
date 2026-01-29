@@ -1,11 +1,11 @@
 ---
 # daedalus-ze16
 title: Ctrl+C should clear readline input before exiting
-status: todo
+status: in-progress
 type: bug
 priority: normal
 created_at: 2026-01-29T21:11:07Z
-updated_at: 2026-01-29T22:07:37Z
+updated_at: 2026-01-29T22:10:59Z
 ---
 
 ## Problem
@@ -72,11 +72,11 @@ Generating session name...
 
 ## Checklist
 
-- [ ] Update SIGINT handler in `setupSignalHandlers()` (`src/cli/plan.ts`):
-  - [ ] Add `rl.line` check after multi-line mode check
-  - [ ] If `rl.line` has content: print newline, clear buffer with `rl.write(null, { ctrl: true, name: 'u' })`, re-prompt
-  - [ ] If `rl.line` is empty: proceed with existing `cleanup()` exit
-- [ ] Typecheck passes
+- [x] Update SIGINT handler in `setupSignalHandlers()` (`src/cli/plan.ts`):
+  - [x] Add `rl.line` check after multi-line mode check
+  - [x] If `rl.line` has content: print newline, clear buffer with `rl.write(null, { ctrl: true, name: 'u' })`, re-prompt
+  - [x] If `rl.line` is empty: proceed with existing `cleanup()` exit
+- [x] Typecheck passes
 - [ ] Manual testing:
   - [ ] Type text, Ctrl+C clears the line and shows fresh prompt
   - [ ] Ctrl+C on empty input exits the application
@@ -100,6 +100,23 @@ Generating session name...
 - The SIGINT handler fires outside the main loop's `await question()` flow
 - `rl.prompt()` re-displays the prompt immediately without disrupting the pending question
 - The main loop's `question()` call is still waiting — the next Enter will resolve it
+
+## Changelog
+
+### Implemented
+- Added `rl.line` check to SIGINT handler in `setupSignalHandlers()` so Ctrl+C clears the input line when text is present, and only exits on empty input
+
+### Files Modified
+- `src/cli/plan.ts` — Added `else if` branch checking `(rl as any).line` in the SIGINT handler (lines ~496-501)
+
+### Deviations from Spec
+- None — implementation matches the spec exactly
+
+### Decisions Made
+- Used the exact approach from the bean spec: `rl.write(null, { ctrl: true, name: 'u' })` to clear the buffer, `rl.prompt()` to re-display
+
+### Known Limitations
+- Manual testing checklist items cannot be verified in this automated context — requires human verification
 
 ## Related Beans
 

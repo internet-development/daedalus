@@ -483,7 +483,7 @@ function setupSignalHandlers(
     process.exit(0);
   };
 
-  // Handle Ctrl+C - cancels stream, multi-line input, or exits
+  // Handle Ctrl+C - cancels stream, multi-line input, clears line, or exits
   process.on('SIGINT', () => {
     if (ctx.session.isStreaming()) {
       // Mark as cancelled - sendAndStream will handle the output
@@ -493,6 +493,12 @@ function setupSignalHandlers(
     } else if (isMultilineMode()) {
       cancelMultiline();
       // Re-prompt will happen in the main loop
+    } else if ((rl as any).line && (rl as any).line.length > 0) {
+      // Clear current input line and re-prompt (like bash)
+      // rl.line is undocumented but stable — tracks current input buffer
+      process.stdout.write('\n');
+      rl.write(null, { ctrl: true, name: 'u' }); // Clear line buffer
+      rl.prompt(); // Re-show prompt
     } else {
       cleanup();
     }
