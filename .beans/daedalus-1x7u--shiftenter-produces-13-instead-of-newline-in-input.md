@@ -1,11 +1,11 @@
 ---
 # daedalus-1x7u
 title: Shift+Enter produces '13~' instead of newline in input
-status: completed
+status: scrapped
 type: bug
 priority: normal
 created_at: 2026-01-29T17:06:03Z
-updated_at: 2026-01-29T18:28:04Z
+updated_at: 2026-01-29T20:00:14Z
 ---
 
 ## Problem
