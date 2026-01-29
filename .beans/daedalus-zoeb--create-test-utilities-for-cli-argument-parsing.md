@@ -1,11 +1,11 @@
 ---
 # daedalus-zoeb
 title: Add integration tests for CLI commands
-status: in-progress
+status: completed
 type: task
 priority: high
 created_at: 2026-01-28T22:20:48Z
-updated_at: 2026-01-29T05:13:32Z
+updated_at: 2026-01-29T05:19:44Z
 parent: daedalus-st1s
 blocking:
     - daedalus-lygk
