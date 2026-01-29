@@ -336,7 +336,7 @@ const TOOL_ARGS_MAX_LENGTH = 120;
 /**
  * Normalize tool name for display: strip mcp_ prefix and capitalize.
  */
-function normalizeToolName(name: string): string {
+export function normalizeToolName(name: string): string {
   // Strip mcp_ prefix (e.g. mcp_bash -> bash, mcp_read -> read)
   let normalized = name.startsWith('mcp_') ? name.slice(4) : name;
   // Capitalize first letter (bash -> Bash, read -> Read)
@@ -347,7 +347,7 @@ function normalizeToolName(name: string): string {
 /**
  * Extract the most useful display string from tool args based on tool type.
  */
-function formatToolArgs(name: string, args?: Record<string, unknown>): string {
+export function formatToolArgs(name: string, args?: Record<string, unknown>): string {
   if (!args) return '';
 
   // Normalize name for matching (lowercase, no mcp_ prefix)

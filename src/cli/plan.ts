@@ -28,8 +28,10 @@ import {
   formatContinuationPrompt,
   formatError,
   formatSessionList,
-  formatToolCall,
+  normalizeToolName,
+  formatToolArgs,
 } from './output.js';
+import { createSpinner, createToolSpinner, type ToolSpinner } from './spinner.js';
 import { processInputLine } from './multiline-input.js';
 import { selectSession } from './session-selector.js';
 import { handleCommand, isCommand, type CommandContext } from './commands.js';
@@ -48,42 +50,6 @@ export interface PlanOptions {
   new?: boolean;
   list?: boolean;
   continue?: boolean;
-}
-
-// =============================================================================
-// Spinner
-// =============================================================================
-
-const SPINNER_FRAMES = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
-
-interface Spinner {
-  start: () => void;
-  stop: () => void;
-}
-
-function createSpinner(): Spinner {
-  let frameIndex = 0;
-  let intervalId: NodeJS.Timeout | null = null;
-
-  return {
-    start() {
-      if (intervalId) return;
-      process.stdout.write('\x1b[36m' + SPINNER_FRAMES[0] + '\x1b[0m Thinking...');
-      intervalId = setInterval(() => {
-        frameIndex = (frameIndex + 1) % SPINNER_FRAMES.length;
-        // Move cursor back, clear line, write new frame
-        process.stdout.write('\r\x1b[36m' + SPINNER_FRAMES[frameIndex] + '\x1b[0m Thinking...');
-      }, 80);
-    },
-    stop() {
-      if (intervalId) {
-        clearInterval(intervalId);
-        intervalId = null;
-        // Clear the spinner line
-        process.stdout.write('\r\x1b[K');
-      }
-    },
-  };
 }
 
 // =============================================================================
@@ -325,12 +291,25 @@ async function sendAndStream(
   let hasOutput = false;
   // Track if we just finished a tool call (need newline before next text)
   let afterToolCall = false;
+  // Track active tool spinner (daedalus-pjmp)
+  let activeToolSpinner: ToolSpinner | null = null;
+
+  /** Stop the active tool spinner if one is running (daedalus-pjmp) */
+  const stopToolSpinner = (success: boolean) => {
+    if (activeToolSpinner) {
+      activeToolSpinner.stop(success);
+      activeToolSpinner = null;
+    }
+  };
 
   // Start spinner while waiting for first response
   const spinner = createSpinner();
   spinner.start();
 
   const textHandler = (text: string) => {
+    // Stop any active tool spinner — tool completed successfully (daedalus-pjmp)
+    stopToolSpinner(true);
+
     if (!hasOutput) {
       // Stop spinner and print prefix once at start
       spinner.stop();
@@ -348,7 +327,10 @@ async function sendAndStream(
   const toolCallHandler = (tc: ToolCall) => {
     toolCalls.push(tc);
     
-    // Stop spinner if still running
+    // Stop any active tool spinner from previous tool (daedalus-pjmp)
+    stopToolSpinner(true);
+
+    // Stop "Thinking..." spinner if still running
     spinner.stop();
     
     // Add blank line before first tool call in a group (after text),
@@ -360,8 +342,10 @@ async function sendAndStream(
       hasOutput = true;
     }
     
-    // Display tool call indicator
-    console.log(formatToolCall(tc.name, tc.args));
+    // Start tool spinner with name + command preview (daedalus-pjmp)
+    const toolName = normalizeToolName(tc.name);
+    const argsStr = formatToolArgs(tc.name, tc.args);
+    activeToolSpinner = createToolSpinner(toolName, argsStr);
     
     // Mark that we're after a tool call
     afterToolCall = true;
@@ -391,6 +375,8 @@ async function sendAndStream(
 
     // Check if cancelled
     if (isCancelled()) {
+      // Stop any active tool spinner (daedalus-pjmp)
+      stopToolSpinner(false);
       // Handle cancellation output
       // First, clear the ^C that the terminal echoed by moving to start of line and clearing
       if (hasOutput) {
@@ -406,6 +392,9 @@ async function sendAndStream(
       // Don't save cancelled response to history
       return;
     }
+
+    // Stop any active tool spinner on completion (daedalus-pjmp)
+    stopToolSpinner(true);
 
     // Stop spinner if still running (no output case)
     spinner.stop();
@@ -425,6 +414,9 @@ async function sendAndStream(
     });
     ctx.saveHistory();
   } catch (err) {
+    // Stop any active tool spinner on error (daedalus-pjmp)
+    stopToolSpinner(false);
+
     // Check if this was a cancellation
     if (isCancelled()) {
       // Handle cancellation output
