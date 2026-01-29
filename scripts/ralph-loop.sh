@@ -15,7 +15,7 @@ NC='\033[0m' # No Color
 AGENT="${TALOS_AGENT:-opencode}"
 OPENCODE_AGENT="${OPENCODE_AGENT:-code}"  # Use the 'code' agent by default
 MODEL="${TALOS_MODEL:-anthropic/claude-sonnet-4-5}"
-MAX_ITERATIONS="${MAX_ITERATIONS:-50}"
+MAX_ITERATIONS="${MAX_ITERATIONS:-5}"
 DRY_RUN=false
 ONCE=false
 SPECIFIC_BEAN=""
@@ -43,7 +43,7 @@ while [[ $# -gt 0 ]]; do
     echo "Usage: ralph-loop.sh [bean-id] [options]"
     echo ""
     echo "Options:"
-    echo "  --max-iterations N  Max iterations per bean (default: 50)"
+    echo "  --max-iterations N  Max iterations per bean (default: 5)"
     echo "  --model, -m MODEL  Model to use (default: anthropic/claude-sonnet-4-5)"
     echo "  --dry-run          Show what would be selected, don't run"
     echo "  --once             Complete one bean then exit"
