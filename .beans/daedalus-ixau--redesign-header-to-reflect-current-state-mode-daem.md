@@ -1,11 +1,11 @@
 ---
 # daedalus-ixau
 title: Remove mode from header, always show mode in prompt
-status: in-progress
+status: completed
 type: bug
 priority: normal
 created_at: 2026-01-29T21:15:11Z
-updated_at: 2026-01-29T22:07:56Z
+updated_at: 2026-01-29T22:10:44Z
 ---
 
 ## Problem
