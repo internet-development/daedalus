@@ -38,4 +38,15 @@ describe('toSlug', () => {
     // Should not cut in the middle of a word if possible
     expect(toSlug('Hello World', { maxLength: 8 })).toBe('hello');
   });
+
+  test('preserves existing hyphens in input', () => {
+    expect(toSlug('pre-existing-slug')).toBe('pre-existing-slug');
+    expect(toSlug('kebab-case-title')).toBe('kebab-case-title');
+  });
+
+  test('handles numbers correctly', () => {
+    expect(toSlug('Version 2.0')).toBe('version-20');
+    expect(toSlug('123 Numbers First')).toBe('123-numbers-first');
+    expect(toSlug('Test123Test')).toBe('test123test');
+  });
 });
