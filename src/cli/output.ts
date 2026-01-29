@@ -330,7 +330,109 @@ export function formatStreamingPrefix(): string {
   return c('cyan', c('bold', 'Planner: '));
 }
 
+/** Max length for the args portion of a tool call display */
+const TOOL_ARGS_MAX_LENGTH = 120;
+
+/**
+ * Normalize tool name for display: strip mcp_ prefix and capitalize.
+ */
+function normalizeToolName(name: string): string {
+  // Strip mcp_ prefix (e.g. mcp_bash -> bash, mcp_read -> read)
+  let normalized = name.startsWith('mcp_') ? name.slice(4) : name;
+  // Capitalize first letter (bash -> Bash, read -> Read)
+  normalized = normalized.charAt(0).toUpperCase() + normalized.slice(1);
+  return normalized;
+}
+
+/**
+ * Extract the most useful display string from tool args based on tool type.
+ */
+function formatToolArgs(name: string, args?: Record<string, unknown>): string {
+  if (!args) return '';
+
+  // Normalize name for matching (lowercase, no mcp_ prefix)
+  const normalized = name.startsWith('mcp_') ? name.slice(4).toLowerCase() : name.toLowerCase();
+
+  switch (normalized) {
+    // Bash: show the command directly
+    case 'bash': {
+      const cmd = args.command;
+      if (typeof cmd === 'string') {
+        return truncate(cmd, TOOL_ARGS_MAX_LENGTH);
+      }
+      break;
+    }
+
+    // File tools: show the file path
+    case 'read':
+    case 'write':
+    case 'edit': {
+      const filePath = args.filePath;
+      if (typeof filePath === 'string') {
+        return filePath;
+      }
+      break;
+    }
+
+    // Search tools: show the pattern
+    case 'glob':
+    case 'grep': {
+      const pattern = args.pattern;
+      if (typeof pattern === 'string') {
+        return pattern;
+      }
+      break;
+    }
+
+    // Task: show description
+    case 'task':
+    case 'todowrite': {
+      const desc = args.description;
+      if (typeof desc === 'string') {
+        return desc;
+      }
+      break;
+    }
+
+    // WebFetch: show URL
+    case 'webfetch': {
+      const url = args.url;
+      if (typeof url === 'string') {
+        return url;
+      }
+      break;
+    }
+  }
+
+  // Fallback: show key=value pairs for unknown tools
+  return formatKeyValueArgs(args);
+}
+
+/**
+ * Format args as key=value pairs, truncating long values.
+ */
+function formatKeyValueArgs(args: Record<string, unknown>): string {
+  const pairs: string[] = [];
+  for (const [key, value] of Object.entries(args)) {
+    const strValue = typeof value === 'string' ? value : JSON.stringify(value);
+    const truncatedValue = truncate(strValue, 30);
+    pairs.push(`${key}=${truncatedValue}`);
+  }
+  const result = pairs.join(' ');
+  return truncate(result, TOOL_ARGS_MAX_LENGTH);
+}
+
+/**
+ * Truncate a string to maxLen, adding ellipsis if needed.
+ */
+function truncate(str: string, maxLen: number): string {
+  if (str.length <= maxLen) return str;
+  return str.slice(0, maxLen - 3) + '...';
+}
+
 export function formatToolCall(name: string, args?: Record<string, unknown>): string {
-  const argsStr = args ? ` ${c('dim', JSON.stringify(args).slice(0, 50))}` : '';
-  return c('yellow', `  [Tool: ${name}${argsStr}]`);
+  const displayName = normalizeToolName(name);
+  const argsStr = formatToolArgs(name, args);
+  const suffix = argsStr ? ` ${c('dim', argsStr)}` : '';
+  return c('yellow', `  [Tool: ${displayName}]`) + suffix;
 }
