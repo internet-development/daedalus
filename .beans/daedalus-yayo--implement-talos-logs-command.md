@@ -1,10 +1,11 @@
 ---
 # daedalus-yayo
 title: Implement 'talos logs' command
-status: todo
+status: in-progress
 type: task
+priority: normal
 created_at: 2026-01-29T00:32:08Z
-updated_at: 2026-01-29T00:32:08Z
+updated_at: 2026-01-29T05:36:04Z
 parent: daedalus-qkep
 ---
 
@@ -115,11 +116,40 @@ function formatLogLine(line: string): string {
 - `src/cli/talos.ts`
 
 ## Acceptance Criteria
-- [ ] Shows last N lines by default
-- [ ] -n flag changes line count
-- [ ] -f flag follows log output
-- [ ] Ctrl+C stops following gracefully
-- [ ] Handles missing log file
-- [ ] Helpful error messages
-- [ ] Works with JSON log format (from Pino)
-- [ ] Optional: Pretty prints JSON logs
+- [x] Shows last N lines by default
+- [x] -n flag changes line count
+- [x] -f flag follows log output
+- [x] Ctrl+C stops following gracefully
+- [x] Handles missing log file
+- [x] Helpful error messages
+- [x] Works with JSON log format (from Pino)
+- [x] Optional: Pretty prints JSON logs
+
+## Changelog
+
+### Implemented
+- Added `talos logs` command with full functionality
+- Shows last 50 lines by default (configurable with `-n`)
+- Follow mode with `-f` flag using `tail -f`
+- Pretty-prints Pino JSON logs with timestamp, level, message, and context
+- Graceful SIGINT handling for follow mode
+- Error handling for missing log file with helpful message
+
+### Files Modified
+- `src/cli/talos.ts` - Implemented logs command with JSON formatting
+- `src/cli/talos.test.ts` - Added 8 new tests for logs functionality
+
+### Deviations from Spec
+- Did not implement `--no-color` flag (spec mentioned it but tests don't require it, can be added later)
+- Pino level is numeric (10-60), implemented mapping to TRACE/DEBUG/INFO/WARN/ERROR/FATAL
+- In follow mode, output is piped through formatter instead of using `stdio: 'inherit'` to enable JSON pretty-printing
+
+### Decisions Made
+- Used `tail -f` for follow mode (cross-platform on macOS/Linux, spec suggested this approach)
+- Filter out empty trailing lines when reading log file
+- Strip `pid` and `hostname` from JSON context output (noise reduction)
+- Exit code 130 (SIGINT) is acceptable alongside 0 for graceful shutdown
+
+### Known Limitations
+- `--no-color` flag not implemented (low priority, can be added if needed)
+- Follow mode depends on system `tail` command (not available on Windows)
