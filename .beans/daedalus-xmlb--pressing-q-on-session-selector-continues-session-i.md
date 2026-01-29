@@ -1,11 +1,11 @@
 ---
 # daedalus-xmlb
 title: Pressing 'q' on session selector continues session instead of exiting
-status: in-progress
+status: completed
 type: bug
 priority: normal
 created_at: 2026-01-29T17:06:03Z
-updated_at: 2026-01-29T18:19:42Z
+updated_at: 2026-01-29T18:23:14Z
 ---
 
 ## Problem
