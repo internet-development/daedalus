@@ -1,11 +1,11 @@
 ---
 # daedalus-pvpy
 title: Add structured logging infrastructure
-status: todo
+status: completed
 type: epic
 priority: normal
 created_at: 2026-01-28T22:15:35Z
-updated_at: 2026-01-29T00:17:20Z
+updated_at: 2026-01-29T06:34:05Z
 parent: daedalus-5k7n
 ---
 
