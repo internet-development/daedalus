@@ -1,11 +1,11 @@
 ---
 # daedalus-24uq
 title: /edit should auto-submit and pre-fill with last agent message
-status: in-progress
+status: completed
 type: bug
 priority: normal
 created_at: 2026-01-29T21:11:21Z
-updated_at: 2026-01-29T22:20:01Z
+updated_at: 2026-01-29T22:23:29Z
 ---
 
 ## Problem
