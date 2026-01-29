@@ -30,6 +30,7 @@ import {
 } from './output.js';
 import { selectSession } from './session-selector.js';
 import { handleCommand, isCommand, type CommandContext } from './commands.js';
+import { loadInputHistory, appendToHistory } from './input-history.js';
 
 // =============================================================================
 // Types
@@ -143,10 +144,14 @@ export async function runPlan(options: PlanOptions): Promise<void> {
     }
   }
 
-  // 8. Create readline interface
+  // 8. Load input history and create readline interface
+  const inputHistory = await loadInputHistory();
   const rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout,
+    history: inputHistory,
+    historySize: 1000,
+    removeHistoryDuplicates: true,
   });
 
   // 9. Set up Talos (not started yet - manual start)
@@ -206,6 +211,9 @@ async function mainLoop(
     const input = await question(rl, formatPrompt());
 
     if (!input.trim()) continue;
+
+    // Append to input history (both commands and messages)
+    await appendToHistory(input);
 
     // Check for command
     if (isCommand(input)) {
