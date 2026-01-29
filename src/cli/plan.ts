@@ -36,6 +36,7 @@ import { handleCommand, isCommand, type CommandContext } from './commands.js';
 import { loadInputHistory, appendToHistory } from './input-history.js';
 import { completer } from './completer.js';
 import { generateSessionName as generateSessionNameWithAI } from './session-naming.js';
+import { createShiftEnterTransform } from './stdin-transform.js';
 
 // =============================================================================
 // Types
@@ -163,9 +164,15 @@ export async function runPlan(options: PlanOptions): Promise<void> {
   }
 
   // 8. Load input history and create readline interface
+  //    Pipe stdin through a transform that converts Shift+Enter escape
+  //    sequences into backslash continuation markers. This allows readline
+  //    to keep working normally (history, completion, cursor movement)
+  //    while Shift+Enter triggers multi-line continuation.
   const inputHistory = await loadInputHistory();
+  const stdinTransform = createShiftEnterTransform();
+  process.stdin.pipe(stdinTransform);
   const rl = readline.createInterface({
-    input: process.stdin,
+    input: stdinTransform,
     output: process.stdout,
     history: inputHistory,
     historySize: 1000,
