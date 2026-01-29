@@ -1,11 +1,11 @@
 ---
 # daedalus-ehqe
 title: Add structured logging to daemon components
-status: todo
+status: in-progress
 type: task
 priority: normal
 created_at: 2026-01-29T00:26:01Z
-updated_at: 2026-01-29T00:26:19Z
+updated_at: 2026-01-29T06:23:41Z
 parent: daedalus-pvpy
 blocking:
     - daedalus-yft3
@@ -118,9 +118,41 @@ logger.error({ err: error, beanId }, 'Error occurred');
 - `src/talos/agent-runner.ts`
 
 ## Acceptance Criteria
-- [ ] All console.log replaced with logger calls
-- [ ] Structured context included in all logs
-- [ ] Component name in all logs (via child logger)
-- [ ] Errors logged with full context
-- [ ] Correlation IDs work across components
-- [ ] Logs are readable in both pretty and JSON modes
+- [x] All console.log replaced with logger calls
+- [x] Structured context included in all logs
+- [x] Component name in all logs (via child logger)
+- [x] Errors logged with full context
+- [x] Correlation IDs work across components
+- [x] Logs are readable in both pretty and JSON modes
+
+## Changelog
+
+### Implemented
+- Added structured Pino logging to scheduler.ts with child logger `{ component: 'scheduler' }`
+- Added structured Pino logging to watcher.ts with child logger `{ component: 'watcher' }`
+- Added structured Pino logging to agent-runner.ts with child logger `{ component: 'agent-runner' }`
+- Wrapped agent execution in `withContext()` for automatic correlation ID propagation
+- Created comprehensive test suite for daemon component logging patterns
+
+### Files Modified
+- `src/talos/scheduler.ts` - Added logging for enqueue, dequeue, start/stop, in-progress, complete, stuck, dependency checks
+- `src/talos/watcher.ts` - Added logging for start/stop, file changes, bean create/update/delete, status/tag changes
+- `src/talos/agent-runner.ts` - Added logging for spawn, completion, errors, cancellation with context wrapping
+- `src/talos/daemon-logging.test.ts` - NEW: Test suite for daemon component logging patterns
+
+### Deviations from Spec
+- Used `getLogger()` instead of direct `logger` import (follows singleton pattern established in daedalus-miti)
+- File change detection logged at debug level instead of info (reduces noise in production)
+- Bean updates logged at debug level, only status/tag changes at info level (more practical)
+
+### Decisions Made
+- Log levels chosen based on operational importance:
+  - `info`: Start/stop, bean lifecycle events (enqueue, complete, stuck), agent spawn/exit
+  - `debug`: Dependency checks, file changes, skipped beans, internal state
+  - `warn`: Stuck beans, force kill after grace period
+  - `error`: All error conditions with full context
+- Agent runner wraps entire `run()` method in `withContext()` for correlation ID propagation
+
+### Known Limitations
+- No console.log statements existed in these files to replace (they were already clean)
+- Agent output events are not logged (would be too verbose, emitted via EventEmitter instead)
