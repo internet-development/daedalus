@@ -369,10 +369,18 @@ async function sendAndStream(
   ctx.session.on('toolCall', toolCallHandler);
 
   // Wait for completion
+  // Store references to once-listeners so they can be removed in finally.
+  // Without this, the error listener leaks on every successful message
+  // because .once() only auto-removes when the event fires.
+  let doneHandler: (() => void) | undefined;
+  let errorHandler: ((err: Error) => void) | undefined;
+
   try {
     await new Promise<void>((resolve, reject) => {
-      ctx.session.once('done', () => resolve());
-      ctx.session.once('error', (err) => reject(err));
+      doneHandler = () => resolve();
+      errorHandler = (err: Error) => reject(err);
+      ctx.session.once('done', doneHandler);
+      ctx.session.once('error', errorHandler);
 
       // Send message
       const messages = getCurrentSession(ctx.history)?.messages ?? [];
@@ -447,6 +455,11 @@ async function sendAndStream(
     // Remove listeners for next message
     ctx.session.removeListener('text', textHandler);
     ctx.session.removeListener('toolCall', toolCallHandler);
+    // Remove done/error listeners to prevent accumulation (daedalus-rw19).
+    // .once() only auto-removes when the event fires; on success the error
+    // listener never fires, so it leaks without explicit removal.
+    if (doneHandler) ctx.session.removeListener('done', doneHandler);
+    if (errorHandler) ctx.session.removeListener('error', errorHandler);
     // Reset cancelled state for next message
     resetCancelled();
   }
