@@ -1,11 +1,11 @@
 ---
 # daedalus-mkog
 title: Show context in readline prompt
-status: todo
+status: in-progress
 type: feature
 priority: low
 created_at: 2026-01-28T20:06:55Z
-updated_at: 2026-01-28T20:08:23Z
+updated_at: 2026-01-29T06:34:10Z
 parent: daedalus-tbsm
 ---
 
@@ -61,11 +61,35 @@ const input = await question(rl, formatPrompt(ctx.session.getMode()));
 - `src/cli/plan.ts` - pass mode to `formatPrompt()` in main loop
 
 ## Checklist
-- [ ] Update `formatPrompt()` signature to accept optional `PlanMode`
-- [ ] Return plain `> ` for default mode (`new` or undefined)
-- [ ] Return `[mode] > ` for non-default modes
-- [ ] Style mode name in cyan, brackets in dim
-- [ ] Update main loop to pass `ctx.session.getMode()` to formatPrompt
-- [ ] Test: default mode shows `> `
-- [ ] Test: `/mode brainstorm` changes prompt to `[brainstorm] > `
-- [ ] Test: `/mode new` returns to plain `> `
+- [x] Update `formatPrompt()` signature to accept optional `PlanMode`
+- [x] Return plain `> ` for default mode (`new` or undefined)
+- [x] Return `[mode] > ` for non-default modes
+- [x] Style mode name in cyan, brackets in dim
+- [x] Update main loop to pass `ctx.session.getMode()` to formatPrompt
+- [x] Test: default mode shows `> `
+- [x] Test: `/mode brainstorm` changes prompt to `[brainstorm] > `
+- [x] Test: `/mode new` returns to plain `> `
+
+## Changelog
+
+### Implemented
+- Updated `formatPrompt()` to accept optional `PlanMode` parameter
+- Returns plain `> ` for default mode (`new`) or when mode is undefined
+- Returns `[mode] > ` format for non-default modes (brainstorm, breakdown, refine, critique, sweep)
+- Mode name styled in cyan, brackets styled in dim
+- Updated main loop to pass current mode from session to formatPrompt
+
+### Files Modified
+- `src/cli/output.ts` - Updated `formatPrompt()` signature and implementation
+- `src/cli/output.test.ts` - Added 7 new tests for formatPrompt mode behavior
+- `src/cli/plan.ts` - Updated main loop to pass `ctx.session.getMode()` to formatPrompt
+
+### Deviations from Spec
+- None - implementation matches spec exactly
+
+### Decisions Made
+- Used `stripAnsi` helper in tests to make assertions cleaner and avoid ANSI escape code interference
+- Tests cover all 6 modes: new, brainstorm, breakdown, refine, critique, sweep
+
+### Known Limitations
+- None
