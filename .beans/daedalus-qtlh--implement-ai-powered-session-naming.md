@@ -1,11 +1,11 @@
 ---
 # daedalus-qtlh
 title: Implement AI-powered session naming
-status: todo
+status: completed
 type: feature
 priority: low
 created_at: 2026-01-28T20:07:06Z
-updated_at: 2026-01-28T20:08:24Z
+updated_at: 2026-01-29T06:41:16Z
 parent: daedalus-tbsm
 ---
 
@@ -76,13 +76,45 @@ Direct API call is simpler and more appropriate for this use case.
 - `package.json` - may need `@anthropic-ai/sdk` if not already present
 
 ## Checklist
-- [ ] Check if `@anthropic-ai/sdk` is available or add it
-- [ ] Create naming prompt template
-- [ ] Extract first 2-3 user and assistant messages for context
-- [ ] Make API call with fast model and 5s timeout
-- [ ] Parse response, clean up (trim, remove quotes)
-- [ ] Truncate to 30 chars max
-- [ ] Fall back to heuristic on any error
-- [ ] Test: normal exit generates good name
-- [ ] Test: API timeout falls back gracefully
-- [ ] Test: short sessions (< 2 messages) skip naming
+- [x] Check if `@anthropic-ai/sdk` is available or add it
+- [x] Create naming prompt template
+- [x] Extract first 2-3 user and assistant messages for context
+- [x] Make API call with fast model and 5s timeout
+- [x] Parse response, clean up (trim, remove quotes)
+- [x] Truncate to 30 chars max
+- [x] Fall back to heuristic on any error
+- [x] Test: normal exit generates good name
+- [x] Test: API timeout falls back gracefully
+- [x] Test: short sessions (< 2 messages) skip naming
+
+## Changelog
+
+### Implemented
+- Created new `src/cli/session-naming.ts` module with AI-powered session naming
+- Uses Vercel AI SDK (`ai` + `@ai-sdk/anthropic`) which was already available
+- Implemented `generateNameWithAI()` with 5-second timeout and abort controller
+- Implemented `generateNameHeuristic()` as fallback (first 5 words, capitalized)
+- Implemented `cleanSessionName()` to sanitize AI output (removes quotes, emoji, special chars)
+- Implemented `buildConversationContext()` to extract first 2-3 user/assistant messages
+- Updated `plan.ts` to use the new module
+
+### Files Modified
+- `src/cli/session-naming.ts` - NEW: AI-powered session naming module
+- `src/cli/session-naming.test.ts` - NEW: Comprehensive test suite (33 tests)
+- `src/cli/plan.ts` - Updated to use new session-naming module, removed old heuristic code
+
+### Deviations from Spec
+- Used `@ai-sdk/anthropic` (Vercel AI SDK) instead of `@anthropic-ai/sdk` (direct SDK) since it was already in the project
+- Used `claude-3-5-haiku-latest` model instead of `claude-3-haiku-20240307` (newer, same speed tier)
+- Did NOT add `naming_model` config to `talos.yml` - kept it simple with hardcoded model (can be added later if needed)
+
+### Decisions Made
+- Created separate module (`session-naming.ts`) for better testability and separation of concerns
+- Used `generateText` from AI SDK for simple one-shot call (simpler than streaming)
+- Interleaved user/assistant messages in context for better conversation flow
+- Limited context to 200 chars per message to keep prompt small
+
+### Known Limitations
+- Model is hardcoded (`claude-3-5-haiku-latest`) - not configurable via `talos.yml`
+- Requires `ANTHROPIC_API_KEY` environment variable for AI naming to work
+- AI naming tests are skipped when API key is not available
