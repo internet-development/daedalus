@@ -124,9 +124,20 @@ beans update <id> --parent <parent-id>
 # Add blocking relationship
 beans update <id> --blocking <other-id>
 
-# Update body via GraphQL
-beans query 'mutation { updateBean(id: "<id>", input: { body: "..." }) { id } }'
+#### Updating Bean Body
+
+**Edit the bean file directly** - beans are just markdown files in `.beans/`:
+
+```bash
+# Find the file
+ls .beans/<bean-id>*
+
+# Then use the Edit tool to modify it directly
+# - Change `- [ ]` to `- [x]` for completed items
+# - Add changelog section before completion
 ```
+
+Do NOT use GraphQL mutations or temp files to update bean bodies.
 
 ### Type Hierarchy
 
