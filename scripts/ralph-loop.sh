@@ -18,6 +18,7 @@ MODEL="${TALOS_MODEL:-anthropic/claude-opus-4-5}"
 MAX_ITERATIONS="${MAX_ITERATIONS:-5}"
 DRY_RUN=false
 ONCE=false
+SILENT=false
 SPECIFIC_BEAN=""
 
 # Parse arguments
@@ -39,6 +40,10 @@ while [[ $# -gt 0 ]]; do
     ONCE=true
     shift
     ;;
+  --silent|-s)
+    SILENT=true
+    shift
+    ;;
   --help | -h)
     echo "Usage: ralph-loop.sh [bean-id] [options]"
     echo ""
@@ -47,6 +52,7 @@ while [[ $# -gt 0 ]]; do
     echo "  --model, -m MODEL  Model to use (default: anthropic/claude-sonnet-4-5)"
     echo "  --dry-run          Show what would be selected, don't run"
     echo "  --once             Complete one bean then exit"
+    echo "  --silent, -s       Suppress notifications"
     echo ""
     echo "Environment:"
     echo "  TALOS_AGENT        Agent to use: opencode, claude, codex (default: opencode)"
@@ -67,6 +73,7 @@ done
 
 # Notifications (using terminal-notifier)
 notify() {
+  $SILENT && return
   local title="$1"
   local message="$2"
   local sound="${3:-Ping}"
@@ -75,6 +82,7 @@ notify() {
 }
 
 notify_iteration() {
+  $SILENT && return
   # Just terminal bell for iterations - subtle
   printf '\a'
 }
