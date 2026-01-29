@@ -15,7 +15,13 @@ import {
   type TestBeanData,
 } from '../test-utils/index.js';
 import { runTree, type TreeOptions } from './tree-simple.js';
-import { parseArgs } from './index.js';
+import { parseArgs, parsePlanArgs } from './index.js';
+import {
+  getSessionsSortedByDate,
+  switchSession,
+  createSession,
+  type ChatHistoryState,
+} from '../planning/chat-history.js';
 
 // =============================================================================
 // Test Helpers
@@ -169,6 +175,116 @@ describe('CLI Commands', () => {
       const result = parseArgs([]);
       expect(result.flags).toEqual({});
       expect(result.positional).toEqual([]);
+    });
+
+    test('parses -c flag for continue', () => {
+      const result = parseArgs(['-c']);
+      expect(result.flags.c).toBe(true);
+    });
+
+    test('parses --continue flag', () => {
+      const result = parseArgs(['--continue']);
+      expect(result.flags.continue).toBe(true);
+    });
+  });
+
+  describe('parsePlanArgs', () => {
+    test('parses -c flag as continue option', () => {
+      const result = parsePlanArgs(['-c']);
+      expect(result.continue).toBe(true);
+    });
+
+    test('parses --continue flag as continue option', () => {
+      const result = parsePlanArgs(['--continue']);
+      expect(result.continue).toBe(true);
+    });
+
+    test('continue is undefined when not specified', () => {
+      const result = parsePlanArgs([]);
+      expect(result.continue).toBeUndefined();
+    });
+  });
+
+  describe('Continue Session Logic', () => {
+    test('getSessionsSortedByDate returns most recent first', () => {
+      const state: ChatHistoryState = {
+        currentSessionId: 'old-session',
+        sessions: [
+          {
+            id: 'old-session',
+            name: 'Old Session',
+            messages: [],
+            createdAt: 1000,
+            updatedAt: 1000,
+          },
+          {
+            id: 'recent-session',
+            name: 'Recent Session',
+            messages: [],
+            createdAt: 2000,
+            updatedAt: 3000,
+          },
+          {
+            id: 'middle-session',
+            name: 'Middle Session',
+            messages: [],
+            createdAt: 1500,
+            updatedAt: 2000,
+          },
+        ],
+      };
+
+      const sorted = getSessionsSortedByDate(state);
+      expect(sorted[0].id).toBe('recent-session');
+      expect(sorted[1].id).toBe('middle-session');
+      expect(sorted[2].id).toBe('old-session');
+    });
+
+    test('continue with existing sessions switches to most recent', () => {
+      const state: ChatHistoryState = {
+        currentSessionId: 'old-session',
+        sessions: [
+          {
+            id: 'old-session',
+            name: 'Old Session',
+            messages: [],
+            createdAt: 1000,
+            updatedAt: 1000,
+          },
+          {
+            id: 'recent-session',
+            name: 'Recent Session',
+            messages: [],
+            createdAt: 2000,
+            updatedAt: 3000,
+          },
+        ],
+      };
+
+      // Simulate the continue logic from runPlan
+      const sortedSessions = getSessionsSortedByDate(state);
+      const newState = switchSession(state, sortedSessions[0].id);
+
+      expect(newState.currentSessionId).toBe('recent-session');
+    });
+
+    test('continue with no sessions creates new session', () => {
+      const state: ChatHistoryState = {
+        currentSessionId: null,
+        sessions: [],
+      };
+
+      // Simulate the continue logic from runPlan
+      const sortedSessions = getSessionsSortedByDate(state);
+      let newState: ChatHistoryState;
+      if (sortedSessions.length > 0) {
+        newState = switchSession(state, sortedSessions[0].id);
+      } else {
+        newState = createSession(state);
+      }
+
+      expect(newState.currentSessionId).not.toBeNull();
+      expect(newState.sessions.length).toBe(1);
     });
   });
 

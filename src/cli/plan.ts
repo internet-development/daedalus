@@ -45,6 +45,7 @@ export interface PlanOptions {
   prompt?: string;
   new?: boolean;
   list?: boolean;
+  continue?: boolean;
 }
 
 // =============================================================================
@@ -115,6 +116,15 @@ export async function runPlan(options: PlanOptions): Promise<void> {
   // 5. Session selection
   if (options.new || historyState.sessions.length === 0) {
     historyState = createSession(historyState);
+  } else if (options.continue) {
+    // Continue most recent session (by updatedAt)
+    const sortedSessions = getSessionsSortedByDate(historyState);
+    if (sortedSessions.length > 0) {
+      historyState = switchSession(historyState, sortedSessions[0].id);
+    } else {
+      // No sessions exist, create a new one (same as --new)
+      historyState = createSession(historyState);
+    }
   } else {
     const selection = await selectSession(
       historyState.sessions,

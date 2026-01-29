@@ -58,14 +58,17 @@ export function parseArgs(args: string[]): {
 /**
  * Parse args for the plan command
  */
-function parsePlanArgs(args: string[]): PlanOptions {
+export function parsePlanArgs(args: string[]): PlanOptions {
   const { flags } = parseArgs(args);
+
+  const continueFlag = flags['continue'] === true || flags['c'] === true;
 
   return {
     mode: typeof flags['mode'] === 'string' ? (flags['mode'] as PlanMode) : undefined,
     prompt: typeof flags['prompt'] === 'string' ? flags['prompt'] : undefined,
     new: flags['new'] === true || flags['n'] === true,
     list: flags['list'] === true || flags['l'] === true,
+    continue: continueFlag || undefined,
   };
 }
 
@@ -93,6 +96,7 @@ Planning Options:
   --mode <mode>              Start with mode (new, brainstorm, breakdown, etc.)
   --prompt <name>            Start with custom prompt
   --new, -n                  Start a new session (skip session selector)
+  --continue, -c             Continue most recent session (skip session selector)
   --list, -l                 List all sessions and exit
 
 Tree Options:
@@ -114,6 +118,7 @@ In-Session Commands:
 Examples:
   daedalus                   Start planning with session selector
   daedalus --new             Start fresh planning session
+  daedalus -c                Continue most recent session
   daedalus --mode brainstorm Start in brainstorm mode
   daedalus tree --blocking   Show blocking dependencies
 `);
