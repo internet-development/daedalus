@@ -140,7 +140,7 @@ export async function handleCommand(
 
     case 'prompt':
     case 'p':
-      return handlePrompt(args, ctx);
+      return await handlePrompt(args, ctx);
 
     case 'edit':
     case 'e':
@@ -241,14 +241,38 @@ async function handleMode(args: string, ctx: CommandContext): Promise<CommandRes
   return { type: 'continue' };
 }
 
-function handlePrompt(args: string, ctx: CommandContext): CommandResult {
+async function handlePrompt(args: string, ctx: CommandContext): Promise<CommandResult> {
   if (!args.trim()) {
-    // List all prompts
-    console.log(formatPromptList(ctx.prompts));
+    if (ctx.prompts.length === 0) {
+      console.log('No custom prompts found. Create prompts in .talos/prompts/');
+      return { type: 'continue' };
+    }
+
+    // Interactive prompt selection
+    const options: SelectOption[] = ctx.prompts.map((p) => ({
+      label: p.name,
+      value: p.name,
+      meta: p.description ?? '(no description)',
+    }));
+
+    const result = await interactiveSelect('Available Prompts', options, 0);
+
+    if (result === EXIT_SENTINEL || result === null) {
+      return { type: 'continue' };
+    }
+
+    const prompt = ctx.prompts.find(
+      (p) => p.name === result
+    );
+
+    if (prompt) {
+      return { type: 'send', message: prompt.content };
+    }
+
     return { type: 'continue' };
   }
 
-  // Find and use prompt
+  // Direct prompt usage (existing behavior)
   const promptName = args.trim().toLowerCase();
   const prompt = ctx.prompts.find(
     (p) => p.name.toLowerCase() === promptName
@@ -260,7 +284,6 @@ function handlePrompt(args: string, ctx: CommandContext): CommandResult {
     return { type: 'continue' };
   }
 
-  // Send the prompt content as a message
   return { type: 'send', message: prompt.content };
 }
 
