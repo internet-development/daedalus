@@ -11,6 +11,7 @@
 import pino, { Logger, LoggerOptions, DestinationStream } from 'pino';
 import { createWriteStream } from 'fs';
 import type { LoggingConfig } from '../config/index.js';
+import { executionContext } from './context.js';
 
 // =============================================================================
 // Types
@@ -48,6 +49,11 @@ export function createLogger(options: CreateLoggerOptions = {}): Logger {
     redact: {
       paths: redact,
       censor: '[Redacted]',
+    },
+    // Mixin automatically includes execution context in all logs
+    mixin() {
+      const context = executionContext.getStore();
+      return context || {};
     },
   };
 

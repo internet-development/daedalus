@@ -71,6 +71,12 @@ export {
   logger,
   type CreateLoggerOptions,
 } from './logger.js';
+export {
+  executionContext,
+  withContext,
+  getContext,
+  type ExecutionContext,
+} from './context.js';
 
 // Event types for the daemon
 export type TalosEvent =

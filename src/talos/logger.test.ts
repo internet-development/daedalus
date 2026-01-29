@@ -217,3 +217,182 @@ describe('child loggers', () => {
     expect(logLine.msg).toBe('Task started');
   });
 });
+
+// =============================================================================
+// Context Mixin Integration Tests
+// =============================================================================
+
+describe('context mixin integration', () => {
+  it('automatically includes correlationId from execution context', async () => {
+    const { createLogger } = await import('./logger.js');
+    const { withContext } = await import('./context.js');
+    
+    const chunks: string[] = [];
+    const mockStream = {
+      write: (chunk: string) => {
+        chunks.push(chunk);
+        return true;
+      },
+    };
+
+    const logger = createLogger({
+      destination: mockStream as unknown as NodeJS.WritableStream,
+    });
+
+    await withContext({ correlationId: 'test-correlation-123' }, async () => {
+      logger.info('Test message with context');
+      await new Promise(resolve => setTimeout(resolve, 10));
+    });
+
+    expect(chunks.length).toBeGreaterThan(0);
+    const logLine = JSON.parse(chunks[0]);
+    expect(logLine.correlationId).toBe('test-correlation-123');
+    expect(logLine.msg).toBe('Test message with context');
+  });
+
+  it('automatically includes beanId from execution context', async () => {
+    const { createLogger } = await import('./logger.js');
+    const { withContext } = await import('./context.js');
+    
+    const chunks: string[] = [];
+    const mockStream = {
+      write: (chunk: string) => {
+        chunks.push(chunk);
+        return true;
+      },
+    };
+
+    const logger = createLogger({
+      destination: mockStream as unknown as NodeJS.WritableStream,
+    });
+
+    await withContext({ beanId: 'daedalus-abc1' }, async () => {
+      logger.info('Processing bean');
+      await new Promise(resolve => setTimeout(resolve, 10));
+    });
+
+    expect(chunks.length).toBeGreaterThan(0);
+    const logLine = JSON.parse(chunks[0]);
+    expect(logLine.beanId).toBe('daedalus-abc1');
+  });
+
+  it('automatically includes component from execution context', async () => {
+    const { createLogger } = await import('./logger.js');
+    const { withContext } = await import('./context.js');
+    
+    const chunks: string[] = [];
+    const mockStream = {
+      write: (chunk: string) => {
+        chunks.push(chunk);
+        return true;
+      },
+    };
+
+    const logger = createLogger({
+      destination: mockStream as unknown as NodeJS.WritableStream,
+    });
+
+    await withContext({ component: 'scheduler' }, async () => {
+      logger.info('Scheduler running');
+      await new Promise(resolve => setTimeout(resolve, 10));
+    });
+
+    expect(chunks.length).toBeGreaterThan(0);
+    const logLine = JSON.parse(chunks[0]);
+    expect(logLine.component).toBe('scheduler');
+  });
+
+  it('includes all context fields together', async () => {
+    const { createLogger } = await import('./logger.js');
+    const { withContext } = await import('./context.js');
+    
+    const chunks: string[] = [];
+    const mockStream = {
+      write: (chunk: string) => {
+        chunks.push(chunk);
+        return true;
+      },
+    };
+
+    const logger = createLogger({
+      destination: mockStream as unknown as NodeJS.WritableStream,
+    });
+
+    await withContext({ 
+      correlationId: 'corr-456',
+      beanId: 'daedalus-xyz9',
+      component: 'agent-runner'
+    }, async () => {
+      logger.info('Full context test');
+      await new Promise(resolve => setTimeout(resolve, 10));
+    });
+
+    expect(chunks.length).toBeGreaterThan(0);
+    const logLine = JSON.parse(chunks[0]);
+    expect(logLine.correlationId).toBe('corr-456');
+    expect(logLine.beanId).toBe('daedalus-xyz9');
+    expect(logLine.component).toBe('agent-runner');
+  });
+
+  it('logs without context when outside withContext', async () => {
+    const { createLogger } = await import('./logger.js');
+    
+    const chunks: string[] = [];
+    const mockStream = {
+      write: (chunk: string) => {
+        chunks.push(chunk);
+        return true;
+      },
+    };
+
+    const logger = createLogger({
+      destination: mockStream as unknown as NodeJS.WritableStream,
+    });
+
+    logger.info('No context message');
+    await new Promise(resolve => setTimeout(resolve, 10));
+
+    expect(chunks.length).toBeGreaterThan(0);
+    const logLine = JSON.parse(chunks[0]);
+    expect(logLine.msg).toBe('No context message');
+    // Should not have context fields
+    expect(logLine.correlationId).toBeUndefined();
+    expect(logLine.beanId).toBeUndefined();
+    expect(logLine.component).toBeUndefined();
+  });
+
+  it('context propagates through async operations', async () => {
+    const { createLogger } = await import('./logger.js');
+    const { withContext } = await import('./context.js');
+    
+    const chunks: string[] = [];
+    const mockStream = {
+      write: (chunk: string) => {
+        chunks.push(chunk);
+        return true;
+      },
+    };
+
+    const logger = createLogger({
+      destination: mockStream as unknown as NodeJS.WritableStream,
+    });
+
+    async function innerOperation() {
+      logger.info('Inner operation');
+    }
+
+    await withContext({ beanId: 'async-test' }, async () => {
+      logger.info('Outer operation');
+      await innerOperation();
+      await new Promise(resolve => setTimeout(resolve, 10));
+    });
+
+    expect(chunks.length).toBe(2);
+    
+    const outerLog = JSON.parse(chunks[0]);
+    const innerLog = JSON.parse(chunks[1]);
+    
+    expect(outerLog.beanId).toBe('async-test');
+    expect(innerLog.beanId).toBe('async-test');
+  });
+});
