@@ -1,11 +1,11 @@
 ---
 # daedalus-yft3
 title: Document logging best practices
-status: in-progress
+status: completed
 type: task
 priority: normal
 created_at: 2026-01-29T00:26:14Z
-updated_at: 2026-01-29T06:31:10Z
+updated_at: 2026-01-29T06:32:51Z
 parent: daedalus-pvpy
 ---
 
