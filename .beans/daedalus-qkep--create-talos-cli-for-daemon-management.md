@@ -1,11 +1,11 @@
 ---
 # daedalus-qkep
 title: Create talos CLI for daemon management
-status: in-progress
+status: completed
 type: feature
 priority: normal
 created_at: 2026-01-27T09:28:23Z
-updated_at: 2026-01-29T05:46:01Z
+updated_at: 2026-01-29T06:03:39Z
 parent: daedalus-5k7n
 ---
 
