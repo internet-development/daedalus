@@ -1,11 +1,11 @@
 ---
 # daedalus-zkh6
 title: Interactive selector for /mode command
-status: in-progress
+status: completed
 type: bug
 priority: normal
 created_at: 2026-01-29T21:10:51Z
-updated_at: 2026-01-29T22:11:57Z
+updated_at: 2026-01-29T22:16:44Z
 blocking:
     - daedalus-0msm
 ---
