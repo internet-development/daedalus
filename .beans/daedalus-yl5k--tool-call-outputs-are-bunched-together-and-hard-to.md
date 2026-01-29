@@ -1,11 +1,11 @@
 ---
 # daedalus-yl5k
 title: Tool call outputs are bunched together and hard to read
-status: in-progress
+status: completed
 type: bug
 priority: normal
 created_at: 2026-01-28T20:15:05Z
-updated_at: 2026-01-29T05:32:45Z
+updated_at: 2026-01-29T05:35:46Z
 parent: daedalus-tbsm
 ---
 
