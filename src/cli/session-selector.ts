@@ -13,9 +13,12 @@ import { formatRelativeTime, formatDivider } from './output.js';
 // =============================================================================
 
 export interface SessionSelection {
-  action: 'continue' | 'new';
+  action: 'continue' | 'new' | 'exit';
   sessionId?: string; // Only set if action is 'continue'
 }
+
+// Sentinel value returned by interactiveSelect when user quits
+const EXIT_SENTINEL = '__EXIT__';
 
 // =============================================================================
 // ANSI Helpers
@@ -130,12 +133,16 @@ async function interactiveSelect(
         console.log(); // Extra newline after selection
         resolve(options[selectedIndex].value);
       }
-      // q or Escape or Ctrl+C
-      else if (key === 'q' || key === '\x1b' || key === '\x03') {
+      // q or Escape - exit the application
+      else if (key === 'q' || key === '\x1b') {
         cleanup();
         console.log();
-        // Default to first option on quit
-        resolve(options[0].value);
+        resolve(EXIT_SENTINEL);
+      }
+      // Ctrl+C - exit immediately
+      else if (key === '\x03') {
+        cleanup();
+        process.exit(0);
       }
     };
 
@@ -230,6 +237,10 @@ export async function selectSession(
     options,
     defaultIndex >= 0 ? defaultIndex : 0
   );
+
+  if (result === EXIT_SENTINEL) {
+    return { action: 'exit' };
+  }
 
   if (result === null) {
     return { action: 'new' };

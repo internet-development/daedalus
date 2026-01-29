@@ -131,6 +131,9 @@ export async function runPlan(options: PlanOptions): Promise<void> {
       historyState.sessions,
       historyState.currentSessionId
     );
+    if (selection.action === 'exit') {
+      process.exit(0);
+    }
     if (selection.action === 'new') {
       historyState = createSession(historyState);
     } else if (selection.sessionId) {

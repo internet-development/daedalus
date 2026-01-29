@@ -279,6 +279,10 @@ async function handleSessions(ctx: CommandContext): Promise<CommandResult> {
     ctx.history.currentSessionId
   );
 
+  if (selection.action === 'exit') {
+    return { type: 'quit', generateName: true };
+  }
+
   if (selection.action === 'new') {
     return { type: 'new-session' };
   }
