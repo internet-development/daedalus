@@ -1,11 +1,11 @@
 ---
 # daedalus-yayo
 title: Implement 'talos logs' command
-status: in-progress
+status: completed
 type: task
 priority: normal
 created_at: 2026-01-29T00:32:08Z
-updated_at: 2026-01-29T05:36:04Z
+updated_at: 2026-01-29T05:40:03Z
 parent: daedalus-qkep
 ---
 
