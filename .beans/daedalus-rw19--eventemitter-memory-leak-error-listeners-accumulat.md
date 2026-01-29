@@ -1,11 +1,11 @@
 ---
 # daedalus-rw19
 title: 'EventEmitter memory leak: error listeners accumulate on PlanningSession'
-status: in-progress
+status: completed
 type: bug
 priority: normal
 created_at: 2026-01-29T18:17:59Z
-updated_at: 2026-01-29T18:30:57Z
+updated_at: 2026-01-29T18:33:49Z
 ---
 
 ## Problem
