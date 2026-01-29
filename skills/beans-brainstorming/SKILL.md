@@ -201,6 +201,15 @@ beans create "Title here" \
 
 Set status to `draft` initially - user can promote to `todo` when ready.
 
+### After Bean Creation
+
+After creating the bean, confirm what was created (title, type, ID) and stop. Do **NOT**:
+- Offer to implement or work on the bean
+- Ask "Would you like me to start working on this?"
+- Suggest next implementation steps you would take
+
+Instead, say something like: "Bean created. When you're ready to implement, switch to the code agent."
+
 ### Setting Relationships
 
 If this bean belongs to a parent:
