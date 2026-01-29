@@ -1,11 +1,11 @@
 ---
 # daedalus-pjmp
 title: Add spinner feedback during tool call execution
-status: in-progress
+status: completed
 type: feature
 priority: normal
 created_at: 2026-01-29T17:28:00Z
-updated_at: 2026-01-29T18:40:06Z
+updated_at: 2026-01-29T18:46:56Z
 ---
 
 ## Problem
