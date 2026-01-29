@@ -1,11 +1,11 @@
 ---
 # daedalus-yl5k
 title: Tool call outputs are bunched together and hard to read
-status: todo
+status: in-progress
 type: bug
 priority: normal
 created_at: 2026-01-28T20:15:05Z
-updated_at: 2026-01-28T22:13:09Z
+updated_at: 2026-01-29T05:32:45Z
 parent: daedalus-tbsm
 ---
 
@@ -56,10 +56,40 @@ Modify `sendAndStream()` in `src/cli/plan.ts` to:
 
 ## Checklist
 
-- [ ] Import `formatToolCall` from output.ts into plan.ts
-- [ ] Modify toolCallHandler to display tool call indicator
-- [ ] Track "in tool call" state to manage newlines properly
-- [ ] Add newline before tool call display (if text was streaming)
-- [ ] Add newline after tool call completes before resuming text
-- [ ] Test with various tool calls (beans CLI, file reads, etc.)
-- [ ] Verify Ctrl+C still cancels properly during tool execution
+- [x] Import `formatToolCall` from output.ts into plan.ts
+- [x] Modify toolCallHandler to display tool call indicator
+- [x] Track "in tool call" state to manage newlines properly
+- [x] Add newline before tool call display (if text was streaming)
+- [x] Add newline after tool call completes before resuming text
+- [x] Test with various tool calls (beans CLI, file reads, etc.)
+- [x] Verify Ctrl+C still cancels properly during tool execution
+
+## Changelog
+
+### Implemented
+- Added visual tool call indicators when the planning agent invokes tools
+- Tool calls now display as `[Tool: tool_name {...args}]` in yellow
+- Added proper newline handling before and after tool calls for visual separation
+- Text streaming resumes with a new "Planner:" prefix after tool calls complete
+
+### Files Modified
+- `src/cli/plan.ts` - Modified `sendAndStream()` function:
+  - Added import for `formatToolCall` from output.ts
+  - Added `afterToolCall` state variable to track tool call boundaries
+  - Modified `textHandler` to add newline and prefix after tool calls
+  - Modified `toolCallHandler` to display tool call indicator with proper newlines
+- `src/cli/output.test.ts` - Added tests for `formatToolCall` function
+
+### Deviations from Spec
+- Did not implement tool spinner (spec marked as "optional enhancement")
+- Did not implement "done" indicator after tool calls (spec marked as "optionally")
+- The tool call indicator uses the existing `formatToolCall()` format which truncates args to 50 chars
+
+### Decisions Made
+- Used `console.log()` for tool call display to ensure proper newline handling
+- Reset the "Planner:" prefix after each tool call to clearly show the agent is speaking again
+- Kept the existing spinner for initial response waiting (not replaced with tool-specific spinner)
+
+### Known Limitations
+- Tool call args are truncated to 50 characters in the display
+- No visual indication of tool call duration/completion (just the indicator when it starts)
