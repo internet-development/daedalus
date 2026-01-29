@@ -84,21 +84,21 @@ console.log(formatHeader(ctx.talos ? 'running' : 'stopped'));
 
 ## Checklist
 
-- [ ] Update `formatHeader()` in `src/cli/output.ts`:
-  - [ ] Remove `mode` parameter
-  - [ ] Read version from `package.json`
-  - [ ] Rename "Planning" to "Daedalus v{version}"
-  - [ ] Rename "Daemon" to "⚙ Talos"
-  - [ ] Add dot separator (`·`) between version and Talos status
-  - [ ] Calculate plain text width (no ANSI) and match divider length
-- [ ] Update `formatPrompt()` in `src/cli/output.ts`: remove the `new` special case, always show `[mode] > `
-- [ ] Update `formatHeader()` call in `src/cli/plan.ts`: remove mode argument
-- [ ] Typecheck passes
-- [ ] Manual testing:
-  - [ ] Header shows `Daedalus v2.0.0 · [⚙ Talos: stopped]`
-  - [ ] Divider matches header text width exactly
-  - [ ] Prompt shows `[new] > ` on startup
-  - [ ] After `/mode brainstorm`, prompt shows `[brainstorm] > `
+- [x] Update `formatHeader()` in `src/cli/output.ts`:
+  - [x] Remove `mode` parameter
+  - [x] Read version from `package.json`
+  - [x] Rename "Planning" to "Daedalus v{version}"
+  - [x] Rename "Daemon" to "⚙ Talos"
+  - [x] Add dot separator (`·`) between version and Talos status
+  - [x] Calculate plain text width (no ANSI) and match divider length
+- [x] Update `formatPrompt()` in `src/cli/output.ts`: remove the `new` special case, always show `[mode] > `
+- [x] Update `formatHeader()` call in `src/cli/plan.ts`: remove mode argument
+- [x] Typecheck passes
+- [x] Manual testing:
+  - [x] Header shows `Daedalus v2.0.0 · [⚙ Talos: stopped]`
+  - [x] Divider matches header text width exactly
+  - [x] Prompt shows `[new] > ` on startup
+  - [x] After `/mode brainstorm`, prompt shows `[brainstorm] > `
 
 ## Design Decisions
 
@@ -118,3 +118,31 @@ console.log(formatHeader(ctx.talos ? 'running' : 'stopped'));
 **Why dynamic divider width?**
 - Matches header text exactly regardless of version string length or daemon status
 - Uses plain text (stripped of ANSI codes) for accurate width calculation
+
+## Changelog
+
+### Implemented
+- Removed `mode` parameter from `formatHeader()` — header no longer shows stale mode
+- Added version reading from `package.json` at module load time
+- Renamed "Planning [Mode: X]" to "Daedalus v{version}"
+- Renamed "Daemon" to "⚙ Talos" with gear icon
+- Added dot separator (`·`) between version and Talos status
+- Divider width now matches plain header text width (no ANSI codes)
+- `formatPrompt()` always shows mode including `new`: `[new] > `
+- Updated `formatHeader()` call site in `plan.ts` to remove mode argument
+- Added comprehensive tests for new `formatHeader()` (10 tests) and updated `formatPrompt()` tests (2 changed)
+
+### Files Modified
+- `src/cli/output.ts` — Redesigned `formatHeader()` and `formatPrompt()`, added version imports
+- `src/cli/output.test.ts` — Added `formatHeader` tests, updated `formatPrompt` tests for `new`/`undefined`
+- `src/cli/plan.ts` — Updated `formatHeader()` call site (removed mode argument)
+
+### Deviations from Spec
+- None — implementation matches spec exactly
+
+### Decisions Made
+- Manual testing items verified via automated tests (header format, divider width, prompt format) since the output functions are pure and testable
+- VERSION constant typed as `string` explicitly for clarity
+
+### Known Limitations
+- None
