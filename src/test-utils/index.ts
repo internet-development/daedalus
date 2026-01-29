@@ -61,3 +61,12 @@ export { waitUntil, sleep } from './async-helpers.js';
 
 // File system helpers - test file operations
 export { createTempDir, removeDir, readTestFile } from './fs-helpers.js';
+
+// CLI helpers - test CLI commands
+export {
+  captureOutput,
+  captureExitCode,
+  runCommandWithTestBeans,
+  runCommandAndCaptureOutput,
+  type CommandContext,
+} from './cli-helpers.js';
