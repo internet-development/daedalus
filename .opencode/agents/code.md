@@ -52,13 +52,12 @@ beans update <bean-id> --status in-progress
 
 ### 3. Implement Following TDD
 
-For each checklist item in the bean:
+**First, load the TDD skill** using the skill tool:
+```
+skill({ name: "test-driven-development" })
+```
 
-1. **RED**: Write a failing test first
-2. **Verify RED**: Run the test, watch it fail
-3. **GREEN**: Write minimal code to pass
-4. **Verify GREEN**: Run the test, watch it pass
-5. **REFACTOR**: Clean up while staying green
+Then for each checklist item in the bean, follow the Red-Green-Refactor cycle from the skill.
 
 **No production code without a failing test first.**
 
