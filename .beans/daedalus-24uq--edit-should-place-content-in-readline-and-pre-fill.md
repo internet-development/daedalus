@@ -5,7 +5,7 @@ status: todo
 type: bug
 priority: normal
 created_at: 2026-01-29T21:11:21Z
-updated_at: 2026-01-29T22:07:38Z
+updated_at: 2026-01-29T22:10:33Z
 ---
 
 ## Problem
