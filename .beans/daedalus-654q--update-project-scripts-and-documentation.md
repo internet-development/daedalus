@@ -3,8 +3,9 @@
 title: Update project scripts and documentation
 status: todo
 type: task
+priority: high
 created_at: 2026-01-28T22:22:14Z
-updated_at: 2026-01-28T22:22:14Z
+updated_at: 2026-01-29T01:04:00Z
 parent: daedalus-st1s
 ---
 

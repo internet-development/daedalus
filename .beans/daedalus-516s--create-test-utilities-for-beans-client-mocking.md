@@ -3,9 +3,9 @@
 title: Add integration tests for beans client
 status: todo
 type: task
-priority: normal
+priority: high
 created_at: 2026-01-28T22:20:59Z
-updated_at: 2026-01-28T23:10:51Z
+updated_at: 2026-01-29T01:04:00Z
 parent: daedalus-st1s
 blocking:
     - daedalus-lygk

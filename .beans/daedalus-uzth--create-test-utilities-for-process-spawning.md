@@ -3,9 +3,9 @@
 title: Add test utilities for test setup and cleanup
 status: todo
 type: task
-priority: normal
+priority: high
 created_at: 2026-01-28T22:21:14Z
-updated_at: 2026-01-28T23:11:22Z
+updated_at: 2026-01-29T01:04:00Z
 parent: daedalus-st1s
 blocking:
     - daedalus-lygk

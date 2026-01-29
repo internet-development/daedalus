@@ -3,8 +3,9 @@
 title: Add test coverage for configuration loading
 status: todo
 type: task
+priority: high
 created_at: 2026-01-28T22:21:25Z
-updated_at: 2026-01-28T22:21:25Z
+updated_at: 2026-01-29T01:04:00Z
 parent: daedalus-st1s
 ---
 
