@@ -4,11 +4,12 @@
  * These are NOT mocks - they create real bean files for testing
  * with the actual beans CLI.
  */
-import { mkdir, rm, writeFile } from 'fs/promises';
+import { mkdir, writeFile } from 'fs/promises';
 import { join } from 'path';
 import { tmpdir } from 'os';
 import { randomBytes } from 'crypto';
 import { execSync } from 'child_process';
+import { removeDir } from './fs-helpers.js';
 
 // =============================================================================
 // Types
@@ -154,11 +155,7 @@ export async function createTestBean(
  * @param dir The directory to remove
  */
 export async function cleanupTestBeans(dir: string): Promise<void> {
-  try {
-    await rm(dir, { recursive: true, force: true });
-  } catch {
-    // Ignore errors - directory might not exist
-  }
+  await removeDir(dir);
 }
 
 /**
