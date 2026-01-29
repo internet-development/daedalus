@@ -1,11 +1,11 @@
 ---
 # daedalus-s2ut
 title: Add readline history support (up/down arrows)
-status: todo
+status: in-progress
 type: feature
 priority: high
 created_at: 2026-01-28T20:06:42Z
-updated_at: 2026-01-28T22:13:08Z
+updated_at: 2026-01-28T23:59:11Z
 parent: daedalus-tbsm
 blocking:
     - daedalus-m8v6
