@@ -12,6 +12,8 @@ import { spawn } from 'child_process';
 
 export interface TreeOptions {
   args: string[];
+  /** Working directory for beans CLI (defaults to process.cwd()) */
+  cwd?: string;
 }
 
 interface Bean {
@@ -26,7 +28,7 @@ interface Bean {
 // GraphQL Query
 // =============================================================================
 
-async function queryBeans(): Promise<Bean[]> {
+async function queryBeans(cwd?: string): Promise<Bean[]> {
   return new Promise((resolve, reject) => {
     const query = `{
       beans(filter: { excludeStatus: ["completed", "scrapped"] }) {
@@ -35,7 +37,7 @@ async function queryBeans(): Promise<Bean[]> {
     }`;
 
     const child = spawn('beans', ['graphql', '--json', query], {
-      cwd: process.cwd(),
+      cwd: cwd ?? process.cwd(),
     });
 
     let stdout = '';
@@ -139,7 +141,7 @@ Note: This shows active beans (excludes completed/scrapped).
   }
 
   try {
-    const beans = await queryBeans();
+    const beans = await queryBeans(options.cwd);
 
     if (beans.length === 0) {
       console.log('No active beans found.');
