@@ -1,11 +1,11 @@
 ---
 # daedalus-zkh6
 title: Interactive selector for /mode command
-status: todo
+status: in-progress
 type: bug
 priority: normal
 created_at: 2026-01-29T21:10:51Z
-updated_at: 2026-01-29T22:07:36Z
+updated_at: 2026-01-29T22:11:57Z
 blocking:
     - daedalus-0msm
 ---
@@ -135,27 +135,27 @@ Keep:
 
 ## Checklist
 
-- [ ] Create `src/cli/interactive-select.ts`:
-  - [ ] Move `SelectOption` interface
-  - [ ] Move ANSI helpers (`supportsColor`, `c()`, `bold`, `dim`, `green`, `cyan`, `inverse`)
-  - [ ] Move ANSI escape code constants (`CLEAR_LINE`, `CURSOR_UP`, etc.)
-  - [ ] Move `EXIT_SENTINEL` constant
-  - [ ] Move `interactiveSelect()` function
-  - [ ] Move `simpleSelect()` fallback function
-  - [ ] Export all public APIs
-- [ ] Update `src/cli/session-selector.ts`:
-  - [ ] Import from `interactive-select.ts`
-  - [ ] Remove moved code
-  - [ ] Verify `selectSession()` still works
-- [ ] Update `src/cli/commands.ts`:
-  - [ ] Make `handleMode()` async
-  - [ ] Add `await` to `handleMode()` call in switch statement
-  - [ ] Use `interactiveSelect` when no args provided
-  - [ ] Default selection to current mode index
-  - [ ] Print confirmation on selection: `Switched to mode: <name>`
-  - [ ] Handle `EXIT_SENTINEL` and `null` (return `{ type: 'continue' }`)
-  - [ ] Keep `/mode <name>` direct switching as-is
-- [ ] Typecheck passes
+- [x] Create `src/cli/interactive-select.ts`:
+  - [x] Move `SelectOption` interface
+  - [x] Move ANSI helpers (`supportsColor`, `c()`, `bold`, `dim`, `green`, `cyan`, `inverse`)
+  - [x] Move ANSI escape code constants (`CLEAR_LINE`, `CURSOR_UP`, etc.)
+  - [x] Move `EXIT_SENTINEL` constant
+  - [x] Move `interactiveSelect()` function
+  - [x] Move `simpleSelect()` fallback function
+  - [x] Export all public APIs
+- [x] Update `src/cli/session-selector.ts`:
+  - [x] Import from `interactive-select.ts`
+  - [x] Remove moved code
+  - [x] Verify `selectSession()` still works
+- [x] Update `src/cli/commands.ts`:
+  - [x] Make `handleMode()` async
+  - [x] Add `await` to `handleMode()` call in switch statement
+  - [x] Use `interactiveSelect` when no args provided
+  - [x] Default selection to current mode index
+  - [x] Print confirmation on selection: `Switched to mode: <name>`
+  - [x] Handle `EXIT_SENTINEL` and `null` (return `{ type: 'continue' }`)
+  - [x] Keep `/mode <name>` direct switching as-is
+- [x] Typecheck passes
 - [ ] Manual testing:
   - [ ] `/mode` opens interactive selector
   - [ ] Arrow keys navigate, Enter selects
@@ -179,6 +179,35 @@ Keep:
 - Power users prefer typing
 - Scripts/automation may use it
 - No reason to remove working functionality
+
+## Changelog
+
+### Implemented
+- Extracted `interactiveSelect`, `simpleSelect`, `SelectOption`, `EXIT_SENTINEL`, and all ANSI helpers from `session-selector.ts` into a new reusable `interactive-select.ts` module
+- Updated `session-selector.ts` to import from the new module (removed ~130 lines of duplicated code)
+- Updated `handleMode()` in `commands.ts` to use interactive selector when no args provided
+- Added `MODE_DESCRIPTIONS` constant in `commands.ts` for mode metadata display
+- Added test file for the new `interactive-select.ts` module
+
+### Files Modified
+- `src/cli/interactive-select.ts` - NEW: Extracted interactive selector module
+- `src/cli/interactive-select.test.ts` - NEW: Tests for export contracts
+- `src/cli/session-selector.ts` - Removed extracted code, imports from `interactive-select.ts`
+- `src/cli/commands.ts` - Updated `handleMode()` to async with interactive selector, added `MODE_DESCRIPTIONS`, removed `formatModeList` import
+
+### Deviations from Spec
+- `inverse` ANSI helper was not moved to `interactive-select.ts` since it was unused by `interactiveSelect()` or `simpleSelect()` — kept minimal
+- `session-selector.ts` retains a local `cyan` helper and `supportsColor`/`c()` for formatting session labels in `selectSession()` — these are used locally and not part of the extracted interactive selector API
+- `formatModeList` in `output.ts` is now dead code (only defined, never imported) — left in place as it's harmless and outside scope
+
+### Decisions Made
+- Defined `MODE_DESCRIPTIONS` directly in `commands.ts` rather than extracting from `output.ts`, since `formatModeList` may become unused (as noted in spec)
+- Kept `simpleSelect` exported for potential reuse by other commands
+- Manual testing items left unchecked as they require interactive TTY verification
+
+### Known Limitations
+- Manual testing checklist items cannot be verified in automated CI — require interactive TTY session
+- `formatModeList` in `output.ts` is now dead code but not removed (out of scope)
 
 ## Related Beans
 
