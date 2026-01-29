@@ -20,7 +20,7 @@ const command = args[0];
 /**
  * Parse CLI arguments into flags and positional args
  */
-function parseArgs(args: string[]): {
+export function parseArgs(args: string[]): {
   flags: Record<string, string | boolean>;
   positional: string[];
 } {

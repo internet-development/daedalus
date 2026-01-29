@@ -7,69 +7,93 @@
 import { describe, test, expect } from 'vitest';
 import {
   captureOutput,
+  captureExitCode,
   withTestBeansDir,
   createTestBean,
+  createTempDir,
+  removeDir,
+  type TestBeanData,
 } from '../test-utils/index.js';
-import { runTree } from './tree-simple.js';
+import { runTree, type TreeOptions } from './tree-simple.js';
+import { parseArgs } from './index.js';
+
+// =============================================================================
+// Test Helpers
+// =============================================================================
+
+/**
+ * Run tree command with test beans and capture output.
+ * Reduces boilerplate in tree command tests.
+ */
+async function runTreeWithBeans(
+  setup?: (dir: string) => Promise<void>,
+  options?: Partial<TreeOptions>
+): Promise<string> {
+  return withTestBeansDir(async (dir) => {
+    if (setup) await setup(dir);
+    return captureOutput(async () => {
+      await runTree({ args: options?.args ?? [], cwd: dir });
+    });
+  });
+}
+
+/**
+ * Create multiple test beans in a directory.
+ */
+async function createBeans(
+  dir: string,
+  beans: TestBeanData[]
+): Promise<string[]> {
+  const ids: string[] = [];
+  for (const bean of beans) {
+    ids.push(await createTestBean(dir, bean));
+  }
+  return ids;
+}
+
+// =============================================================================
+// Tests
+// =============================================================================
 
 describe('CLI Commands', () => {
   describe('/tree command', () => {
     test('shows empty message for no beans', async () => {
-      await withTestBeansDir(async (dir) => {
-        const output = await captureOutput(async () => {
-          await runTree({ args: [], cwd: dir });
-        });
-
-        expect(output).toContain('No active beans found');
-      });
+      const output = await runTreeWithBeans();
+      expect(output).toContain('No active beans found');
     });
 
     test('displays single bean correctly', async () => {
-      await withTestBeansDir(async (dir) => {
-        // Create a test bean
-        const beanId = await createTestBean(dir, {
+      let beanId: string;
+      const output = await runTreeWithBeans(async (dir) => {
+        beanId = await createTestBean(dir, {
           title: 'Test Bean',
           type: 'task',
           status: 'todo',
         });
-
-        const output = await captureOutput(async () => {
-          await runTree({ args: [], cwd: dir });
-        });
-
-        expect(output).toContain('Test Bean');
-        expect(output).toContain(beanId);
       });
+
+      expect(output).toContain('Test Bean');
+      expect(output).toContain(beanId!);
     });
 
     test('displays parent-child hierarchy', async () => {
-      await withTestBeansDir(async (dir) => {
-        // Create parent bean
-        const parentId = await createTestBean(dir, {
-          id: 'parent-001',
-          title: 'Parent Bean',
-          type: 'epic',
-          status: 'todo',
-        });
-
-        // Create child bean
-        await createTestBean(dir, {
-          id: 'child-001',
-          title: 'Child Bean',
-          type: 'task',
-          status: 'todo',
-          parent: parentId,
-        });
-
-        const output = await captureOutput(async () => {
-          await runTree({ args: [], cwd: dir });
-        });
-
-        expect(output).toContain('Parent Bean');
-        expect(output).toContain('Child Bean');
-        // Child should be indented under parent (tree structure)
-        expect(output).toMatch(/Parent Bean[\s\S]*Child Bean/);
+      const output = await runTreeWithBeans(async (dir) => {
+        await createBeans(dir, [
+          { id: 'parent-001', title: 'Parent Bean', type: 'epic', status: 'todo' },
+          {
+            id: 'child-001',
+            title: 'Child Bean',
+            type: 'task',
+            status: 'todo',
+            parent: 'parent-001',
+          },
+        ]);
       });
+
+      expect(output).toContain('Parent Bean');
+      expect(output).toContain('Child Bean');
+      // Child should be indented under parent (tree structure)
+      expect(output).toMatch(/Parent Bean[\s\S]*Child Bean/);
     });
 
     test('shows help with --help flag', async () => {
@@ -83,28 +107,106 @@ describe('CLI Commands', () => {
     });
 
     test('excludes completed beans by default', async () => {
-      await withTestBeansDir(async (dir) => {
-        // Create a completed bean
-        await createTestBean(dir, {
-          title: 'Completed Bean',
-          type: 'task',
-          status: 'completed',
-        });
-
-        // Create an active bean
-        await createTestBean(dir, {
-          title: 'Active Bean',
-          type: 'task',
-          status: 'todo',
-        });
-
-        const output = await captureOutput(async () => {
-          await runTree({ args: [], cwd: dir });
-        });
-
-        expect(output).toContain('Active Bean');
-        expect(output).not.toContain('Completed Bean');
+      const output = await runTreeWithBeans(async (dir) => {
+        await createBeans(dir, [
+          { title: 'Completed Bean', type: 'task', status: 'completed' },
+          { title: 'Active Bean', type: 'task', status: 'todo' },
+        ]);
       });
+
+      expect(output).toContain('Active Bean');
+      expect(output).not.toContain('Completed Bean');
+    });
+  });
+
+  describe('Argument Parsing', () => {
+    test('parses long flags with values', () => {
+      const result = parseArgs(['--mode', 'brainstorm']);
+      expect(result.flags.mode).toBe('brainstorm');
+    });
+
+    test('parses long flags with equals syntax', () => {
+      const result = parseArgs(['--mode=brainstorm']);
+      expect(result.flags.mode).toBe('brainstorm');
+    });
+
+    test('parses boolean long flags', () => {
+      const result = parseArgs(['--help']);
+      expect(result.flags.help).toBe(true);
+    });
+
+    test('parses short flags with values', () => {
+      const result = parseArgs(['-m', 'brainstorm']);
+      expect(result.flags.m).toBe('brainstorm');
+    });
+
+    test('parses boolean short flags', () => {
+      const result = parseArgs(['-h']);
+      expect(result.flags.h).toBe(true);
+    });
+
+    test('parses positional arguments', () => {
+      const result = parseArgs(['tree', '--help']);
+      expect(result.positional).toEqual(['tree']);
+      expect(result.flags.help).toBe(true);
+    });
+
+    test('parses mixed flags and positional args', () => {
+      const result = parseArgs(['--mode', 'new', 'plan', '-n']);
+      expect(result.flags.mode).toBe('new');
+      expect(result.flags.n).toBe(true);
+      expect(result.positional).toEqual(['plan']);
+    });
+
+    test('handles multiple flags', () => {
+      const result = parseArgs(['--mode', 'brainstorm', '--new', '-l']);
+      expect(result.flags.mode).toBe('brainstorm');
+      expect(result.flags.new).toBe(true);
+      expect(result.flags.l).toBe(true);
+    });
+
+    test('handles empty args', () => {
+      const result = parseArgs([]);
+      expect(result.flags).toEqual({});
+      expect(result.positional).toEqual([]);
+    });
+  });
+
+  describe('Error Handling', () => {
+    test('/tree shows error for non-beans directory', async () => {
+      // Create a temp directory without beans init
+      const tempDir = await createTempDir('no-beans-');
+
+      try {
+        let output = '';
+        let exitCode = 0;
+
+        // Capture both output and exit code
+        try {
+          exitCode = await captureExitCode(async () => {
+            output = await captureOutput(async () => {
+              await runTree({ args: [], cwd: tempDir });
+            });
+          });
+        } catch {
+          // Expected - runTree may throw or exit
+        }
+
+        // Should show an error message (either in output or via exit code)
+        // The exact behavior depends on how beans CLI handles non-beans dirs
+        expect(exitCode === 1 || output.includes('Error')).toBe(true);
+      } finally {
+        await removeDir(tempDir);
+      }
+    });
+
+    test('/tree handles -h shorthand for help', async () => {
+      const output = await captureOutput(async () => {
+        await runTree({ args: ['-h'] });
+      });
+
+      expect(output).toContain('Usage:');
+      expect(output).toContain('daedalus tree');
     });
   });
 });
