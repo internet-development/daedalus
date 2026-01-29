@@ -1,11 +1,11 @@
 ---
 # daedalus-ze16
 title: Ctrl+C should clear readline input before exiting
-status: in-progress
+status: completed
 type: bug
 priority: normal
 created_at: 2026-01-29T21:11:07Z
-updated_at: 2026-01-29T22:10:59Z
+updated_at: 2026-01-29T22:11:49Z
 ---
 
 ## Problem
