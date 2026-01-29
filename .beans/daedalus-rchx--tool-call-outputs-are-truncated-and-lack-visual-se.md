@@ -1,11 +1,11 @@
 ---
 # daedalus-rchx
 title: Tool call outputs are truncated and lack visual separation
-status: in-progress
+status: completed
 type: bug
 priority: normal
 created_at: 2026-01-29T17:15:50Z
-updated_at: 2026-01-29T18:34:17Z
+updated_at: 2026-01-29T18:39:52Z
 blocking:
     - daedalus-pjmp
 ---
