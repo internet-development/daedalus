@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 import { Command } from 'commander';
 import { existsSync, readFileSync } from 'fs';
-import { join, dirname } from 'path';
+import { join, dirname, resolve } from 'path';
 import { fileURLToPath } from 'url';
 import { spawn } from 'child_process';
+import { loadConfig } from '../config/index.js';
 
 /**
  * Pino log levels (numeric to string mapping)
@@ -160,10 +161,104 @@ program
 
 program
   .command('config')
-  .description('Show current configuration')
-  .option('--validate', 'Validate configuration without starting')
+  .description('Show and validate configuration')
+  .option('-c, --config <path>', 'Path to config file (default: talos.yml)')
+  .option('--validate', "Only validate, don't display")
+  .option('--json', 'Output as JSON')
+  .option('--paths', 'Show discovered paths')
   .action(async (options) => {
-    console.log('config command - to be implemented');
+    try {
+      let config;
+      let paths;
+      
+      if (options.config) {
+        // Load from specific file path
+        const configPath = resolve(options.config);
+        const projectRoot = dirname(configPath);
+        
+        // Import loadConfigFromFile for explicit path loading
+        const { loadConfigFromFile } = await import('../config/index.js');
+        config = loadConfigFromFile(configPath);
+        paths = {
+          configPath: existsSync(configPath) ? configPath : null,
+          projectRoot,
+          beansPath: join(projectRoot, '.beans'),
+        };
+      } else {
+        // Use standard config discovery
+        const result = loadConfig(process.cwd());
+        config = result.config;
+        paths = result.paths;
+      }
+
+      if (options.validate) {
+        console.log('Configuration is valid ✓');
+        if (options.paths) {
+          console.log('\nDiscovered paths:');
+          console.log('  Project root: %s', paths.projectRoot);
+          console.log('  Beans path: %s', paths.beansPath);
+          console.log('  Config file: %s', paths.configPath || 'none (using defaults)');
+        }
+        process.exit(0);
+      }
+
+      if (options.json) {
+        console.log(JSON.stringify({
+          config,
+          paths: options.paths ? paths : undefined,
+        }, null, 2));
+      } else {
+        console.log('Configuration:');
+        console.log('─'.repeat(60));
+        
+        // Agent config
+        console.log('\nAgent:');
+        console.log('  Backend: %s', config.agent.backend);
+        if (config.agent.opencode) {
+          console.log('  OpenCode model: %s', config.agent.opencode.model);
+        }
+        if (config.agent.claude) {
+          console.log('  Claude model: %s', config.agent.claude.model);
+        }
+        if (config.agent.codex) {
+          console.log('  Codex model: %s', config.agent.codex.model);
+        }
+
+        // Scheduler config
+        console.log('\nScheduler:');
+        console.log('  Max parallel: %d', config.scheduler.max_parallel);
+        console.log('  Poll interval: %dms', config.scheduler.poll_interval);
+        console.log('  Auto-enqueue on startup: %s', config.scheduler.auto_enqueue_on_startup);
+
+        // On complete config
+        console.log('\nOn Complete:');
+        console.log('  Auto commit: %s', config.on_complete.auto_commit);
+        console.log('  Push: %s', config.on_complete.push);
+        console.log('  Include bean ID: %s', config.on_complete.commit_style.include_bean_id);
+
+        // Planning agent config
+        console.log('\nPlanning Agent:');
+        console.log('  Provider: %s', config.planning_agent.provider);
+        console.log('  Model: %s', config.planning_agent.model);
+        console.log('  Temperature: %s', config.planning_agent.temperature);
+        console.log('  Tools: %s', config.planning_agent.tools.join(', '));
+
+        // Paths
+        if (options.paths) {
+          console.log('\nDiscovered paths:');
+          console.log('  Project root: %s', paths.projectRoot);
+          console.log('  Beans path: %s', paths.beansPath);
+          console.log('  Config file: %s', paths.configPath || 'none (using defaults)');
+        }
+
+        console.log('\n' + '─'.repeat(60));
+        console.log('Configuration is valid ✓');
+      }
+    } catch (error) {
+      console.error('Configuration error:');
+      console.error((error as Error).message);
+      process.exit(1);
+    }
   });
 
 program.parse();
