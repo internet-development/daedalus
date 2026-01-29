@@ -1,11 +1,11 @@
 ---
 # daedalus-516s
 title: Add integration tests for beans client
-status: in-progress
+status: completed
 type: task
 priority: high
 created_at: 2026-01-28T22:20:59Z
-updated_at: 2026-01-29T01:14:22Z
+updated_at: 2026-01-29T03:05:55Z
 parent: daedalus-st1s
 blocking:
     - daedalus-lygk
