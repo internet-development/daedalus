@@ -1,11 +1,11 @@
 ---
 # daedalus-mmkh
 title: Add -c/--continue flag to bypass session selector
-status: in-progress
+status: completed
 type: feature
 priority: normal
 created_at: 2026-01-28T21:35:35Z
-updated_at: 2026-01-29T06:14:54Z
+updated_at: 2026-01-29T06:19:42Z
 parent: daedalus-tbsm
 ---
 
