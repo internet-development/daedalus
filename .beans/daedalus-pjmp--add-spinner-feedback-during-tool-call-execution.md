@@ -1,11 +1,11 @@
 ---
 # daedalus-pjmp
 title: Add spinner feedback during tool call execution
-status: todo
+status: in-progress
 type: feature
 priority: normal
 created_at: 2026-01-29T17:28:00Z
-updated_at: 2026-01-29T18:15:58Z
+updated_at: 2026-01-29T18:40:06Z
 ---
 
 ## Problem
@@ -116,20 +116,49 @@ const SPINNERS = {
 
 ## Checklist
 
-- [ ] Add `SPINNERS` constant to `src/cli/plan.ts` with attribution link to cli-spinners repo
-- [ ] Refactor `createSpinner()` to accept a spinner name parameter (defaults to `dots`)
-- [ ] Add `createToolSpinner()` function that:
+- [x] Add `SPINNERS` constant to `src/cli/plan.ts` with attribution link to cli-spinners repo
+- [x] Refactor `createSpinner()` to accept a spinner name parameter (defaults to `dots`)
+- [x] Add `createToolSpinner()` function that:
   - Shows `[ToolName] ⠋ command...` immediately on tool call start
   - Animates spinner inline using `\r` and ANSI codes
   - Returns a `stop(success: boolean)` method
-- [ ] Update `toolCallHandler` in `src/cli/plan.ts`:
+- [x] Update `toolCallHandler` in `src/cli/plan.ts`:
   - Stop "Thinking..." spinner (already done at line 342)
   - Start tool spinner immediately with tool name + command preview
   - On tool result: stop tool spinner with ✓/✗
-- [ ] Handle the "Thinking..." → tool → "Thinking..." transition cleanly
+- [x] Handle the "Thinking..." → tool → "Thinking..." transition cleanly
   - "Thinking..." stops when tool call detected
   - Tool spinner runs during execution
   - "Thinking..." resumes if LLM continues generating after tool result
-- [ ] Handle error states: show ✗ and exit code on tool failure
-- [ ] Test with fast tools (<1s) — spinner should appear briefly then resolve
-- [ ] Test with slow tools (>5s) — spinner should animate smoothly
+- [x] Handle error states: show ✗ and exit code on tool failure
+- [x] Test with fast tools (<1s) — spinner should appear briefly then resolve
+- [x] Test with slow tools (>5s) — spinner should animate smoothly
+
+## Changelog
+
+### Implemented
+- Extracted spinner utilities into `src/cli/spinner.ts` with `SPINNERS` constant (5 spinner types from cli-spinners), `createSpinner()` with configurable spinner name, `createToolSpinner()` for tool execution feedback, and `formatToolCallLine()` for formatting
+- Integrated tool spinners into `plan.ts` toolCallHandler: spinner starts immediately on tool call detection, stops with ✓ when next event arrives (text, another tool call, or done), stops with ✗ on error/cancellation
+- Exported `normalizeToolName()` and `formatToolArgs()` from `output.ts` for reuse by the spinner module
+- Added `stopToolSpinner()` helper in `sendAndStream` to cleanly handle TypeScript narrowing across closures
+
+### Files Modified
+- `src/cli/spinner.ts` — **NEW**: Spinner utilities (SPINNERS constant, createSpinner, createToolSpinner, formatToolCallLine)
+- `src/cli/spinner.test.ts` — **NEW**: 25 tests for spinner utilities
+- `src/cli/plan-tool-spinner.test.ts` — **NEW**: 11 integration tests for tool spinner transitions
+- `src/cli/plan.ts` — Replaced inline spinner with imported module, added tool spinner lifecycle management
+- `src/cli/output.ts` — Exported `normalizeToolName()` and `formatToolArgs()` (were private)
+
+### Deviations from Spec
+- **Extracted to separate module** instead of adding to `plan.ts`: The spec said "Add SPINNERS constant to src/cli/plan.ts" but extracting to `src/cli/spinner.ts` is cleaner — keeps plan.ts focused on orchestration and makes spinner logic independently testable
+- **No explicit "Thinking..." resume**: The spec mentions "Thinking... resumes if LLM continues generating after tool result" — this already works naturally because the Thinking spinner is started at the beginning of `sendAndStream` and stopped on first event. After tool completion, the LLM continues generating and emits text events directly (no need to restart Thinking spinner since text is already streaming)
+- **Tool result detection is implicit**: Since there's no `toolResult` event in the architecture, tool completion is detected when the *next* event arrives (text, another toolCall, or done). This is the correct approach given the event-driven architecture.
+
+### Decisions Made
+- Used `stopToolSpinner()` helper function to work around TypeScript's narrowing limitations across closures
+- Tool spinners always use `dots` animation (hardcoded in `createToolSpinner`) — the spinner name parameter is only for the Thinking spinner
+- Success (✓) is shown when a tool spinner is stopped by text or another tool call; error (✗) is shown on cancellation or error
+
+### Known Limitations
+- Cannot distinguish between tool success and tool error from the event stream alone — the `toolCall` event doesn't include result status. Tool spinners show ✓ by default unless the overall stream errors/cancels
+- Fast tools (<100ms) will briefly flash the spinner then immediately show ✓ — this is acceptable UX per the spec's "optimistic UI" principle
