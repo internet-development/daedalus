@@ -28,6 +28,7 @@ import {
   formatContinuationPrompt,
   formatError,
   formatSessionList,
+  formatToolCall,
 } from './output.js';
 import { processInputLine } from './multiline-input.js';
 import { selectSession } from './session-selector.js';
@@ -282,6 +283,8 @@ async function sendAndStream(message: string, ctx: CommandContext): Promise<void
 
   // Track if we've started writing output
   let hasOutput = false;
+  // Track if we just finished a tool call (need newline before next text)
+  let afterToolCall = false;
 
   // Start spinner while waiting for first response
   const spinner = createSpinner();
@@ -293,6 +296,10 @@ async function sendAndStream(message: string, ctx: CommandContext): Promise<void
       spinner.stop();
       process.stdout.write('\x1b[36m\x1b[1mPlanner:\x1b[0m ');
       hasOutput = true;
+    } else if (afterToolCall) {
+      // Add newline after tool call before resuming text
+      process.stdout.write('\n\x1b[36m\x1b[1mPlanner:\x1b[0m ');
+      afterToolCall = false;
     }
     process.stdout.write(text);
     fullContent += text;
@@ -300,6 +307,22 @@ async function sendAndStream(message: string, ctx: CommandContext): Promise<void
 
   const toolCallHandler = (tc: ToolCall) => {
     toolCalls.push(tc);
+    
+    // Stop spinner if still running
+    spinner.stop();
+    
+    // Add newline before tool call if text was streaming
+    if (hasOutput) {
+      console.log();
+    } else {
+      hasOutput = true;
+    }
+    
+    // Display tool call indicator
+    console.log(formatToolCall(tc.name, tc.args));
+    
+    // Mark that we're after a tool call
+    afterToolCall = true;
   };
 
   ctx.session.on('text', textHandler);
