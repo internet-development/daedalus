@@ -1,11 +1,11 @@
 ---
 # daedalus-lygk
 title: Create TDD workflow documentation
-status: todo
+status: in-progress
 type: task
 priority: high
 created_at: 2026-01-28T22:21:49Z
-updated_at: 2026-01-29T01:04:00Z
+updated_at: 2026-01-29T05:19:55Z
 parent: daedalus-st1s
 ---
 
@@ -49,11 +49,36 @@ Provide clear guidance for developers on how to follow TDD practices in the Daed
 - Error case testing patterns
 
 ## Checklist
-- [ ] Write TDD process overview
-- [ ] Document red-green-refactor with examples
-- [ ] Include CLI testing patterns
-- [ ] Include mocking patterns
-- [ ] Document test organization
-- [ ] Update CONTRIBUTING.md
-- [ ] Add testing section to main README
-- [ ] Review and refine documentation
+- [x] Write TDD process overview
+- [x] Document red-green-refactor with examples
+- [x] Include CLI testing patterns
+- [x] Include mocking patterns
+- [x] Document test organization
+- [x] Update CONTRIBUTING.md
+- [x] Add testing section to main README
+- [x] Review and refine documentation
+
+## Changelog
+
+### Implemented
+- Created comprehensive TDD workflow guide at `docs/tdd-workflow.md`
+- Created CONTRIBUTING.md with development workflow and testing guidelines
+- Updated README.md with improved test utilities section and documentation links
+
+### Files Modified
+- `docs/tdd-workflow.md` - NEW: Complete TDD guide with examples from codebase
+- `CONTRIBUTING.md` - NEW: Development workflow and contribution guidelines
+- `README.md` - Updated test utilities section and added documentation table
+
+### Deviations from Spec
+- None - all deliverables completed as specified
+
+### Decisions Made
+- Included ASCII diagram for Red-Green-Refactor cycle for visual clarity
+- Organized test utilities reference as tables for quick scanning
+- Added "Common Rationalizations" section from TDD skill for completeness
+- Cross-referenced existing TDD skill file in related documentation
+
+### Known Limitations
+- Examples are based on current test files; may need updates as codebase evolves
+- Some test utilities (like BeansWatcher) are referenced but not yet implemented
