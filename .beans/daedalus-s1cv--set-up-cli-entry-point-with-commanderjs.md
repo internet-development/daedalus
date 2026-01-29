@@ -1,11 +1,11 @@
 ---
 # daedalus-s1cv
 title: Set up CLI entry point with commander.js
-status: in-progress
+status: completed
 type: task
 priority: normal
 created_at: 2026-01-29T00:30:43Z
-updated_at: 2026-01-29T05:30:19Z
+updated_at: 2026-01-29T05:32:37Z
 parent: daedalus-qkep
 blocking:
     - daedalus-6vtz
