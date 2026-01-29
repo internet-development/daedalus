@@ -74,7 +74,8 @@ This project uses **beans** for issue tracking. Use the `beans` CLI to manage is
 ### Querying Beans
 
 ```bash
-# Find all actionable beans
+# Find all actionable beans (not blocked by active work)
+# Note: isBlocked: false filters out beans with non-completed blockers
 beans query '{ beans(filter: { excludeStatus: ["completed", "scrapped", "draft"], isBlocked: false }) { id title status type priority } }'
 
 # Get full details of a bean
@@ -85,6 +86,9 @@ beans query '{ beans(filter: { search: "authentication" }) { id title } }'
 
 # Check milestones for project priorities
 beans query '{ beans(filter: { type: ["milestone"], status: ["in-progress", "todo"] }) { id title body } }'
+
+# Find beans ready to work on (todo, not blocked, with details)
+beans query '{ beans(filter: { status: ["todo"], isBlocked: false }) { id title type priority parent { title } } }'
 ```
 
 ### Creating Beans
@@ -128,6 +132,29 @@ beans query 'mutation { updateBean(id: "<id>", input: { body: "..." }) { id } }'
 - **epic** → Theme of work; contains features (don't work on directly)
 - **feature** → User-facing capability; contains tasks/bugs
 - **task/bug** → Atomic work items (target: 2-5 minutes for agents)
+
+### Blocking Relationships
+
+**Important:** Completed blockers are automatically filtered out by the beans system.
+
+When a bean has `blockedBy` relationships, only **active** (non-completed) blockers actually prevent work:
+
+```bash
+# Check ALL blockers (including completed ones - for historical context)
+beans query '{ bean(id: "<id>") { blockedBy { id title status } } }'
+
+# Check ACTIVE blockers only (this is what actually blocks work)
+beans query '{ bean(id: "<id>") { activeBlockers: blockedBy(filter: { excludeStatus: ["completed", "scrapped"] }) { id title } } }'
+
+# Find beans that are actually blocked (have active blockers)
+beans query '{ beans(filter: { isBlocked: true }) { id title blockedBy { title status } } }'
+```
+
+**Key insight:** When a blocking bean is marked `completed`, it **no longer blocks** the dependent bean. You don't need to manually remove blocking relationships when completing work - the system handles this automatically.
+
+**When to remove blocking relationships:**
+- Only if the relationship was added in error
+- NOT needed when the blocker is completed (it's auto-filtered)
 
 ### Bean Quality Checklist
 
