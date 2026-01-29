@@ -35,6 +35,7 @@ import { selectSession } from './session-selector.js';
 import { handleCommand, isCommand, type CommandContext } from './commands.js';
 import { loadInputHistory, appendToHistory } from './input-history.js';
 import { completer } from './completer.js';
+import { generateSessionName as generateSessionNameWithAI } from './session-naming.js';
 
 // =============================================================================
 // Types
@@ -453,7 +454,7 @@ async function generateSessionName(ctx: CommandContext): Promise<void> {
   console.log('Generating session name...');
 
   try {
-    const name = await generateNameWithAI(currentSession.messages, ctx);
+    const name = await generateSessionNameWithAI(currentSession.messages);
     if (name) {
       ctx.history = renameSession(ctx.history, currentSession.id, name);
       ctx.saveHistory();
@@ -462,34 +463,6 @@ async function generateSessionName(ctx: CommandContext): Promise<void> {
   } catch {
     // Silently fail - not critical
   }
-}
-
-async function generateNameWithAI(
-  messages: ChatMessage[],
-  ctx: CommandContext
-): Promise<string | null> {
-  // Create a summary of the conversation for naming
-  const userMessages = messages
-    .filter((m) => m.role === 'user')
-    .slice(0, 3)
-    .map((m) => m.content.slice(0, 100))
-    .join('\n');
-
-  if (!userMessages.trim()) return null;
-
-  // Use a quick one-shot call to generate a name
-  // For simplicity, we'll generate a basic name from the first user message
-  // A full implementation would use the AI, but that's complex for exit cleanup
-  const firstMessage = messages.find((m) => m.role === 'user')?.content ?? '';
-  const words = firstMessage.split(/\s+/).slice(0, 5);
-  
-  if (words.length === 0) return null;
-
-  // Simple heuristic: capitalize first letter of each word
-  return words
-    .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
-    .join(' ')
-    .slice(0, 30);
 }
 
 // =============================================================================
