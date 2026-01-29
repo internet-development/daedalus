@@ -1,11 +1,11 @@
 ---
 # daedalus-654q
 title: Update project scripts and documentation
-status: in-progress
+status: completed
 type: task
 priority: high
 created_at: 2026-01-28T22:22:14Z
-updated_at: 2026-01-29T05:05:22Z
+updated_at: 2026-01-29T05:07:14Z
 parent: daedalus-st1s
 ---
 
