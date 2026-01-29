@@ -1,11 +1,11 @@
 ---
 # daedalus-mmkh
 title: Add -c/--continue flag to bypass session selector
-status: todo
+status: in-progress
 type: feature
 priority: normal
 created_at: 2026-01-28T21:35:35Z
-updated_at: 2026-01-28T21:35:35Z
+updated_at: 2026-01-29T06:14:54Z
 parent: daedalus-tbsm
 ---
 
@@ -42,11 +42,44 @@ daedalus -n          # Skip selector, create new session (existing)
 - `src/cli/plan.ts` - handle continue option in runPlan()
 
 ## Checklist
-- [ ] Add `continue` to PlanOptions interface
-- [ ] Parse `-c` and `--continue` flags in `parsePlanArgs()`
-- [ ] Update help text with new flag
-- [ ] In `runPlan()`, handle continue option before session selection
-- [ ] Find most recent session by sorting sessions by `updatedAt`
-- [ ] If no sessions, fall back to creating new (same as `--new`)
-- [ ] Test: `daedalus -c` with existing sessions
-- [ ] Test: `daedalus -c` with no sessions
+- [x] Add `continue` to PlanOptions interface
+- [x] Parse `-c` and `--continue` flags in `parsePlanArgs()`
+- [x] Update help text with new flag
+- [x] In `runPlan()`, handle continue option before session selection
+- [x] Find most recent session by sorting sessions by `updatedAt`
+- [x] If no sessions, fall back to creating new (same as `--new`)
+- [x] Test: `daedalus -c` with existing sessions
+- [x] Test: `daedalus -c` with no sessions
+
+## Changelog
+
+### Implemented
+- Added `-c` and `--continue` flags to bypass session selector and continue most recent session
+- Added `continue` property to `PlanOptions` interface
+- Updated `parsePlanArgs()` to parse the new flags
+- Updated help text with new flag documentation
+- Implemented continue logic in `runPlan()` that finds most recent session by `updatedAt`
+- Falls back to creating new session if no sessions exist (same as `--new`)
+
+### Files Modified
+- `src/cli/index.ts` - Added flag parsing in `parsePlanArgs()`, updated help text, exported `parsePlanArgs` for testing
+- `src/cli/plan.ts` - Added `continue` to `PlanOptions` interface, added continue logic in session selection
+
+### Tests Added
+- `src/cli/commands.test.ts` - Added tests for:
+  - Parsing `-c` flag
+  - Parsing `--continue` flag
+  - `continue` being undefined when not specified
+  - `getSessionsSortedByDate` returning most recent first
+  - Continue with existing sessions switches to most recent
+  - Continue with no sessions creates new session
+
+### Deviations from Spec
+- None - implementation follows spec exactly
+
+### Decisions Made
+- Exported `parsePlanArgs()` function to enable unit testing
+- Used existing `getSessionsSortedByDate()` helper which already sorts by `updatedAt` descending
+
+### Known Limitations
+- None
