@@ -92,8 +92,11 @@ export function formatHeader(
   return `${header}\n${divider}`;
 }
 
-export function formatPrompt(): string {
-  return c('green', '> ');
+export function formatPrompt(mode?: PlanMode): string {
+  if (!mode || mode === 'new') {
+    return c('green', '> ');
+  }
+  return `${c('dim', '[')}${c('cyan', mode)}${c('dim', ']')} ${c('green', '>')} `;
 }
 
 export function formatContinuationPrompt(): string {

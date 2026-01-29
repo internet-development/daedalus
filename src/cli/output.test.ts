@@ -7,6 +7,55 @@ import { describe, test, expect } from 'vitest';
 import { formatContinuationPrompt, formatPrompt, formatToolCall } from './output.js';
 
 describe('CLI Output Formatting', () => {
+  describe('formatPrompt', () => {
+    // Helper to strip ANSI codes for easier testing
+    const stripAnsi = (str: string) => str.replace(/\x1b\[[0-9;]*m/g, '');
+
+    test('returns plain "> " for default mode (new)', () => {
+      const result = formatPrompt('new');
+      const plain = stripAnsi(result);
+      // Should be just "> " without mode indicator
+      expect(plain).toBe('> ');
+    });
+
+    test('returns plain "> " when mode is undefined', () => {
+      const result = formatPrompt();
+      const plain = stripAnsi(result);
+      // Should be just "> " without mode indicator
+      expect(plain).toBe('> ');
+    });
+
+    test('returns "[brainstorm] > " for brainstorm mode', () => {
+      const result = formatPrompt('brainstorm');
+      const plain = stripAnsi(result);
+      expect(plain).toBe('[brainstorm] > ');
+    });
+
+    test('returns "[breakdown] > " for breakdown mode', () => {
+      const result = formatPrompt('breakdown');
+      const plain = stripAnsi(result);
+      expect(plain).toBe('[breakdown] > ');
+    });
+
+    test('returns "[refine] > " for refine mode', () => {
+      const result = formatPrompt('refine');
+      const plain = stripAnsi(result);
+      expect(plain).toBe('[refine] > ');
+    });
+
+    test('returns "[critique] > " for critique mode', () => {
+      const result = formatPrompt('critique');
+      const plain = stripAnsi(result);
+      expect(plain).toBe('[critique] > ');
+    });
+
+    test('returns "[sweep] > " for sweep mode', () => {
+      const result = formatPrompt('sweep');
+      const plain = stripAnsi(result);
+      expect(plain).toBe('[sweep] > ');
+    });
+  });
+
   describe('formatContinuationPrompt', () => {
     test('returns dim "... " for multi-line continuation', () => {
       const result = formatContinuationPrompt();

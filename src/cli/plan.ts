@@ -223,7 +223,7 @@ async function mainLoop(
 
   // Interactive loop
   while (true) {
-    const input = await question(rl, formatPrompt());
+    const input = await question(rl, formatPrompt(ctx.session.getMode()));
 
     if (!input.trim()) continue;
 
