@@ -1,11 +1,11 @@
 ---
 # daedalus-uzth
 title: Add test utilities for test setup and cleanup
-status: todo
+status: in-progress
 type: task
 priority: high
 created_at: 2026-01-28T22:21:14Z
-updated_at: 2026-01-29T01:04:00Z
+updated_at: 2026-01-29T05:07:23Z
 parent: daedalus-st1s
 blocking:
     - daedalus-lygk
@@ -211,18 +211,52 @@ test('watcher detects new bean file', async () => {
 5. **REFACTOR**: Clean up
 
 ## Checklist
-- [ ] RED: Test createTestBean() (watch fail)
-- [ ] GREEN: Implement createTestBean()
-- [ ] RED: Test withTestBeansDir() (watch fail)
-- [ ] GREEN: Implement withTestBeansDir()
-- [ ] RED: Test waitForEvent() (watch fail)
-- [ ] GREEN: Implement waitForEvent()
-- [ ] RED: Test collectEvents() (watch fail)
-- [ ] GREEN: Implement collectEvents()
-- [ ] RED: Test waitUntil() (watch fail)
-- [ ] GREEN: Implement waitUntil()
-- [ ] RED: Test file system helpers (watch fail)
-- [ ] GREEN: Implement file system helpers
-- [ ] REFACTOR: Remove duplication
-- [ ] Document usage patterns with examples
-- [ ] Verify all utilities tested with real behavior
+- [x] RED: Test createTestBean() (watch fail)
+- [x] GREEN: Implement createTestBean()
+- [x] RED: Test withTestBeansDir() (watch fail)
+- [x] GREEN: Implement withTestBeansDir()
+- [x] RED: Test waitForEvent() (watch fail)
+- [x] GREEN: Implement waitForEvent()
+- [x] RED: Test collectEvents() (watch fail)
+- [x] GREEN: Implement collectEvents()
+- [x] RED: Test waitUntil() (watch fail)
+- [x] GREEN: Implement waitUntil()
+- [x] RED: Test file system helpers (watch fail)
+- [x] GREEN: Implement file system helpers
+- [x] REFACTOR: Remove duplication
+- [x] Document usage patterns with examples
+- [x] Verify all utilities tested with real behavior
+
+## Changelog
+
+### Implemented
+- Created comprehensive test utilities following TDD principles
+- All utilities work with real code, no mocks
+- 46 new tests covering all utility functions
+
+### Files Created
+- `src/test-utils/beans-fixtures.ts` - Bean test data creation (already existed, verified with tests)
+- `src/test-utils/beans-fixtures.test.ts` - NEW: 15 tests for bean fixtures
+- `src/test-utils/event-helpers.ts` - NEW: EventEmitter testing utilities
+- `src/test-utils/event-helpers.test.ts` - NEW: 11 tests for event helpers
+- `src/test-utils/async-helpers.ts` - NEW: Async operation helpers
+- `src/test-utils/async-helpers.test.ts` - NEW: 9 tests for async helpers
+- `src/test-utils/fs-helpers.ts` - NEW: File system test helpers
+- `src/test-utils/fs-helpers.test.ts` - NEW: 11 tests for fs helpers
+- `src/test-utils/index.ts` - NEW: Barrel export with documentation
+
+### Files Modified
+- `src/test-utils/beans-fixtures.ts` - Refactored to use `removeDir` from fs-helpers
+
+### Deviations from Spec
+- None - implementation matches spec exactly
+
+### Decisions Made
+- Used `randomBytes` for unique ID generation (cryptographically random)
+- Added `getBeansSubdir()` helper for convenience
+- Included comprehensive JSDoc documentation with examples
+- Refactored `cleanupTestBeans` to reuse `removeDir` to reduce duplication
+
+### Known Limitations
+- `createTempBeansDir()` requires `beans` CLI to be installed (runs `beans init`)
+- Event helpers only work with Node.js EventEmitter (not browser events)
