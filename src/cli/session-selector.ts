@@ -192,29 +192,38 @@ export async function selectSession(
   // Sort sessions by updatedAt descending (most recent first)
   const sorted = [...sessions].sort((a, b) => b.updatedAt - a.updatedAt);
 
-  // Build options
-  const options: SelectOption[] = sorted.map((session) => {
+  // Build options - start with "new session" at top for easy access
+  const options: SelectOption[] = [
+    {
+      label: cyan('Start new session'),
+      value: null,
+    },
+  ];
+
+  // Add existing sessions after "new session"
+  sorted.forEach((session) => {
     const msgCount = `${session.messages.length} msg${session.messages.length !== 1 ? 's' : ''}`;
     const timeAgo = formatRelativeTime(session.updatedAt);
     const current = session.id === currentSessionId ? ' (current)' : '';
 
-    return {
+    options.push({
       label: session.name + current,
       value: session.id,
       meta: `${msgCount}, ${timeAgo}`,
-    };
+    });
   });
 
-  // Add "new session" option
-  options.push({
-    label: cyan('Start new session'),
-    value: null,
-  });
-
-  // Find default (current session or most recent)
-  const defaultIndex = currentSessionId
-    ? sorted.findIndex((s) => s.id === currentSessionId)
-    : 0;
+  // Calculate default index:
+  // - If current session exists: default to its index (+1 due to "new session" at index 0)
+  // - If no current session but sessions exist: default to most recent (index 1)
+  // - If no sessions: default to "Start new session" (index 0) - handled by early return above
+  let defaultIndex = 1; // Default to most recent session (first session after "new")
+  if (currentSessionId) {
+    const currentIdx = sorted.findIndex((s) => s.id === currentSessionId);
+    if (currentIdx >= 0) {
+      defaultIndex = currentIdx + 1; // +1 because "new session" is at index 0
+    }
+  }
 
   const result = await interactiveSelect(
     'Planning Sessions',
