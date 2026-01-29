@@ -64,8 +64,9 @@ For each checklist item in the bean:
 
 ### 4. Update Progress
 
-After completing each checklist item, update the bean:
-- Change `- [ ]` to `- [x]` in the bean body
+After completing each checklist item, update the bean file directly:
+- Bean files are in `.beans/<bean-id>--<slug>.md`
+- Use the Edit tool to change `- [ ]` to `- [x]` in the bean body
 - Commit both code changes AND the updated bean file
 
 ### 5. Maintain a Changelog
@@ -131,9 +132,24 @@ beans query '{ bean(id: "xxx") { title body } }'
 beans update <id> --status in-progress
 beans update <id> --status completed
 
-# Update body (to check off items)
-beans query 'mutation { updateBean(id: "<id>", input: { body: "..." }) { id } }'
+# Find the bean file path
+beans query '{ bean(id: "xxx") { path } }'
 ```
+
+### Updating Bean Body
+
+**Edit the bean file directly** - beans are just markdown files in `.beans/`:
+
+```bash
+# Find the file
+ls .beans/<bean-id>*
+
+# Then use the Edit tool to modify it directly
+# - Change `- [ ]` to `- [x]` for completed items
+# - Add changelog section before completion
+```
+
+Do NOT use GraphQL mutations or temp files to update bean bodies.
 
 ## What Makes a Good Bean
 
