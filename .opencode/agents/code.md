@@ -1,7 +1,7 @@
 ---
 description: Implementation agent - reads bean specs and writes code following TDD practices
 mode: primary
-model: anthropic/claude-sonnet-4-5
+model: anthropic/claude-opus-4-5
 temperature: 0.3
 tools:
   read: true
