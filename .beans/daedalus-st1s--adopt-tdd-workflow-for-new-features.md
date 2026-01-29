@@ -1,11 +1,11 @@
 ---
 # daedalus-st1s
 title: Adopt TDD workflow for new features
-status: in-progress
+status: completed
 type: epic
 priority: high
 created_at: 2026-01-28T22:15:23Z
-updated_at: 2026-01-29T00:52:44Z
+updated_at: 2026-01-29T05:25:08Z
 parent: daedalus-5k7n
 ---
 
@@ -64,11 +64,85 @@ Start small with unit tests for core utilities, then expand to integration tests
 
 ## Checklist
 - [x] Research and choose testing framework (Vitest selected)
-- [ ] Install and configure Vitest with critical recommendations
-- [ ] Create test utilities for CLI argument parsing
-- [ ] Create test utilities for beans client mocking
-- [ ] Create test utilities for process spawning
-- [ ] Add test coverage for configuration loading
-- [ ] Create TDD workflow documentation
-- [ ] Apply TDD to a small utility function as validation
-- [ ] Update project scripts and documentation
+- [x] Install and configure Vitest with critical recommendations
+- [x] Create test utilities for CLI argument parsing
+- [x] Create test utilities for beans client mocking
+- [x] Create test utilities for process spawning
+- [x] Add test coverage for configuration loading
+- [x] Create TDD workflow documentation
+- [x] Apply TDD to a small utility function as validation
+- [x] Update project scripts and documentation
+
+## Changelog
+
+### Summary
+Successfully established TDD as the standard practice for Daedalus with comprehensive testing infrastructure.
+
+### Completed Work (via child tasks)
+
+**daedalus-gsj7: Install and configure Vitest**
+- Installed Vitest 1.6.0 and @vitest/coverage-v8 1.6.0 (pinned versions)
+- Created vitest.config.ts with 60s timeout, Node environment, path aliases
+- Added test scripts: `npm test`, `npm run test:watch`, `npm run test:coverage`
+- Validated beans CLI spawning works in tests
+
+**daedalus-516s: Beans client integration tests**
+- Created `src/test-utils/beans-fixtures.ts` with real bean creation utilities
+- Created `src/talos/beans-client.integration.test.ts` (12 tests)
+- Tests use real beans CLI, no mocks
+
+**daedalus-uzth: Test utilities for setup/cleanup**
+- Created `src/test-utils/event-helpers.ts` - waitForEvent, collectEvents
+- Created `src/test-utils/async-helpers.ts` - waitUntil, sleep
+- Created `src/test-utils/fs-helpers.ts` - createTempDir, removeDir, readTestFile
+- Created `src/test-utils/index.ts` - barrel export with documentation
+- 46 tests covering all utilities
+
+**daedalus-zoeb: CLI integration tests**
+- Created `src/test-utils/cli-helpers.ts` - captureOutput, captureExitCode
+- Created `src/cli/commands.test.ts` (16 tests)
+- Added `cwd` option to `runTree()` for testability
+
+**daedalus-8jrg: Configuration loading tests**
+- Created `src/config/index.test.ts` (28 tests)
+- Created test fixtures: valid-config.yml, minimal-config.yml, invalid-*.yml
+- Comprehensive error handling coverage
+
+**daedalus-tg5y: TDD demonstration**
+- Created `src/utils/string-helpers.ts` with `toSlug()` function
+- Created `src/utils/string-helpers.test.ts` (8 tests)
+- Demonstrated complete Red-Green-Refactor cycle
+
+**daedalus-lygk: TDD documentation**
+- Created `docs/tdd-workflow.md` (603 lines) - comprehensive TDD guide
+- Created `CONTRIBUTING.md` - development workflow guidelines
+- Updated `README.md` with testing section
+
+**daedalus-654q: Project scripts and documentation**
+- Added `test:ui` script to package.json
+- Comprehensive README.md with all scripts documented
+
+### Test Coverage
+- 10 test files
+- 125 passing tests
+- All tests run in ~1 second
+
+### Files Created/Modified
+- `vitest.config.ts` - Vitest configuration
+- `package.json` - Test scripts and dependencies
+- `src/test-utils/*.ts` - 5 utility modules + tests
+- `src/utils/string-helpers.ts` - TDD demonstration
+- `src/config/index.test.ts` - Config tests
+- `src/talos/beans-client.*.test.ts` - Client tests
+- `src/cli/commands.test.ts` - CLI tests
+- `test/fixtures/*.yml` - Test configuration fixtures
+- `docs/tdd-workflow.md` - TDD guide
+- `CONTRIBUTING.md` - Contribution guidelines
+- `README.md` - Updated documentation
+
+### Success Criteria Met
+- ✅ Testing framework configured and working (Vitest 1.6.0)
+- ✅ Test utilities for CLI, EventEmitters, beans fixtures
+- ✅ Developers can easily write and run tests
+- ✅ TDD workflow documented with examples
+- ✅ Framework-agnostic helpers (no Vitest-specific patterns in utilities)
