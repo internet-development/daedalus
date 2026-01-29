@@ -1,11 +1,11 @@
 ---
 # daedalus-zoeb
 title: Add integration tests for CLI commands
-status: todo
+status: in-progress
 type: task
 priority: high
 created_at: 2026-01-28T22:20:48Z
-updated_at: 2026-01-29T01:04:00Z
+updated_at: 2026-01-29T05:13:32Z
 parent: daedalus-st1s
 blocking:
     - daedalus-lygk
@@ -225,16 +225,46 @@ describe('CLI Commands', () => {
 5. **REFACTOR**: Clean up command implementation
 
 ## Checklist
-- [ ] Create cli-helpers.ts with captureOutput()
-- [ ] Create captureExitCode() helper
-- [ ] Create runCommandWithTestBeans() helper
-- [ ] RED: Test /tree with empty directory (watch fail)
-- [ ] GREEN: Implement to pass
-- [ ] RED: Test /tree with hierarchy (watch fail)
-- [ ] GREEN: Implement to pass
-- [ ] RED: Test argument parsing (watch fail)
-- [ ] GREEN: Implement to pass
-- [ ] RED: Test error handling (watch fail)
-- [ ] GREEN: Implement to pass
-- [ ] REFACTOR: Clean up duplication
-- [ ] Verify all tests use real commands, no mocks
+- [x] Create cli-helpers.ts with captureOutput()
+- [x] Create captureExitCode() helper
+- [x] Create runCommandWithTestBeans() helper
+- [x] RED: Test /tree with empty directory (watch fail)
+- [x] GREEN: Implement to pass
+- [x] RED: Test /tree with hierarchy (watch fail)
+- [x] GREEN: Implement to pass
+- [x] RED: Test argument parsing (watch fail)
+- [x] GREEN: Implement to pass
+- [x] RED: Test error handling (watch fail)
+- [x] GREEN: Implement to pass
+- [x] REFACTOR: Clean up duplication
+- [x] Verify all tests use real commands, no mocks
+
+## Changelog
+
+### Implemented
+- Created `src/test-utils/cli-helpers.ts` with CLI testing utilities
+- Created `src/cli/commands.test.ts` with 16 integration tests
+- Added `cwd` option to `runTree()` for testability in Vitest workers
+- Exported `parseArgs()` from CLI index for testing
+
+### Files Modified
+- `src/test-utils/cli-helpers.ts` - NEW: CLI testing utilities (captureOutput, captureExitCode, runCommandWithTestBeans)
+- `src/test-utils/cli-helpers.test.ts` - NEW: Tests for CLI helpers (10 tests)
+- `src/test-utils/index.ts` - Added exports for CLI helpers
+- `src/cli/commands.test.ts` - NEW: Integration tests for CLI commands (16 tests)
+- `src/cli/tree-simple.ts` - Added `cwd` option to TreeOptions for testability
+- `src/cli/index.ts` - Exported `parseArgs()` function for testing
+
+### Deviations from Spec
+- Used console.log interception instead of process.stdout.write for captureOutput() because Vitest intercepts stdout in workers
+- Added `cwd` option to `runTree()` instead of using `process.chdir()` because Vitest workers don't support chdir
+- Did not implement handleStatusCommand or handleNewCommand tests - these commands don't exist in the current codebase (spec was aspirational)
+
+### Decisions Made
+- Used helper functions (`runTreeWithBeans`, `createBeans`) to reduce test boilerplate
+- Tested real beans CLI integration via `runTree()` with actual beans directories
+- Verified no mocks in CLI tests by grepping for mock patterns
+
+### Known Limitations
+- Tests for handleStatusCommand and handleNewCommand not implemented (commands don't exist)
+- The captureOutput helper intercepts console methods, not raw stdout, which may miss some edge cases
