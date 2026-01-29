@@ -1,11 +1,11 @@
 ---
 # daedalus-gsj7
 title: Install and configure Vitest testing framework
-status: todo
+status: in-progress
 type: task
 priority: high
 created_at: 2026-01-28T22:20:37Z
-updated_at: 2026-01-29T01:04:00Z
+updated_at: 2026-01-29T01:05:14Z
 parent: daedalus-st1s
 blocking:
     - daedalus-zoeb
@@ -144,12 +144,39 @@ afterEach(() => {
 - ✅ Validation test for beans CLI spawning passes
 
 ## Checklist
-- [ ] Install vitest@1.6.0 and @vitest/coverage-v8@1.6.0 (PINNED versions)
-- [ ] Create vitest.config.ts with Node environment and 60s timeout
-- [ ] Add test scripts to package.json
-- [ ] Verify vitest can resolve TypeScript imports
-- [ ] Write validation test for beans CLI spawning
-- [ ] Run validation test and ensure it passes
-- [ ] Test that "npm run test" works
-- [ ] Verify ES module imports work in test context
-- [ ] Document configuration choices and timeout strategy
+- [x] Install vitest@1.6.0 and @vitest/coverage-v8@1.6.0 (PINNED versions)
+- [x] Create vitest.config.ts with Node environment and 60s timeout
+- [x] Add test scripts to package.json
+- [x] Verify vitest can resolve TypeScript imports
+- [x] Write validation test for beans CLI spawning
+- [x] Run validation test and ensure it passes
+- [x] Test that "npm run test" works
+- [x] Verify ES module imports work in test context
+- [x] Document configuration choices and timeout strategy
+
+## Changelog
+
+### Implemented
+- Installed Vitest 1.6.0 and @vitest/coverage-v8 1.6.0 with pinned versions (no ^ prefix)
+- Created vitest.config.ts with Node environment, 60s timeout, and path aliases
+- Added test scripts: `npm run test`, `npm run test:watch`, `npm run test:coverage`
+- Created validation test suite for beans CLI spawning in `src/talos/beans-client.test.ts`
+
+### Files Modified
+- `package.json` - Added vitest dependencies (pinned) and test scripts
+- `vitest.config.ts` - NEW: Vitest configuration with Node environment, 60s timeout, coverage config
+- `src/talos/beans-client.test.ts` - NEW: Validation tests for beans CLI spawning
+
+### Deviations from Spec
+- Added `.tsx` to test file patterns (spec only mentioned `.ts`) - needed for future React component tests
+- Added path alias resolution in vitest.config.ts using `resolve.alias` - not in spec but needed for @talos/@config/@cli imports
+
+### Decisions Made
+- Used `resolve(__dirname, './src/...')` for path aliases instead of hardcoded paths
+- Included TypeScript type import tests to verify full TS integration
+- Added BeansCliError class tests to verify error handling exports
+
+### Known Limitations
+- Coverage provider uses v8 (default) - may need istanbul for more detailed coverage in future
+- Path aliases use `__dirname` which requires Node.js - fine for our CLI-focused project
+- No test isolation for beans CLI tests - they use real beans CLI and real .beans directory
