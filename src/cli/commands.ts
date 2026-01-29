@@ -19,6 +19,41 @@ import { selectSession } from './session-selector.js';
 import { runTree } from './tree-simple.js';
 
 // =============================================================================
+// Command Names for Tab Completion
+// =============================================================================
+
+/**
+ * All command names and aliases with / prefix.
+ * Used for tab completion in the readline interface.
+ */
+export const COMMAND_NAMES: string[] = [
+  // Primary commands
+  '/help',
+  '/mode',
+  '/prompt',
+  '/start',
+  '/stop',
+  '/status',
+  '/sessions',
+  '/new',
+  '/clear',
+  '/tree',
+  '/quit',
+  // Aliases
+  '/h',
+  '/?',
+  '/m',
+  '/p',
+  '/st',
+  '/ss',
+  '/n',
+  '/c',
+  '/t',
+  '/q',
+  '/exit',
+];
+
+// =============================================================================
 // Types
 // =============================================================================
 

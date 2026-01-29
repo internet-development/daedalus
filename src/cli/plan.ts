@@ -34,6 +34,7 @@ import { processInputLine } from './multiline-input.js';
 import { selectSession } from './session-selector.js';
 import { handleCommand, isCommand, type CommandContext } from './commands.js';
 import { loadInputHistory, appendToHistory } from './input-history.js';
+import { completer } from './completer.js';
 
 // =============================================================================
 // Types
@@ -155,6 +156,7 @@ export async function runPlan(options: PlanOptions): Promise<void> {
     history: inputHistory,
     historySize: 1000,
     removeHistoryDuplicates: true,
+    completer,
   });
 
   // 9. Set up Talos (not started yet - manual start)
