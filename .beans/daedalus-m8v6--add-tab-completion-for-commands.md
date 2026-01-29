@@ -1,11 +1,11 @@
 ---
 # daedalus-m8v6
 title: Add tab completion for /commands
-status: in-progress
+status: completed
 type: feature
 priority: normal
 created_at: 2026-01-28T20:06:46Z
-updated_at: 2026-01-29T06:06:31Z
+updated_at: 2026-01-29T06:09:06Z
 parent: daedalus-tbsm
 ---
 
