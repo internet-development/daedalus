@@ -1,11 +1,11 @@
 ---
 # daedalus-4jz1
 title: Support multi-line input in readline loop
-status: todo
+status: in-progress
 type: feature
 priority: normal
 created_at: 2026-01-28T20:06:51Z
-updated_at: 2026-01-29T00:52:36Z
+updated_at: 2026-01-29T05:25:17Z
 parent: daedalus-tbsm
 ---
 
@@ -96,13 +96,41 @@ async function question(rl: readline.Interface, prompt: string): Promise<string>
 - `src/cli/output.ts` - add `formatContinuationPrompt()` returning `... `
 
 ## Checklist
-- [ ] Add `formatContinuationPrompt()` to output.ts returning dim `... `
-- [ ] Modify `question()` in plan.ts to accumulate lines
-- [ ] Detect trailing backslash and continue prompting
-- [ ] Strip trailing backslash from each continued line
-- [ ] Join accumulated lines with newlines
-- [ ] Test: single line without backslash works as before
-- [ ] Test: multi-line with backslash continuation
-- [ ] Test: Ctrl+C during multi-line returns to normal prompt
-- [ ] Test: backslash in middle of line is preserved
-- [ ] Update history to store the complete multi-line message (not individual lines)
+- [x] Add `formatContinuationPrompt()` to output.ts returning dim `... `
+- [x] Modify `question()` in plan.ts to accumulate lines
+- [x] Detect trailing backslash and continue prompting
+- [x] Strip trailing backslash from each continued line
+- [x] Join accumulated lines with newlines
+- [x] Test: single line without backslash works as before
+- [x] Test: multi-line with backslash continuation
+- [x] Test: Ctrl+C during multi-line returns to normal prompt
+- [x] Test: backslash in middle of line is preserved
+- [x] Update history to store the complete multi-line message (not individual lines)
+
+## Changelog
+
+### Implemented
+- Added backslash continuation support for multi-line input in the planning CLI
+- Created `formatContinuationPrompt()` function returning dim `... ` prompt
+- Created `processInputLine()` function to handle line accumulation logic
+- Modified `question()` function to support multi-line input with backslash continuation
+- Added Ctrl+C handling during multi-line input to cancel and return to normal prompt
+- Exported `isMultilineMode()` and `cancelMultiline()` for signal handler integration
+
+### Files Modified
+- `src/cli/output.ts` - Added `formatContinuationPrompt()` function
+- `src/cli/multiline-input.ts` - NEW: Multi-line input processing logic
+- `src/cli/multiline-input.test.ts` - NEW: Tests for multi-line input (10 tests)
+- `src/cli/output.test.ts` - NEW: Tests for output formatting (2 tests)
+- `src/cli/plan.ts` - Modified `question()` for multi-line support, added signal handler integration
+
+### Deviations from Spec
+- None - implementation follows the spec exactly
+
+### Decisions Made
+- Extracted multi-line logic into separate `multiline-input.ts` module for testability
+- Used module-level state (`isInMultilineInput`, `cancelMultilineInput`) for Ctrl+C handling
+- Empty line during continuation completes the input (not continues) - this matches shell behavior
+
+### Known Limitations
+- `\\` at end of line is treated as escaped backslash + continuation (strips one `\`), not as literal `\\` - this is noted in the spec as acceptable for v1
