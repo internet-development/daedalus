@@ -196,8 +196,18 @@ export async function runPlan(options: PlanOptions): Promise<void> {
     },
   };
 
+  // 10b. Cancel state - shared between SIGINT handler and sendAndStream
+  let streamCancelled = false;
+  const markCancelled = () => {
+    streamCancelled = true;
+  };
+  const resetCancelled = () => {
+    streamCancelled = false;
+  };
+  const isCancelled = () => streamCancelled;
+
   // 11. Set up signal handlers
-  setupSignalHandlers(ctx, rl);
+  setupSignalHandlers(ctx, rl, markCancelled);
 
   // 12. Print header
   console.log();
@@ -205,7 +215,7 @@ export async function runPlan(options: PlanOptions): Promise<void> {
   console.log();
 
   // 13. Main loop
-  await mainLoop(rl, ctx, initialPrompt);
+  await mainLoop(rl, ctx, initialPrompt, isCancelled, resetCancelled);
 }
 
 // =============================================================================
@@ -215,11 +225,13 @@ export async function runPlan(options: PlanOptions): Promise<void> {
 async function mainLoop(
   rl: readline.Interface,
   ctx: CommandContext,
-  initialPrompt: string | null
+  initialPrompt: string | null,
+  isCancelled: () => boolean,
+  resetCancelled: () => void
 ): Promise<void> {
   // Send initial prompt if provided
   if (initialPrompt) {
-    await sendAndStream(initialPrompt, ctx);
+    await sendAndStream(initialPrompt, ctx, isCancelled, resetCancelled);
   }
 
   // Interactive loop
@@ -247,7 +259,7 @@ async function mainLoop(
           return;
 
         case 'send':
-          await sendAndStream(result.message, ctx);
+          await sendAndStream(result.message, ctx, isCancelled, resetCancelled);
           break;
 
         case 'update-history':
@@ -269,7 +281,7 @@ async function mainLoop(
       }
     } else {
       // Regular message
-      await sendAndStream(input, ctx);
+      await sendAndStream(input, ctx, isCancelled, resetCancelled);
     }
   }
 }
@@ -278,7 +290,12 @@ async function mainLoop(
 // Send and Stream
 // =============================================================================
 
-async function sendAndStream(message: string, ctx: CommandContext): Promise<void> {
+async function sendAndStream(
+  message: string,
+  ctx: CommandContext,
+  isCancelled: () => boolean,
+  resetCancelled: () => void
+): Promise<void> {
   // Add user message to history (readline already echoed the input)
   ctx.history = addMessage(ctx.history, {
     role: 'user',
@@ -352,6 +369,24 @@ async function sendAndStream(message: string, ctx: CommandContext): Promise<void
       ctx.session.sendMessage(message, messages).catch(reject);
     });
 
+    // Check if cancelled
+    if (isCancelled()) {
+      // Handle cancellation output
+      // First, clear the ^C that the terminal echoed by moving to start of line and clearing
+      if (hasOutput) {
+        // Streaming had started - the ^C appears after the text
+        // Move cursor back 2 chars (^C) and clear to end of line, then append [Cancelled]
+        process.stdout.write('\x1b[2D\x1b[K \x1b[33m[Cancelled]\x1b[0m\n\n');
+      } else {
+        // Still on spinner - spinner.stop() clears the line with \r\x1b[K
+        // The ^C appears after "Thinking...", so we clear and rewrite
+        spinner.stop();
+        process.stdout.write('\x1b[33m[Cancelled]\x1b[0m\n\n');
+      }
+      // Don't save cancelled response to history
+      return;
+    }
+
     // Stop spinner if still running (no output case)
     spinner.stop();
 
@@ -370,6 +405,23 @@ async function sendAndStream(message: string, ctx: CommandContext): Promise<void
     });
     ctx.saveHistory();
   } catch (err) {
+    // Check if this was a cancellation
+    if (isCancelled()) {
+      // Handle cancellation output
+      // First, clear the ^C that the terminal echoed
+      if (hasOutput) {
+        // Streaming had started - the ^C appears after the text
+        // Move cursor back 2 chars (^C) and clear to end of line, then append [Cancelled]
+        process.stdout.write('\x1b[2D\x1b[K \x1b[33m[Cancelled]\x1b[0m\n\n');
+      } else {
+        // Still on spinner - spinner.stop() clears the line with \r\x1b[K
+        spinner.stop();
+        process.stdout.write('\x1b[33m[Cancelled]\x1b[0m\n\n');
+      }
+      // Don't save cancelled response to history
+      return;
+    }
+
     // Stop spinner
     spinner.stop();
 
@@ -385,6 +437,8 @@ async function sendAndStream(message: string, ctx: CommandContext): Promise<void
     // Remove listeners for next message
     ctx.session.removeListener('text', textHandler);
     ctx.session.removeListener('toolCall', toolCallHandler);
+    // Reset cancelled state for next message
+    resetCancelled();
   }
 }
 
@@ -392,7 +446,11 @@ async function sendAndStream(message: string, ctx: CommandContext): Promise<void
 // Signal Handlers
 // =============================================================================
 
-function setupSignalHandlers(ctx: CommandContext, rl: readline.Interface): void {
+function setupSignalHandlers(
+  ctx: CommandContext,
+  rl: readline.Interface,
+  markCancelled: () => void
+): void {
   let isExiting = false;
 
   const cleanup = async () => {
@@ -417,8 +475,10 @@ function setupSignalHandlers(ctx: CommandContext, rl: readline.Interface): void 
   // Handle Ctrl+C - cancels stream, multi-line input, or exits
   process.on('SIGINT', () => {
     if (ctx.session.isStreaming()) {
+      // Mark as cancelled - sendAndStream will handle the output
+      markCancelled();
       ctx.session.cancel();
-      console.log('\n[Cancelled]');
+      // Don't print anything here - let sendAndStream handle it cleanly
     } else if (isMultilineMode()) {
       cancelMultiline();
       // Re-prompt will happen in the main loop
