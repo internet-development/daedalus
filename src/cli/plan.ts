@@ -351,10 +351,12 @@ async function sendAndStream(
     // Stop spinner if still running
     spinner.stop();
     
-    // Add newline before tool call if text was streaming
-    if (hasOutput) {
-      console.log();
-    } else {
+    // Add blank line before first tool call in a group (after text),
+    // but NOT between consecutive tool calls (daedalus-rchx)
+    if (hasOutput && !afterToolCall) {
+      console.log(); // end current text line
+      console.log(); // blank line for visual separation
+    } else if (!hasOutput) {
       hasOutput = true;
     }
     
