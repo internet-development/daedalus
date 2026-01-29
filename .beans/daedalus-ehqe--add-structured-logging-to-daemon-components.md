@@ -1,11 +1,11 @@
 ---
 # daedalus-ehqe
 title: Add structured logging to daemon components
-status: in-progress
+status: completed
 type: task
 priority: normal
 created_at: 2026-01-29T00:26:01Z
-updated_at: 2026-01-29T06:23:41Z
+updated_at: 2026-01-29T06:30:49Z
 parent: daedalus-pvpy
 blocking:
     - daedalus-yft3
