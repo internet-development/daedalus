@@ -63,6 +63,14 @@ export {
 } from './completion-handler.js';
 export { Talos, type RunningBean, type TalosEvents } from './talos.js';
 export { DaemonManager, type DaemonStatus } from './daemon-manager.js';
+export {
+  createLogger,
+  createLoggerFromConfig,
+  initLogger,
+  getLogger,
+  logger,
+  type CreateLoggerOptions,
+} from './logger.js';
 
 // Event types for the daemon
 export type TalosEvent =

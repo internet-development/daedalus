@@ -44,6 +44,21 @@ planning_agent:
   # Temperature for response generation
   temperature: 0.7
 
+# Logging configuration
+logging:
+  # Log level: trace, debug, info, warn, error (default: info)
+  level: info
+  # Pretty print for development (default: false)
+  prettyPrint: true
+  # Fields to redact from logs (default: password, apiKey, token)
+  redact:
+    - password
+    - apiKey
+    - token
+    - secret
+  # Destination: stdout or file path (default: stdout)
+  destination: stdout
+
 # Planning configuration
 planning:
   # Directory containing skill files (relative to project root)

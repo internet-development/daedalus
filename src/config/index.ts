@@ -197,6 +197,16 @@ const OutputConfigSchema = z.object({
 });
 
 /**
+ * Logging configuration
+ */
+const LoggingConfigSchema = z.object({
+  level: z.enum(['trace', 'debug', 'info', 'warn', 'error']).default('info'),
+  prettyPrint: z.boolean().default(false),
+  redact: z.array(z.string()).default(['password', 'apiKey', 'token']),
+  destination: z.string().default('stdout'),
+});
+
+/**
  * Complete Talos configuration schema
  */
 const TalosConfigSchema = z.object({
@@ -208,6 +218,7 @@ const TalosConfigSchema = z.object({
   planning_agent: PlanningAgentConfigSchema.default({}),
   experts: ExpertsConfigSchema.default({}),
   planning: PlanningConfigSchema.default({}),
+  logging: LoggingConfigSchema.default({}),
   // Legacy fields for backwards compatibility
   watcher: WatcherConfigSchema.default({}),
   output: OutputConfigSchema.default({}),
@@ -233,6 +244,7 @@ export type PlanningModesConfig = z.infer<typeof PlanningModesConfigSchema>;
 export type BrainstormModeConfig = z.infer<typeof BrainstormModeConfigSchema>;
 export type BreakdownModeConfig = z.infer<typeof BreakdownModeConfigSchema>;
 export type BrainstormEnforceType = z.infer<typeof BrainstormEnforceTypeSchema>;
+export type LoggingConfig = z.infer<typeof LoggingConfigSchema>;
 
 // =============================================================================
 // Discovered Paths Interface
@@ -677,4 +689,5 @@ export {
   PlanningModesConfigSchema,
   BrainstormModeConfigSchema,
   BreakdownModeConfigSchema,
+  LoggingConfigSchema,
 };

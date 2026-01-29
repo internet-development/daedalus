@@ -554,6 +554,76 @@ describe('nested validation errors', () => {
 // Error Message Quality Tests
 // =============================================================================
 
+// =============================================================================
+// Logging Configuration Tests
+// =============================================================================
+
+describe('logging configuration', () => {
+  it('has default logging configuration', () => {
+    const config = getDefaultConfig();
+
+    expect(config.logging).toBeDefined();
+    expect(config.logging?.level).toBe('info');
+    expect(config.logging?.prettyPrint).toBe(false);
+    expect(config.logging?.redact).toEqual(['password', 'apiKey', 'token']);
+    expect(config.logging?.destination).toBe('stdout');
+  });
+
+  it('validates logging level enum', () => {
+    const validConfig = {
+      logging: { level: 'debug' },
+    };
+    const result = TalosConfigSchema.safeParse(validConfig);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.logging?.level).toBe('debug');
+    }
+  });
+
+  it('rejects invalid logging level', () => {
+    const invalidConfig = {
+      logging: { level: 'invalid_level' },
+    };
+    const result = TalosConfigSchema.safeParse(invalidConfig);
+    expect(result.success).toBe(false);
+  });
+
+  it('accepts all valid log levels', () => {
+    const levels = ['trace', 'debug', 'info', 'warn', 'error'] as const;
+    for (const level of levels) {
+      const config = { logging: { level } };
+      const result = TalosConfigSchema.safeParse(config);
+      expect(result.success).toBe(true);
+    }
+  });
+
+  it('accepts custom redact paths', () => {
+    const config = {
+      logging: {
+        redact: ['password', 'secret', 'credentials.key'],
+      },
+    };
+    const result = TalosConfigSchema.safeParse(config);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.logging?.redact).toEqual(['password', 'secret', 'credentials.key']);
+    }
+  });
+
+  it('accepts file destination', () => {
+    const config = {
+      logging: {
+        destination: '/var/log/talos.log',
+      },
+    };
+    const result = TalosConfigSchema.safeParse(config);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.logging?.destination).toBe('/var/log/talos.log');
+    }
+  });
+});
+
 describe('error message quality', () => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let consoleSpy: any;
