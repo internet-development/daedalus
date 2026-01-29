@@ -14,7 +14,7 @@ NC='\033[0m' # No Color
 # Configuration
 AGENT="${TALOS_AGENT:-opencode}"
 OPENCODE_AGENT="${OPENCODE_AGENT:-code}"  # Use the 'code' agent by default
-MODEL="${TALOS_MODEL:-anthropic/claude-sonnet-4-5}"
+MODEL="${TALOS_MODEL:-anthropic/claude-opus-4-5}"
 MAX_ITERATIONS="${MAX_ITERATIONS:-5}"
 DRY_RUN=false
 ONCE=false
