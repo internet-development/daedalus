@@ -1,11 +1,11 @@
 ---
 # daedalus-m8v6
 title: Add tab completion for /commands
-status: todo
+status: in-progress
 type: feature
 priority: normal
 created_at: 2026-01-28T20:06:46Z
-updated_at: 2026-01-28T20:08:22Z
+updated_at: 2026-01-29T06:06:31Z
 parent: daedalus-tbsm
 ---
 
@@ -63,12 +63,38 @@ Should complete both full names and aliases.
 - `src/cli/commands.ts` - export `COMMANDS` array for completion
 
 ## Checklist
-- [ ] Export list of all command names (including aliases) from commands.ts
-- [ ] Create `completer(line: string)` function in plan.ts
-- [ ] Handle non-command input (return empty completions)
-- [ ] Handle `/` prefix - filter commands starting with typed text
-- [ ] Pass completer to readline.createInterface()
-- [ ] Test: `/h<tab>` completes to `/help`
-- [ ] Test: `/s<tab>` shows `/start`, `/stop`, `/status`, `/sessions`
-- [ ] Test: Regular text doesn't trigger completion
-- [ ] Test: Empty `/` shows all commands
+- [x] Export list of all command names (including aliases) from commands.ts
+- [x] Create `completer(line: string)` function in plan.ts
+- [x] Handle non-command input (return empty completions)
+- [x] Handle `/` prefix - filter commands starting with typed text
+- [x] Pass completer to readline.createInterface()
+- [x] Test: `/h<tab>` completes to `/help`
+- [x] Test: `/s<tab>` shows `/start`, `/stop`, `/status`, `/sessions`
+- [x] Test: Regular text doesn't trigger completion
+- [x] Test: Empty `/` shows all commands
+
+## Changelog
+
+### Implemented
+- Added `COMMAND_NAMES` export to `commands.ts` with all command names and aliases
+- Created `completer.ts` module with the completer function for readline
+- Integrated completer into readline.createInterface() in plan.ts
+- Added comprehensive test suite for tab completion
+
+### Files Modified
+- `src/cli/commands.ts` - Added `COMMAND_NAMES` array export
+- `src/cli/completer.ts` - NEW: Completer function module
+- `src/cli/completer.test.ts` - NEW: Test suite for completer
+- `src/cli/plan.ts` - Added completer import and passed to readline
+
+### Deviations from Spec
+- Created separate `completer.ts` module instead of putting function in `plan.ts` (better separation of concerns, easier to test)
+- Named export `COMMAND_NAMES` instead of `COMMANDS` (more descriptive)
+
+### Decisions Made
+- Used case-insensitive matching for better UX (spec mentioned this as edge case)
+- Completer returns original line as-is for non-command input (standard readline behavior)
+- All 14 tests pass covering primary commands, aliases, and edge cases
+
+### Known Limitations
+- Phase 1 only: Commands only, no argument completion (as specified in requirements)
