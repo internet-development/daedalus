@@ -1,7 +1,7 @@
 ---
 description: Planning agent for beans issue tracking - helps design, plan, and manage work through Socratic questioning
 mode: primary
-model: anthropic/claude-sonnet-4-5
+model: anthropic/claude-opus-4-5
 temperature: 0.7
 tools:
   # Read-only codebase access
@@ -11,9 +11,9 @@ tools:
   list: true
   # Web research
   webfetch: true
-  # No code modifications
-  write: false
-  edit: false
+  # Bean file modifications only
+  write: true
+  edit: true
   bash: true
 permission:
   bash:
@@ -28,6 +28,9 @@ permission:
     "wc *": allow
     "head *": allow
     "tail *": allow
+  edit:
+    "*": deny
+    ".beans/*": allow
   webfetch: allow
 ---
 
