@@ -1,11 +1,11 @@
 ---
 # daedalus-24uq
 title: /edit should auto-submit and pre-fill with last agent message
-status: todo
+status: in-progress
 type: bug
 priority: normal
 created_at: 2026-01-29T21:11:21Z
-updated_at: 2026-01-29T22:10:33Z
+updated_at: 2026-01-29T22:20:01Z
 ---
 
 ## Problem
@@ -180,19 +180,19 @@ paths and a checklist of changes needed.
 
 ## Checklist
 
-- [ ] Update `src/cli/editor.ts`:
-  - [ ] Add separator constants (3-line block with amphora design)
-  - [ ] Update `openEditor()` to accept `EditorOptions` with optional `agentMessage`
-  - [ ] Build initial content: agent message + separator + empty space
-  - [ ] Add `stripSeparator()` function using `lastIndexOf` on bottom border line
-  - [ ] Replace raw `.trim()` with `stripSeparator()` for content processing
-- [ ] Update `src/cli/commands.ts`:
-  - [ ] Change `handleEdit()` signature to accept `ctx: CommandContext` (currently takes no args)
-  - [ ] Update call site in switch statement: `return handleEdit(ctx)` (currently `return handleEdit()`)
-  - [ ] Import `getCurrentSession` from `../planning/chat-history.js`
-  - [ ] Get last assistant message from `getCurrentSession(ctx.history)`
-  - [ ] Pass `agentMessage` to `openEditor()`
-- [ ] Typecheck passes
+- [x] Update `src/cli/editor.ts`:
+  - [x] Add separator constants (3-line block with amphora design)
+  - [x] Update `openEditor()` to accept `EditorOptions` with optional `agentMessage`
+  - [x] Build initial content: agent message + separator + empty space
+  - [x] Add `stripSeparator()` function using `lastIndexOf` on bottom border line
+  - [x] Replace raw `.trim()` with `stripSeparator()` for content processing
+- [x] Update `src/cli/commands.ts`:
+  - [x] Change `handleEdit()` signature to accept `ctx: CommandContext` (currently takes no args)
+  - [x] Update call site in switch statement: `return handleEdit(ctx)` (currently `return handleEdit()`)
+  - [x] Import `getCurrentSession` from `../planning/chat-history.js`
+  - [x] Get last assistant message from `getCurrentSession(ctx.history)`
+  - [x] Pass `agentMessage` to `openEditor()`
+- [x] Typecheck passes
 - [ ] Manual testing:
   - [ ] `/edit` with previous agent message shows it above separator
   - [ ] `/edit` with no history shows just separator
@@ -222,6 +222,33 @@ paths and a checklist of changes needed.
 - Makes the editor experience feel polished
 - Greek amphora theme matches the project name (Daedalus)
 - Unique enough to avoid false matches in agent output
+
+## Changelog
+
+### Implemented
+- Added separator constants (3-line decorative block with amphora design)
+- Added `stripSeparator()` function using `lastIndexOf` on bottom border line
+- Added `buildEditorContent()` helper to construct initial editor content
+- Updated `openEditor()` to accept `EditorOptions` with optional `agentMessage`
+- Updated `handleEdit()` in commands.ts to extract last assistant message from chat history and pass to editor
+- Added 15 unit tests covering all stripping logic and content building edge cases
+
+### Files Modified
+- `src/cli/editor.ts` — Added separator constants, `stripSeparator()`, `buildEditorContent()`, `EditorOptions` interface; refactored `openEditor()` to use new options and stripping logic
+- `src/cli/commands.ts` — Updated `handleEdit()` to accept `CommandContext`, import `getCurrentSession`, extract last assistant message, pass to `openEditor()`
+- `src/cli/editor.test.ts` — NEW: 15 unit tests for `stripSeparator()` and `buildEditorContent()`
+
+### Deviations from Spec
+- Extracted `buildEditorContent()` as a separate exported function (spec had it inline in `openEditor()`). This enables direct testing of content building logic without spawning an editor.
+- When no agent message is provided, `buildEditorContent()` still includes the separator (spec says "Open editor with just the separator + empty space below"). This matches the edge case spec.
+
+### Decisions Made
+- Exported `stripSeparator`, `buildEditorContent`, `SEPARATOR_BOTTOM`, and `SEPARATOR` for testability. These are pure functions that benefit from direct unit testing.
+- `SEPARATOR_TOP` and `SEPARATOR_MIDDLE` remain private (not needed externally).
+- Used `EditorOptions` interface instead of positional params for future extensibility.
+
+### Known Limitations
+- Manual testing checklist items are not automated (require interactive editor). The stripping logic is thoroughly tested via unit tests, but the full UX flow (editor spawn, file I/O, auto-submit) requires manual verification.
 
 ## Related Beans
 
