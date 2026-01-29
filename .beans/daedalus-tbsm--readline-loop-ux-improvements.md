@@ -1,11 +1,11 @@
 ---
 # daedalus-tbsm
 title: Readline Loop UX Improvements
-status: todo
+status: completed
 type: epic
 priority: high
 created_at: 2026-01-28T20:08:18Z
-updated_at: 2026-01-29T00:52:31Z
+updated_at: 2026-01-29T06:47:37Z
 parent: daedalus-5k7n
 ---
 
