@@ -1,10 +1,11 @@
 ---
 # daedalus-5k7n
 title: 'Daedalus v3: Quality, Polish & Infrastructure'
-status: in-progress
+status: completed
 type: milestone
+priority: normal
 created_at: 2026-01-29T00:13:12Z
-updated_at: 2026-01-29T00:13:12Z
+updated_at: 2026-01-29T06:49:29Z
 ---
 
 Third major release focusing on developer experience, planning CLI polish, and daemon infrastructure.
