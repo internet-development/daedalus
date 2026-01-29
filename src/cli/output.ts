@@ -96,6 +96,10 @@ export function formatPrompt(): string {
   return c('green', '> ');
 }
 
+export function formatContinuationPrompt(): string {
+  return c('dim', '... ');
+}
+
 export function formatDivider(width?: number): string {
   const termWidth = width ?? process.stdout.columns ?? 80;
   return c('dim', '─'.repeat(Math.min(termWidth, 80)));

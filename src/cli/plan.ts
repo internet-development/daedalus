@@ -25,9 +25,11 @@ import { Talos } from '../talos/talos.js';
 import {
   formatHeader,
   formatPrompt,
+  formatContinuationPrompt,
   formatError,
   formatSessionList,
 } from './output.js';
+import { processInputLine } from './multiline-input.js';
 import { selectSession } from './session-selector.js';
 import { handleCommand, isCommand, type CommandContext } from './commands.js';
 import { loadInputHistory, appendToHistory } from './input-history.js';
@@ -376,11 +378,14 @@ function setupSignalHandlers(ctx: CommandContext, rl: readline.Interface): void 
     process.exit(0);
   };
 
-  // Handle Ctrl+C - first cancels stream, second exits
+  // Handle Ctrl+C - cancels stream, multi-line input, or exits
   process.on('SIGINT', () => {
     if (ctx.session.isStreaming()) {
       ctx.session.cancel();
       console.log('\n[Cancelled]');
+    } else if (isMultilineMode()) {
+      cancelMultiline();
+      // Re-prompt will happen in the main loop
     } else {
       cleanup();
     }
@@ -456,10 +461,74 @@ async function generateNameWithAI(
 // Utilities
 // =============================================================================
 
-function question(rl: readline.Interface, prompt: string): Promise<string> {
-  return new Promise((resolve) => {
-    rl.question(prompt, (answer) => {
-      resolve(answer);
-    });
-  });
+/** Tracks whether we're currently in multi-line input mode */
+let isInMultilineInput = false;
+
+/** Callback to cancel multi-line input on Ctrl+C */
+let cancelMultilineInput: (() => void) | null = null;
+
+/**
+ * Check if currently in multi-line input mode.
+ * Used by signal handlers to determine Ctrl+C behavior.
+ */
+export function isMultilineMode(): boolean {
+  return isInMultilineInput;
+}
+
+/**
+ * Cancel multi-line input and return to normal prompt.
+ * Called by signal handlers on Ctrl+C during multi-line input.
+ */
+export function cancelMultiline(): void {
+  if (cancelMultilineInput) {
+    cancelMultilineInput();
+  }
+}
+
+/**
+ * Prompt for input with multi-line support via backslash continuation.
+ * A line ending with `\` continues to the next line.
+ * Ctrl+C during multi-line input cancels and returns empty string.
+ */
+async function question(rl: readline.Interface, prompt: string): Promise<string> {
+  let accumulated: string[] = [];
+  let currentPrompt = prompt;
+  let cancelled = false;
+
+  // Set up cancellation handler
+  cancelMultilineInput = () => {
+    cancelled = true;
+    // Clear the current line and show cancellation message
+    process.stdout.write('\n[Multi-line input cancelled]\n');
+  };
+
+  try {
+    while (true) {
+      // Update multi-line state
+      isInMultilineInput = accumulated.length > 0;
+
+      const line = await new Promise<string>((resolve) => {
+        rl.question(currentPrompt, resolve);
+      });
+
+      // Check if cancelled during input
+      if (cancelled) {
+        return '';
+      }
+
+      const result = processInputLine(line, accumulated);
+
+      if (result.complete) {
+        return result.message!;
+      }
+
+      // Continue accumulating
+      accumulated = result.accumulated!;
+      currentPrompt = formatContinuationPrompt();
+    }
+  } finally {
+    // Reset state
+    isInMultilineInput = false;
+    cancelMultilineInput = null;
+  }
 }
