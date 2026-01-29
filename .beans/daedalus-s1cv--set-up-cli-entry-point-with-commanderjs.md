@@ -1,11 +1,11 @@
 ---
 # daedalus-s1cv
 title: Set up CLI entry point with commander.js
-status: todo
+status: in-progress
 type: task
 priority: normal
 created_at: 2026-01-29T00:30:43Z
-updated_at: 2026-01-29T00:32:34Z
+updated_at: 2026-01-29T05:30:19Z
 parent: daedalus-qkep
 blocking:
     - daedalus-6vtz
@@ -120,10 +120,34 @@ npm run build
 - `tsconfig.json` (verify includes)
 
 ## Acceptance Criteria
-- [ ] commander.js installed
-- [ ] CLI entry point created with shebang
-- [ ] All 5 commands defined (start/stop/status/logs/config)
-- [ ] Help text works for each command
-- [ ] Binary compiles and is executable
-- [ ] --version flag works
-- [ ] Command structure is ready for implementation
+- [x] commander.js installed
+- [x] CLI entry point created with shebang
+- [x] All 5 commands defined (start/stop/status/logs/config)
+- [x] Help text works for each command
+- [x] Binary compiles and is executable
+- [x] --version flag works
+- [x] Command structure is ready for implementation
+
+## Changelog
+
+### Implemented
+- Installed commander.js v14.0.2
+- Created `src/cli/talos.ts` with all 5 commands (start, stop, status, logs, config)
+- Added talos binary to package.json bin field
+- Created comprehensive test suite with 18 tests covering all commands and options
+
+### Files Modified
+- `package.json` - Added commander dependency and talos binary
+- `src/cli/talos.ts` - NEW: CLI entry point with commander.js
+- `src/cli/talos.test.ts` - NEW: Test suite for CLI
+
+### Deviations from Spec
+- None - implementation matches spec exactly
+
+### Decisions Made
+- Used tsx for running tests against TypeScript source directly (consistent with existing test patterns)
+- Added test file to verify CLI behavior via subprocess execution (real integration tests)
+
+### Known Limitations
+- Compiled binary requires manual `chmod +x` after build (standard for Node.js CLIs)
+- tsconfig.json already includes `src/**/*` so no changes needed there
