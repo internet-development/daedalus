@@ -168,6 +168,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines on:
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Development workflow and guidelines |
 | [docs/tdd-workflow.md](docs/tdd-workflow.md) | TDD practices with examples |
 | [docs/planning-workflow.md](docs/planning-workflow.md) | Planning and brainstorming workflow |
+| [docs/logging.md](docs/logging.md) | Logging patterns and best practices |
 | [AGENTS.md](AGENTS.md) | Guidelines for AI coding agents |
 
 ## License

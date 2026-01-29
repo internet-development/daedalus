@@ -134,6 +134,40 @@ output:
   autoComplete: false
 ```
 
+## Logging
+
+Use structured logging with Pino. See [docs/logging.md](docs/logging.md) for full documentation.
+
+```typescript
+import { logger } from './talos/logger.js';
+
+// Good: Structured with context
+logger.info({ beanId, status }, 'Bean status changed');
+
+// Bad: Unstructured
+logger.info(`Bean ${beanId} status: ${status}`);
+
+// Use child loggers for components
+const myLogger = logger.child({ component: 'my-component' });
+```
+
+### Key Patterns
+
+1. **Always include context** - Add relevant fields like `beanId`, `filePath`, `exitCode`
+2. **Use appropriate levels** - `debug` for diagnostics, `info` for operations, `error` for failures
+3. **Log errors properly** - Use `{ err: error }` for error objects
+4. **Use child loggers** - Create one per component for automatic context
+5. **Use correlation IDs** - Wrap operations with `withContext` for tracing
+
+```typescript
+import { withContext } from './talos/context.js';
+
+await withContext({ beanId }, async () => {
+  // All logs here include beanId and correlationId
+  logger.info('Starting operation');
+});
+```
+
 ## Key Architectural Decisions
 
 1. **No database** - Beans are the source of truth, stored as files
