@@ -84,14 +84,103 @@ program
   .description('Talos daemon management CLI')
   .version(packageJson.version);
 
-// Commands will be added in subsequent tasks
+// Import DaemonManager for process management
+import { DaemonManager } from '../talos/daemon-manager.js';
+
 program
   .command('start')
   .description('Start the Talos daemon')
   .option('-c, --config <path>', 'Path to config file')
-  .option('-d, --detach', 'Run as background daemon', true)
+  .option('--no-detach', 'Run in foreground (for debugging)')
   .action(async (options) => {
-    console.log('start command - to be implemented');
+    const manager = new DaemonManager();
+
+    // Check if already running
+    if (manager.isRunning()) {
+      const status = manager.getStatus();
+      console.error('Daemon is already running (PID: %d)', status?.pid);
+      process.exit(1);
+    }
+
+    // Validate config
+    try {
+      const startDir = options.config ? dirname(resolve(options.config)) : process.cwd();
+      const { config } = loadConfig(startDir);
+      console.log('Configuration validated ✓');
+    } catch (error) {
+      console.error('Configuration error:', (error as Error).message);
+      process.exit(1);
+    }
+
+    if (options.detach) {
+      // Spawn detached daemon process
+      const { spawn: spawnChild } = await import('child_process');
+      const { createWriteStream } = await import('fs');
+      const { mkdirSync } = await import('fs');
+
+      // Ensure .talos directory exists
+      const talosDir = join(process.cwd(), '.talos');
+      mkdirSync(talosDir, { recursive: true });
+
+      const logFile = manager.getLogFile();
+      const logStream = createWriteStream(logFile, { flags: 'a' });
+
+      // Spawn the daemon entry point
+      const daemonScript = join(__dirname, '../daemon-entry.js');
+      const args = options.config ? ['--config', resolve(options.config)] : [];
+      
+      const child = spawnChild(process.execPath, [daemonScript, ...args], {
+        detached: true,
+        stdio: ['ignore', logStream, logStream],
+        cwd: process.cwd(),
+      });
+
+      // Write PID and status
+      if (child.pid) {
+        manager.writePid(child.pid);
+        manager.writeStatus({
+          pid: child.pid,
+          startedAt: Date.now(),
+          configPath: options.config ? resolve(options.config) : undefined,
+        });
+
+        // Detach from parent
+        child.unref();
+
+        console.log('Talos daemon started (PID: %d)', child.pid);
+        console.log('Use "talos logs -f" to view output');
+        console.log('Use "talos status" to check status');
+      } else {
+        console.error('Failed to start daemon');
+        process.exit(1);
+      }
+    } else {
+      // Run in foreground for debugging
+      const { Talos } = await import('../talos/talos.js');
+      const talos = new Talos(options.config ? resolve(options.config) : undefined);
+
+      // Write PID for status command
+      manager.writePid(process.pid);
+      manager.writeStatus({
+        pid: process.pid,
+        startedAt: Date.now(),
+        configPath: options.config ? resolve(options.config) : undefined,
+      });
+
+      const shutdown = async () => {
+        console.log('\nShutting down...');
+        await talos.stop();
+        manager.cleanup();
+        process.exit(0);
+      };
+
+      process.on('SIGTERM', shutdown);
+      process.on('SIGINT', shutdown);
+
+      await talos.start();
+      console.log('Talos daemon running in foreground');
+      console.log('Press Ctrl+C to stop');
+    }
   });
 
 program
