@@ -3,7 +3,6 @@
  *
  * Implements all /command handlers for the interactive planning session.
  */
-import { spawn } from 'child_process';
 import type { PlanningSession, PlanMode } from '../planning/planning-session.js';
 import type { ChatHistoryState } from '../planning/chat-history.js';
 import { clearMessages } from '../planning/chat-history.js';
@@ -17,6 +16,7 @@ import {
   formatError,
 } from './output.js';
 import { selectSession } from './session-selector.js';
+import { runTree } from './tree-simple.js';
 
 // =============================================================================
 // Types
@@ -268,20 +268,14 @@ function handleClear(ctx: CommandContext): CommandResult {
 async function handleTree(args: string): Promise<CommandResult> {
   const treeArgs = args.trim() ? args.trim().split(/\s+/) : [];
 
-  return new Promise((resolve) => {
-    const child = spawn('beans', ['tree', ...treeArgs], {
-      stdio: 'inherit',
-    });
+  try {
+    await runTree({ args: treeArgs });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.log(formatError(`Failed to run tree: ${message}`));
+  }
 
-    child.on('error', (err) => {
-      console.log(formatError(`Failed to run beans tree: ${err.message}`));
-      resolve({ type: 'continue' });
-    });
-
-    child.on('close', () => {
-      resolve({ type: 'continue' });
-    });
-  });
+  return { type: 'continue' };
 }
 
 function handleQuit(): CommandResult {
