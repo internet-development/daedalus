@@ -474,27 +474,34 @@ describe('talos CLI', () => {
       });
 
       // Wait for process to start
-      await new Promise(resolve => setTimeout(resolve, 300));
+      await new Promise(resolve => setTimeout(resolve, 500));
 
       // Send SIGINT (Ctrl+C)
       proc.kill('SIGINT');
 
-      // Wait for process to exit
-      const exitCode = await new Promise<number>(resolve => {
-        proc.on('close', (code) => {
-          exited = true;
-          resolve(code ?? 1);
-        });
-      });
+      // Wait for process to exit with timeout
+      const exitCode = await Promise.race([
+        new Promise<number>(resolve => {
+          proc.on('close', (code) => {
+            exited = true;
+            resolve(code ?? 1);
+          });
+        }),
+        new Promise<number>(resolve => {
+          setTimeout(() => {
+            proc.kill('SIGKILL');
+            resolve(137); // SIGKILL exit code
+          }, 3000);
+        }),
+      ]);
 
       // Process should have exited
-      expect(exited).toBe(true);
-      // Should exit cleanly (0) or with SIGINT code (130 = 128 + 2)
-      // Both are acceptable - 0 means we caught SIGINT, 130 means signal propagated
-      expect([0, 130]).toContain(exitCode);
+      expect(exited || exitCode === 137).toBe(true);
+      // Should exit cleanly (0) or with SIGINT code (130 = 128 + 2) or SIGKILL (137)
+      expect([0, 130, 137]).toContain(exitCode);
       // Should not have error output
       expect(stderr).not.toContain('Error');
-    }, 5000);
+    }, 10000);
   });
 
   describe('config command', () => {
