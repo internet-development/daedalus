@@ -91,7 +91,7 @@ Follow the **Red-Green-Refactor** cycle:
 
 **Core principle:** If you didn't watch the test fail, you don't know if it tests the right thing.
 
-For detailed TDD guidelines, see [`.opencode/skills/test-driven-development/SKILL.md`](.opencode/skills/test-driven-development/SKILL.md).
+For detailed TDD guidelines, see [docs/tdd-workflow.md](docs/tdd-workflow.md).
 
 ### Testing Best Practices
 
@@ -103,10 +103,17 @@ For detailed TDD guidelines, see [`.opencode/skills/test-driven-development/SKIL
 
 ### Test Utilities
 
-The project includes test utilities for common testing scenarios:
+The project includes test utilities in `src/test-utils/`:
 
-- **`src/talos/beans-client.test.ts`** - Examples of testing CLI interactions
-- **`src/config/index.test.ts`** - Examples of testing configuration loading
+| Utility | Purpose |
+|---------|---------|
+| `beans-fixtures.ts` | Create real bean files for testing |
+| `cli-helpers.ts` | Capture CLI output and exit codes |
+| `event-helpers.ts` | Test EventEmitter-based code |
+| `async-helpers.ts` | Wait for conditions and delays |
+| `fs-helpers.ts` | Temporary directories and file operations |
+
+See [docs/tdd-workflow.md](docs/tdd-workflow.md) for usage examples.
 
 ## Architecture
 
@@ -147,20 +154,21 @@ planning_agent:
 
 ## Contributing
 
-### Development Workflow
+See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines on:
 
-1. Pick up a bean from `.beans/` or create a new one
-2. Follow TDD - write tests first, then implementation
-3. Run `npm test` to verify all tests pass
-4. Run `npm run typecheck` to verify types
-5. Commit with conventional commit messages
+- Development workflow with beans
+- TDD practices and test utilities
+- Code style and conventions
+- Pull request process
 
-### Code Style
+## Documentation
 
-- TypeScript strict mode
-- ES modules with `.js` extensions in imports
-- React/Ink patterns for terminal UI
-- Zod for runtime validation
+| Document | Description |
+|----------|-------------|
+| [CONTRIBUTING.md](CONTRIBUTING.md) | Development workflow and guidelines |
+| [docs/tdd-workflow.md](docs/tdd-workflow.md) | TDD practices with examples |
+| [docs/planning-workflow.md](docs/planning-workflow.md) | Planning and brainstorming workflow |
+| [AGENTS.md](AGENTS.md) | Guidelines for AI coding agents |
 
 ## License
 
