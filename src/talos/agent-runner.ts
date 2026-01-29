@@ -16,6 +16,11 @@ import { spawn, type ChildProcess, execSync } from 'child_process';
 import { EventEmitter } from 'events';
 import type { Bean, BeanWithChildren } from './beans-client.js';
 import { isReviewModeType, getBeanWithChildren, getCwd } from './beans-client.js';
+import { getLogger } from './logger.js';
+import { withContext } from './context.js';
+
+// Create child logger for agent-runner component
+const log = getLogger().child({ component: 'agent-runner' });
 
 // =============================================================================
 // Types
@@ -308,87 +313,113 @@ export class AgentRunner extends EventEmitter {
    */
   async run(bean: Bean, worktreePath?: string): Promise<void> {
     if (this.process) {
-      this.emit(
-        'error',
-        new Error(`Agent already running for bean ${this.runningBean?.id}`)
-      );
+      const error = new Error(`Agent already running for bean ${this.runningBean?.id}`);
+      log.error({ err: error, beanId: bean.id, runningBeanId: this.runningBean?.id }, 'Agent already running');
+      this.emit('error', error);
       return;
     }
 
-    // Generate prompt (async for review mode which fetches children)
-    const prompt = await generatePromptForBean(bean);
-    const { command, args } = this.buildCommand(prompt);
-    const cwd = worktreePath ?? process.cwd();
+    // Wrap entire execution in context for correlation
+    await withContext({ beanId: bean.id }, async () => {
+      // Generate prompt (async for review mode which fetches children)
+      log.debug({ beanId: bean.id, type: bean.type }, 'Generating prompt');
+      const prompt = await generatePromptForBean(bean);
+      const { command, args } = this.buildCommand(prompt);
+      const cwd = worktreePath ?? process.cwd();
 
-    try {
-      this.process = spawn(command, args, {
+      log.info({ 
+        beanId: bean.id, 
+        command, 
+        argsCount: args.length,
         cwd,
-        stdio: ['pipe', 'pipe', 'pipe'],
-        env: {
-          ...process.env,
-          FORCE_COLOR: '1',
-        },
-      });
-    } catch (error) {
-      this.emit(
-        'error',
-        error instanceof Error ? error : new Error(String(error))
-      );
-      return;
-    }
+        backend: this.config.backend
+      }, 'Spawning agent');
 
-    this.runningBean = bean;
-    this.startedAt = Date.now();
-
-    // Handle stdout
-    this.process.stdout?.on('data', (data: Buffer) => {
-      const event: OutputEvent = {
-        beanId: bean.id,
-        stream: 'stdout',
-        data: data.toString(),
-        timestamp: Date.now(),
-      };
-      this.emit('output', event);
-    });
-
-    // Handle stderr
-    this.process.stderr?.on('data', (data: Buffer) => {
-      const event: OutputEvent = {
-        beanId: bean.id,
-        stream: 'stderr',
-        data: data.toString(),
-        timestamp: Date.now(),
-      };
-      this.emit('output', event);
-    });
-
-    // Handle process exit
-    this.process.on('close', (code, signal) => {
-      this.clearKillTimer();
-      const duration = this.startedAt ? Date.now() - this.startedAt : 0;
-
-      const result: ExitResult = {
-        code: code ?? -1,
-        duration,
-      };
-
-      if (signal) {
-        result.signal = signal;
+      try {
+        this.process = spawn(command, args, {
+          cwd,
+          stdio: ['pipe', 'pipe', 'pipe'],
+          env: {
+            ...process.env,
+            FORCE_COLOR: '1',
+          },
+        });
+      } catch (error) {
+        log.error({ 
+          err: error instanceof Error ? error : new Error(String(error)),
+          beanId: bean.id,
+          command 
+        }, 'Failed to spawn agent');
+        this.emit(
+          'error',
+          error instanceof Error ? error : new Error(String(error))
+        );
+        return;
       }
 
-      this.cleanup();
-      this.emit('exit', result);
-    });
+      this.runningBean = bean;
+      this.startedAt = Date.now();
 
-    // Handle spawn errors
-    this.process.on('error', (error: Error) => {
-      this.clearKillTimer();
-      this.cleanup();
-      this.emit('error', error);
-    });
+      log.info({ beanId: bean.id, pid: this.process.pid }, 'Agent started');
 
-    // Emit started event
-    this.emit('started', bean);
+      // Handle stdout
+      this.process.stdout?.on('data', (data: Buffer) => {
+        const event: OutputEvent = {
+          beanId: bean.id,
+          stream: 'stdout',
+          data: data.toString(),
+          timestamp: Date.now(),
+        };
+        this.emit('output', event);
+      });
+
+      // Handle stderr
+      this.process.stderr?.on('data', (data: Buffer) => {
+        const event: OutputEvent = {
+          beanId: bean.id,
+          stream: 'stderr',
+          data: data.toString(),
+          timestamp: Date.now(),
+        };
+        this.emit('output', event);
+      });
+
+      // Handle process exit
+      this.process.on('close', (code, signal) => {
+        this.clearKillTimer();
+        const duration = this.startedAt ? Date.now() - this.startedAt : 0;
+
+        const result: ExitResult = {
+          code: code ?? -1,
+          duration,
+        };
+
+        if (signal) {
+          result.signal = signal;
+        }
+
+        log.info({ 
+          beanId: bean.id, 
+          exitCode: result.code, 
+          signal: result.signal,
+          duration 
+        }, 'Agent execution completed');
+
+        this.cleanup();
+        this.emit('exit', result);
+      });
+
+      // Handle spawn errors
+      this.process.on('error', (error: Error) => {
+        log.error({ err: error, beanId: bean.id }, 'Agent process error');
+        this.clearKillTimer();
+        this.cleanup();
+        this.emit('error', error);
+      });
+
+      // Emit started event
+      this.emit('started', bean);
+    });
   }
 
   /**
@@ -400,8 +431,12 @@ export class AgentRunner extends EventEmitter {
    */
   async cancel(): Promise<ExitResult | null> {
     if (!this.process || !this.process.pid) {
+      log.debug('No agent running to cancel');
       return null;
     }
+
+    const beanId = this.runningBean?.id;
+    log.info({ beanId, pid: this.process.pid }, 'Cancelling agent');
 
     // Capture state before cleanup
     const startedAt = this.startedAt;
@@ -413,11 +448,13 @@ export class AgentRunner extends EventEmitter {
 
     return new Promise<ExitResult>((resolve) => {
       // Send SIGTERM
+      log.debug({ beanId, signal: 'SIGTERM' }, 'Sending termination signal');
       proc.kill('SIGTERM');
 
       // Set up SIGKILL after grace period
       this.killTimer = setTimeout(() => {
         if (proc.pid && !proc.killed) {
+          log.warn({ beanId, signal: 'SIGKILL' }, 'Grace period expired, force killing');
           proc.kill('SIGKILL');
         }
       }, KILL_GRACE_PERIOD);
@@ -439,6 +476,14 @@ export class AgentRunner extends EventEmitter {
         if (signal) {
           result.signal = signal;
         }
+
+        log.info({ 
+          beanId, 
+          exitCode: result.code, 
+          signal: result.signal,
+          duration,
+          cancelled: true 
+        }, 'Agent cancelled');
 
         resolve(result);
       });

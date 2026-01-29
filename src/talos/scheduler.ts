@@ -17,6 +17,10 @@ import { existsSync } from 'fs';
 import { join } from 'path';
 import type { Bean } from './beans-client.js';
 import { getBlockedBy, isStuck } from './beans-client.js';
+import { getLogger } from './logger.js';
+
+// Create child logger for scheduler component
+const log = getLogger().child({ component: 'scheduler' });
 
 // =============================================================================
 // Types
@@ -79,6 +83,10 @@ export class Scheduler extends EventEmitter {
   start(): void {
     if (this.isRunning) return;
     this.isRunning = true;
+    log.info({ 
+      maxParallel: this.config.maxParallel,
+      pollInterval: this.config.pollInterval 
+    }, 'Scheduler started');
     this.scheduleNextPoll();
   }
 
@@ -91,6 +99,7 @@ export class Scheduler extends EventEmitter {
       clearTimeout(this.pollTimer);
       this.pollTimer = null;
     }
+    log.info('Scheduler stopped');
   }
 
   // ===========================================================================
@@ -104,21 +113,29 @@ export class Scheduler extends EventEmitter {
   enqueue(bean: Bean): void {
     // Skip if already in queue
     if (this.queue.some((b) => b.id === bean.id)) {
+      log.debug({ beanId: bean.id }, 'Bean already in queue, skipping');
       return;
     }
 
     // Skip if already in progress
     if (this.inProgress.has(bean.id)) {
+      log.debug({ beanId: bean.id }, 'Bean already in progress, skipping');
       return;
     }
 
     // Skip if marked as stuck
     if (this.stuckBeans.has(bean.id)) {
+      log.debug({ beanId: bean.id }, 'Bean is stuck, skipping');
       return;
     }
 
     this.queue.push(bean);
     this.sortQueue();
+    log.info({ 
+      beanId: bean.id, 
+      priority: bean.priority,
+      queueLength: this.queue.length 
+    }, 'Bean enqueued');
     this.emit('queue:updated', this.queue.length);
   }
 
@@ -129,6 +146,7 @@ export class Scheduler extends EventEmitter {
     const index = this.queue.findIndex((b) => b.id === beanId);
     if (index !== -1) {
       this.queue.splice(index, 1);
+      log.debug({ beanId, queueLength: this.queue.length }, 'Bean dequeued');
       this.emit('queue:updated', this.queue.length);
     }
   }
@@ -167,6 +185,10 @@ export class Scheduler extends EventEmitter {
   async getNextEligible(): Promise<Bean | null> {
     // Check capacity
     if (this.inProgress.size >= this.config.maxParallel) {
+      log.debug({ 
+        inProgress: this.inProgress.size, 
+        maxParallel: this.config.maxParallel 
+      }, 'At capacity, no eligible beans');
       return null;
     }
 
@@ -176,19 +198,28 @@ export class Scheduler extends EventEmitter {
 
       // Skip stuck beans
       if (isStuck(bean)) {
-        this.markStuck(bean.id, bean.tags.includes('blocked') ? 'blocked' : 'failed');
+        const reason = bean.tags.includes('blocked') ? 'blocked' : 'failed';
+        log.debug({ beanId: bean.id, reason }, 'Bean is stuck, marking');
+        this.markStuck(bean.id, reason);
         continue;
       }
 
       // Check blocking dependencies
       const blockers = await this.getActiveBlockers(bean.id);
       if (blockers.length > 0) {
-        // Bean is blocked, skip for now
+        log.debug({ 
+          beanId: bean.id, 
+          blockedBy: blockers.map(b => b.id) 
+        }, 'Bean blocked by dependencies');
         continue;
       }
 
       // Found an eligible bean - remove from queue
       this.queue.splice(i, 1);
+      log.info({ 
+        beanId: bean.id, 
+        priority: bean.priority 
+      }, 'Bean ready for execution');
       this.emit('queue:updated', this.queue.length);
       return bean;
     }
@@ -203,7 +234,7 @@ export class Scheduler extends EventEmitter {
   async markInProgress(beanId: string): Promise<string | undefined> {
     const bean = this.queue.find((b) => b.id === beanId);
     if (!bean) {
-      // Bean might have been dequeued, try to find in caller's context
+      log.debug({ beanId }, 'Bean not found in queue for markInProgress');
       return undefined;
     }
 
@@ -215,8 +246,15 @@ export class Scheduler extends EventEmitter {
     // Create worktree if in parallel mode
     if (this.config.maxParallel > 1) {
       try {
+        log.debug({ beanId }, 'Creating worktree for parallel execution');
         worktreePath = await this.createWorktree(beanId);
+        log.info({ beanId, worktreePath }, 'Worktree created');
       } catch (error) {
+        log.error({ 
+          err: error instanceof Error ? error : new Error(String(error)),
+          beanId,
+          context: 'worktree creation'
+        }, 'Failed to create worktree');
         this.emit(
           'error',
           error instanceof Error ? error : new Error(String(error)),
@@ -229,6 +267,11 @@ export class Scheduler extends EventEmitter {
     }
 
     this.inProgress.set(beanId, { bean, worktreePath });
+    log.info({ 
+      beanId, 
+      worktreePath,
+      inProgressCount: this.inProgress.size 
+    }, 'Bean marked in-progress');
     this.emit('bean:in-progress', beanId, worktreePath);
     return worktreePath;
   }
@@ -243,8 +286,15 @@ export class Scheduler extends EventEmitter {
     // Create worktree if in parallel mode
     if (this.config.maxParallel > 1) {
       try {
+        log.debug({ beanId: bean.id }, 'Creating worktree for parallel execution');
         worktreePath = await this.createWorktree(bean.id);
+        log.info({ beanId: bean.id, worktreePath }, 'Worktree created');
       } catch (error) {
+        log.error({ 
+          err: error instanceof Error ? error : new Error(String(error)),
+          beanId: bean.id,
+          context: 'worktree creation'
+        }, 'Failed to create worktree');
         this.emit(
           'error',
           error instanceof Error ? error : new Error(String(error)),
@@ -257,6 +307,11 @@ export class Scheduler extends EventEmitter {
     }
 
     this.inProgress.set(bean.id, { bean, worktreePath });
+    log.info({ 
+      beanId: bean.id, 
+      worktreePath,
+      inProgressCount: this.inProgress.size 
+    }, 'Bean marked in-progress');
     this.emit('bean:in-progress', bean.id, worktreePath);
     return worktreePath;
   }
@@ -268,6 +323,7 @@ export class Scheduler extends EventEmitter {
   markComplete(beanId: string): void {
     this.inProgress.delete(beanId);
     this.stuckBeans.delete(beanId); // Allow retry if it was stuck before
+    log.info({ beanId, inProgressCount: this.inProgress.size }, 'Bean completed');
     this.emit('bean:completed', beanId);
   }
 
@@ -285,6 +341,7 @@ export class Scheduler extends EventEmitter {
     // Add to stuck set
     this.stuckBeans.add(beanId);
 
+    log.warn({ beanId, reason }, 'Bean marked as stuck');
     this.emit('bean:stuck', beanId, reason);
   }
 
@@ -293,6 +350,7 @@ export class Scheduler extends EventEmitter {
    */
   clearStuck(beanId: string): void {
     this.stuckBeans.delete(beanId);
+    log.info({ beanId }, 'Bean unstuck, eligible for retry');
   }
 
   // ===========================================================================
@@ -404,8 +462,20 @@ export class Scheduler extends EventEmitter {
    */
   private async getActiveBlockers(beanId: string): Promise<Bean[]> {
     try {
-      return await getBlockedBy(beanId);
+      const blockers = await getBlockedBy(beanId);
+      if (blockers.length > 0) {
+        log.debug({ 
+          beanId, 
+          blockedBy: blockers.map(b => b.id) 
+        }, 'Found active blockers');
+      }
+      return blockers;
     } catch (error) {
+      log.error({ 
+        err: error instanceof Error ? error : new Error(String(error)),
+        beanId,
+        context: 'dependency check'
+      }, 'Error checking dependencies');
       this.emit(
         'error',
         error instanceof Error ? error : new Error(String(error)),

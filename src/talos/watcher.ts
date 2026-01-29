@@ -22,6 +22,10 @@ import {
   getBean as fetchBean,
   setCwd,
 } from './beans-client.js';
+import { getLogger } from './logger.js';
+
+// Create child logger for watcher component
+const log = getLogger().child({ component: 'watcher' });
 
 // Re-export Bean and BeanStatus for convenience
 export type { Bean, BeanStatus };
@@ -66,6 +70,7 @@ export class BeanWatcher extends EventEmitter {
    */
   async start(): Promise<void> {
     if (this.isStarted) {
+      log.debug({ beansDir: this.beansDir }, 'Watcher already started');
       return;
     }
 
@@ -75,11 +80,13 @@ export class BeanWatcher extends EventEmitter {
 
     // Load initial state silently (no events)
     await this.loadInitialState();
+    log.debug({ beanCount: this.cache.size }, 'Initial state loaded');
 
     // Start file watcher
     this.setupWatcher();
 
     this.isStarted = true;
+    log.info({ beansDir: this.beansDir }, 'Watch started');
   }
 
   /**
@@ -99,6 +106,7 @@ export class BeanWatcher extends EventEmitter {
     }
 
     this.isStarted = false;
+    log.info({ beansDir: this.beansDir }, 'Watch stopped');
   }
 
   // ===========================================================================
@@ -136,7 +144,11 @@ export class BeanWatcher extends EventEmitter {
       for (const bean of beans) {
         this.cache.set(bean.id, bean);
       }
+      log.debug({ beanCount: beans.length }, 'Loaded beans into cache');
     } catch (error) {
+      log.error({ 
+        err: error instanceof Error ? error : new Error(String(error)) 
+      }, 'Failed to load initial bean state');
       // Emit error but don't throw - watcher can still run
       this.emit('error', error instanceof Error ? error : new Error(String(error)));
     }
@@ -193,8 +205,11 @@ export class BeanWatcher extends EventEmitter {
 
     const beanId = this.extractBeanId(filePath);
     if (!beanId) {
+      log.debug({ filePath }, 'File does not match bean pattern, ignoring');
       return; // Not a valid bean file
     }
+
+    log.debug({ filePath, eventType, beanId }, 'File change detected');
 
     // Cancel any pending change for this file
     const existingTimeout = this.pendingChanges.get(filePath);
@@ -225,6 +240,7 @@ export class BeanWatcher extends EventEmitter {
         const previous = this.cache.get(beanId);
         if (previous) {
           this.cache.delete(beanId);
+          log.info({ beanId, title: previous.title }, 'Bean deleted');
           this.emit('deleted', beanId);
         }
         return;
@@ -237,6 +253,7 @@ export class BeanWatcher extends EventEmitter {
         const previous = this.cache.get(beanId);
         if (previous) {
           this.cache.delete(beanId);
+          log.info({ beanId }, 'Bean deleted (fetch returned null)');
           this.emit('deleted', beanId);
         }
         return;
@@ -247,6 +264,7 @@ export class BeanWatcher extends EventEmitter {
       if (!previous) {
         // New bean created
         this.cache.set(beanId, bean);
+        log.info({ beanId, title: bean.title, status: bean.status }, 'Bean created');
         this.emit('created', bean);
         return;
       }
@@ -255,19 +273,31 @@ export class BeanWatcher extends EventEmitter {
       this.cache.set(beanId, bean);
 
       // Always emit 'updated' for any change
+      log.debug({ beanId, title: bean.title }, 'Bean updated');
       this.emit('updated', bean, previous);
 
       // Check for status change
       if (previous.status !== bean.status) {
+        log.info({ 
+          beanId, 
+          from: previous.status, 
+          to: bean.status 
+        }, 'Bean status changed');
         this.emit('status-changed', bean, previous.status, bean.status);
       }
 
       // Check for tag changes
       const { added, removed } = this.computeTagChanges(previous.tags, bean.tags);
       if (added.length > 0 || removed.length > 0) {
+        log.info({ beanId, tagsAdded: added, tagsRemoved: removed }, 'Bean tags changed');
         this.emit('tags-changed', bean, added, removed);
       }
     } catch (error) {
+      log.error({ 
+        err: error instanceof Error ? error : new Error(String(error)),
+        filePath,
+        beanId 
+      }, 'Error processing file change');
       this.emit(
         'error',
         error instanceof Error ? error : new Error(String(error)),
