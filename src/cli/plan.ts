@@ -181,7 +181,7 @@ export async function runPlan(options: PlanOptions): Promise<void> {
 
   // 12. Print header
   console.log();
-  console.log(formatHeader(session.getMode(), ctx.talos ? 'running' : 'stopped'));
+  console.log(formatHeader(ctx.talos ? 'running' : 'stopped'));
   console.log();
 
   // 13. Main loop

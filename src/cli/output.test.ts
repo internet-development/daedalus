@@ -4,25 +4,97 @@
  * Tests for terminal output utilities.
  */
 import { describe, test, expect } from 'vitest';
-import { formatContinuationPrompt, formatPrompt, formatToolCall } from './output.js';
+import { formatContinuationPrompt, formatHeader, formatPrompt, formatToolCall } from './output.js';
 
 describe('CLI Output Formatting', () => {
-  describe('formatPrompt', () => {
-    // Helper to strip ANSI codes for easier testing
-    const stripAnsi = (str: string) => str.replace(/\x1b\[[0-9;]*m/g, '');
+  // Helper to strip ANSI codes for easier testing
+  const stripAnsi = (str: string) => str.replace(/\x1b\[[0-9;]*m/g, '');
 
-    test('returns plain "> " for default mode (new)', () => {
-      const result = formatPrompt('new');
-      const plain = stripAnsi(result);
-      // Should be just "> " without mode indicator
-      expect(plain).toBe('> ');
+  describe('formatHeader', () => {
+    test('takes only daemonStatus parameter (no mode)', () => {
+      // Should accept a single argument — daemonStatus
+      const result = formatHeader('stopped');
+      expect(typeof result).toBe('string');
     });
 
-    test('returns plain "> " when mode is undefined', () => {
+    test('shows "Daedalus v{version}" in header', () => {
+      const result = formatHeader('stopped');
+      const plain = stripAnsi(result);
+      // Should contain "Daedalus v" followed by a semver-like version
+      expect(plain).toMatch(/Daedalus v\d+\.\d+\.\d+/);
+    });
+
+    test('shows "Talos" with gear icon instead of "Daemon"', () => {
+      const result = formatHeader('stopped');
+      const plain = stripAnsi(result);
+      expect(plain).toContain('⚙ Talos:');
+      expect(plain).not.toContain('Daemon');
+    });
+
+    test('shows dot separator between version and Talos status', () => {
+      const result = formatHeader('stopped');
+      const plain = stripAnsi(result);
+      expect(plain).toContain('·');
+    });
+
+    test('shows daemon status "stopped"', () => {
+      const result = formatHeader('stopped');
+      const plain = stripAnsi(result);
+      expect(plain).toContain('⚙ Talos: stopped');
+    });
+
+    test('shows daemon status "running"', () => {
+      const result = formatHeader('running');
+      const plain = stripAnsi(result);
+      expect(plain).toContain('⚙ Talos: running');
+    });
+
+    test('does not contain mode information', () => {
+      const result = formatHeader('stopped');
+      const plain = stripAnsi(result);
+      expect(plain).not.toContain('Mode:');
+      expect(plain).not.toContain('Planning');
+    });
+
+    test('includes a divider line', () => {
+      const result = formatHeader('stopped');
+      const lines = result.split('\n');
+      expect(lines.length).toBe(2);
+      const dividerPlain = stripAnsi(lines[1]);
+      // Divider should be made of ─ characters
+      expect(dividerPlain).toMatch(/^─+$/);
+    });
+
+    test('divider width matches plain header text width', () => {
+      const result = formatHeader('stopped');
+      const lines = result.split('\n');
+      const headerPlain = stripAnsi(lines[0]);
+      const dividerPlain = stripAnsi(lines[1]);
+      expect(dividerPlain.length).toBe(headerPlain.length);
+    });
+
+    test('header format matches expected output exactly', () => {
+      const result = formatHeader('stopped');
+      const plain = stripAnsi(result);
+      const lines = plain.split('\n');
+      // First line: Daedalus v2.0.0 · [⚙ Talos: stopped]
+      expect(lines[0]).toBe('Daedalus v2.0.0 · [⚙ Talos: stopped]');
+    });
+  });
+
+  describe('formatPrompt', () => {
+    test('returns "[new] > " for default mode (new)', () => {
+      const result = formatPrompt('new');
+      const plain = stripAnsi(result);
+      // Should always show mode, including "new"
+      expect(plain).toBe('[new] > ');
+    });
+
+    test('returns "[new] > " when mode is undefined', () => {
       const result = formatPrompt();
       const plain = stripAnsi(result);
-      // Should be just "> " without mode indicator
-      expect(plain).toBe('> ');
+      // Should default to "new" and still show it
+      expect(plain).toBe('[new] > ');
     });
 
     test('returns "[brainstorm] > " for brainstorm mode', () => {

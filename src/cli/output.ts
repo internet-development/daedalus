@@ -4,10 +4,18 @@
  * Terminal output utilities with ANSI color codes.
  * Designed for the readline-based planning CLI.
  */
+import { readFileSync } from 'node:fs';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import type { ChatSession } from '../planning/chat-history.js';
 import type { CustomPrompt } from '../planning/prompts.js';
 import type { Bean } from '../talos/beans-client.js';
 import type { PlanMode } from '../planning/planning-session.js';
+
+// Read version from package.json at module load
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const pkg = JSON.parse(readFileSync(join(__dirname, '..', '..', 'package.json'), 'utf8'));
+const VERSION: string = pkg.version;
 
 // =============================================================================
 // ANSI Color Constants
@@ -79,24 +87,23 @@ export function formatError(message: string): string {
 // =============================================================================
 
 export function formatHeader(
-  mode: string,
   daemonStatus: 'running' | 'stopped'
 ): string {
   const statusColor = daemonStatus === 'running' ? 'green' : 'gray';
   const statusText = c(statusColor, daemonStatus);
-  const modeText = c('cyan', mode);
 
-  const header = `Planning ${c('dim', '[')}Mode: ${modeText}${c('dim', ']')} ${c('dim', '[')}Daemon: ${statusText}${c('dim', ']')}`;
-  const divider = formatDivider();
+  // Plain text for width calculation (no ANSI codes)
+  const plainHeader = `Daedalus v${VERSION} · [⚙ Talos: ${daemonStatus}]`;
+
+  const header = `Daedalus v${VERSION} ${c('dim', '·')} ${c('dim', '[')}⚙ Talos: ${statusText}${c('dim', ']')}`;
+  const divider = c('dim', '─'.repeat(plainHeader.length));
 
   return `${header}\n${divider}`;
 }
 
 export function formatPrompt(mode?: PlanMode): string {
-  if (!mode || mode === 'new') {
-    return c('green', '> ');
-  }
-  return `${c('dim', '[')}${c('cyan', mode)}${c('dim', ']')} ${c('green', '>')} `;
+  const modeName = mode || 'new';
+  return `${c('dim', '[')}${c('cyan', modeName)}${c('dim', ']')} ${c('green', '>')} `;
 }
 
 export function formatContinuationPrompt(): string {
