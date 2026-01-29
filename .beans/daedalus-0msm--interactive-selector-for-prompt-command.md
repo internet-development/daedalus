@@ -1,11 +1,11 @@
 ---
 # daedalus-0msm
 title: Interactive selector for /prompt command
-status: in-progress
+status: completed
 type: bug
 priority: normal
 created_at: 2026-01-29T21:10:57Z
-updated_at: 2026-01-29T22:17:00Z
+updated_at: 2026-01-29T22:19:51Z
 ---
 
 ## Problem
