@@ -1,11 +1,11 @@
 ---
 # daedalus-0nq8
 title: Show 'Start new session' first in session selector
-status: in-progress
+status: completed
 type: task
 priority: normal
 created_at: 2026-01-28T20:10:00Z
-updated_at: 2026-01-29T01:00:50Z
+updated_at: 2026-01-29T01:02:39Z
 parent: daedalus-tbsm
 ---
 
