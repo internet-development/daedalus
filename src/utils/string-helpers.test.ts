@@ -23,4 +23,19 @@ describe('toSlug', () => {
     expect(toSlug('   ')).toBe('');
     expect(toSlug('---')).toBe('');
   });
+
+  test('handles Unicode characters', () => {
+    expect(toSlug('Café au Lait')).toBe('caf-au-lait');
+    expect(toSlug('日本語')).toBe('');
+    expect(toSlug('Über Cool')).toBe('ber-cool');
+    expect(toSlug('naïve résumé')).toBe('nave-rsum');
+  });
+
+  test('respects maximum length limit', () => {
+    const longTitle = 'This is a very long title that should be truncated';
+    expect(toSlug(longTitle, { maxLength: 20 })).toBe('this-is-a-very-long');
+    expect(toSlug(longTitle, { maxLength: 10 })).toBe('this-is-a');
+    // Should not cut in the middle of a word if possible
+    expect(toSlug('Hello World', { maxLength: 8 })).toBe('hello');
+  });
 });
