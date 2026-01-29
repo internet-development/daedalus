@@ -5,7 +5,7 @@
  */
 import type { PlanningSession, PlanMode } from '../planning/planning-session.js';
 import type { ChatHistoryState } from '../planning/chat-history.js';
-import { clearMessages } from '../planning/chat-history.js';
+import { clearMessages, getCurrentSession } from '../planning/chat-history.js';
 import type { Talos } from '../talos/talos.js';
 import type { CustomPrompt } from '../planning/prompts.js';
 import {
@@ -144,7 +144,7 @@ export async function handleCommand(
 
     case 'edit':
     case 'e':
-      return handleEdit();
+      return handleEdit(ctx);
 
     case 'start':
       return await handleStart(ctx);
@@ -381,8 +381,17 @@ async function handleTree(args: string): Promise<CommandResult> {
   return { type: 'continue' };
 }
 
-function handleEdit(): CommandResult {
-  const content = openEditor();
+function handleEdit(ctx: CommandContext): CommandResult {
+  // Get last agent message from chat history for context
+  const session = getCurrentSession(ctx.history);
+  const messages = session?.messages ?? [];
+  const lastAgentMessage = [...messages]
+    .reverse()
+    .find((m) => m.role === 'assistant');
+
+  const content = openEditor({
+    agentMessage: lastAgentMessage?.content,
+  });
 
   if (!content) {
     console.log('Editor cancelled or empty message — not sent.');
