@@ -1,11 +1,11 @@
 ---
 # daedalus-rchx
 title: Tool call outputs are truncated and lack visual separation
-status: todo
+status: in-progress
 type: bug
 priority: normal
 created_at: 2026-01-29T17:15:50Z
-updated_at: 2026-01-29T18:13:38Z
+updated_at: 2026-01-29T18:34:17Z
 blocking:
     - daedalus-pjmp
 ---
@@ -52,10 +52,45 @@ Planner: Done! Created bug daedalus-abc1.
 
 ## Checklist
 
-- [ ] Update `formatToolCall` in `src/cli/output.ts` to show more useful info
+- [x] Update `formatToolCall` in `src/cli/output.ts` to show more useful info
   - For Bash: show the command (truncated intelligently if needed)
   - For other tools: show key args in a readable format
-- [ ] Update `toolCallHandler` in `src/cli/plan.ts` to track consecutive tool calls
+- [x] Update `toolCallHandler` in `src/cli/plan.ts` to track consecutive tool calls
   - Add blank line before first tool call in a group (after text)
   - No blank line between consecutive tool calls
-- [ ] Update tests in `src/cli/output.test.ts`
+- [x] Update tests in `src/cli/output.test.ts`
+
+## Changelog
+
+### Implemented
+- Rewrote `formatToolCall` with type-aware smart formatting for tool args
+  - Bash/mcp_bash: shows command string directly (e.g. `[Tool: Bash] git status`)
+  - Read/Write/Edit: shows file path (e.g. `[Tool: Read] /src/cli/output.ts`)
+  - Glob/Grep: shows search pattern (e.g. `[Tool: Grep] formatToolCall`)
+  - Task: shows description (e.g. `[Tool: Task] Explore codebase`)
+  - WebFetch: shows URL (e.g. `[Tool: WebFetch] https://example.com/api`)
+  - Unknown tools: shows key=value pairs with truncation
+- Strips `mcp_` prefix from tool names and capitalizes for display
+- Intelligent truncation at 120 chars with ellipsis for long args
+- Fixed tool call grouping: blank line only before first tool call in a group (after text), no blank lines between consecutive tool calls
+
+### Files Modified
+- `src/cli/output.ts` - Rewrote `formatToolCall` with helper functions: `normalizeToolName`, `formatToolArgs`, `formatKeyValueArgs`, `truncate`
+- `src/cli/output.test.ts` - Replaced 3 old tests with 14 new tests covering all tool types
+- `src/cli/plan.ts` - Fixed `toolCallHandler` to check `!afterToolCall` before adding blank line
+- `src/cli/plan-tool-grouping.test.ts` - NEW: 5 tests verifying tool call grouping behavior
+
+### Deviations from Spec
+- Added `mcp_` prefix stripping (not in spec, but necessary since Claude Code tools use `mcp_` prefix)
+- Tool name capitalization (first letter uppercase) for cleaner display
+- Added support for `todowrite` tool type (shows description, similar to Task)
+
+### Decisions Made
+- Used 120 char max for tool arg display (reasonable terminal width)
+- Key=value format for unknown tools (more readable than JSON)
+- Individual value truncation at 30 chars for unknown tool args
+- Separated tool name (yellow) from args (dim) with different ANSI styling for visual distinction
+
+### Known Limitations
+- Tool name normalization only capitalizes first letter (e.g. `custom_tool` → `Custom_tool`, not `CustomTool`)
+- No special handling for `TodoRead`, `Skill`, or other less common tools (falls back to key=value format)
