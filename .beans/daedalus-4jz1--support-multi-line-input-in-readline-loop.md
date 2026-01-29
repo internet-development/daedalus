@@ -1,11 +1,11 @@
 ---
 # daedalus-4jz1
 title: Support multi-line input in readline loop
-status: in-progress
+status: completed
 type: feature
 priority: normal
 created_at: 2026-01-28T20:06:51Z
-updated_at: 2026-01-29T05:25:17Z
+updated_at: 2026-01-29T05:30:01Z
 parent: daedalus-tbsm
 ---
 
