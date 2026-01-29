@@ -1,11 +1,11 @@
 ---
 # daedalus-takj
 title: Add OpenCode provider for planning agent
-status: todo
+status: in-progress
 type: feature
 priority: high
 created_at: 2026-01-28T21:45:46Z
-updated_at: 2026-01-29T00:13:48Z
+updated_at: 2026-01-29T00:47:08Z
 parent: daedalus-5k7n
 ---
 
@@ -62,22 +62,52 @@ Start with Option 1 (prefix) for simplicity.
 
 ## Checklist
 
-- [ ] Create `src/planning/opencode-provider.ts`
-  - [ ] OpenCodeProvider class extending EventEmitter
-  - [ ] isOpenCodeAvailable() helper
-  - [ ] validateProvider() for opencode
-  - [ ] Parse OpenCode JSON streaming format
-  - [ ] Handle 'text' events → emit 'text'
-  - [ ] Handle 'tool_use' events → emit 'toolCall'
-  - [ ] Handle 'step_finish' reason 'stop' → emit 'done'
-- [ ] Build CLI args: `opencode run --format json -m <model> <prompt>`
-- [ ] Inject system prompt as prefix in message
-- [ ] Handle cancellation (SIGTERM)
-- [ ] Update `src/config/index.ts`
-  - [ ] Add 'opencode' to PlanningAgentConfigSchema provider enum
-- [ ] Update `src/planning/planning-session.ts`
-  - [ ] Add sendMessageViaOpenCode() method
-  - [ ] Route to OpenCode when provider === 'opencode'
+- [x] Create `src/planning/opencode-provider.ts`
+  - [x] OpenCodeProvider class extending EventEmitter
+  - [x] isOpenCodeAvailable() helper
+  - [x] validateProvider() for opencode
+  - [x] Parse OpenCode JSON streaming format
+  - [x] Handle 'text' events → emit 'text'
+  - [x] Handle 'tool_use' events → emit 'toolCall'
+  - [x] Handle 'step_finish' reason 'stop' → emit 'done'
+- [x] Build CLI args: `opencode run --format json -m <model> <prompt>`
+- [x] Inject system prompt as prefix in message
+- [x] Handle cancellation (SIGTERM)
+- [x] Update `src/config/index.ts`
+  - [x] Add 'opencode' to PlanningAgentConfigSchema provider enum
+- [x] Update `src/planning/planning-session.ts`
+  - [x] Add sendMessageViaOpenCode() method
+  - [x] Route to OpenCode when provider === 'opencode'
 - [ ] Test basic message streaming
 - [ ] Test tool call display
 - [ ] Test cancellation with Ctrl+C
+
+## Changelog
+
+### Implemented
+- Created OpenCode provider for planning agent (`src/planning/opencode-provider.ts`)
+- Added OpenCode routing to planning session
+- Updated config schema to support 'opencode' provider
+- Implemented JSON event stream parsing for OpenCode format
+- Added provider validation for OpenCode CLI availability
+
+### Files Modified
+- `src/planning/opencode-provider.ts` - NEW: OpenCode provider implementation
+- `src/planning/planning-session.ts` - Added sendMessageViaOpenCode() method and routing
+- `src/planning/claude-code-provider.ts` - Updated validateProvider() to handle 'opencode'
+- `src/config/index.ts` - Added 'opencode' to provider enum
+
+### Deviations from Spec
+- Used `require()` for dynamic import in validateProvider() to avoid circular dependency issues (TypeScript ES modules don't support top-level dynamic imports in this context)
+- System prompt injection uses `<system>...</system>` tags as prefix (Option 1 from spec)
+
+### Decisions Made
+- Followed the same event-driven pattern as ClaudeCodeProvider for consistency
+- Used the same debug logging infrastructure for unified debugging experience
+- Passed model from config to OpenCodeProvider to allow model customization
+- Reused BEANS_INSTRUCTIONS constant pattern for consistency
+
+### Known Limitations
+- Not yet tested with actual OpenCode CLI (manual testing required)
+- Session continuation (--session flag) not implemented yet
+- Custom agent support (--agent flag) not implemented yet

@@ -1,16 +1,16 @@
 /**
- * Claude Code Provider
+ * OpenCode Provider
  *
- * Implements planning agent functionality using the `claude` CLI
- * instead of direct API calls. This allows users with Claude Code
- * subscriptions to use the planning agent without an API key.
+ * Implements planning agent functionality using the `opencode` CLI
+ * instead of direct API calls. This allows users with OpenCode
+ * to use the planning agent with OpenCode's native tools and model routing.
  *
- * The provider spawns `claude --print --output-format stream-json --verbose`
- * and uses Claude Code's native tools (Read, Glob, Grep, Bash) for
+ * The provider spawns `opencode run --format json -m <model>`
+ * and uses OpenCode's native tools (Read, Glob, Grep, Bash) for
  * codebase access. For beans operations, it instructs the agent to
  * use the `beans` CLI directly via Bash.
  *
- * Debug logging: Set DEBUG=claude-code-provider or DEBUG=* to enable
+ * Debug logging: Set DEBUG=opencode-provider or DEBUG=* to enable
  */
 import { spawn, type ChildProcess, execSync } from 'child_process';
 import { EventEmitter } from 'events';
@@ -24,7 +24,7 @@ import { getPlanningAgentSystemPrompt } from './system-prompts.js';
 // Debug Logging
 // =============================================================================
 
-const DEBUG_NAMESPACE = 'claude-code-provider';
+const DEBUG_NAMESPACE = 'opencode-provider';
 
 /**
  * Check if debug logging is enabled
@@ -81,9 +81,9 @@ function debug(category: string, message: string, data?: unknown): void {
 // =============================================================================
 
 /**
- * Events emitted by the Claude Code provider during streaming
+ * Events emitted by the OpenCode provider during streaming
  */
-export interface ClaudeCodeProviderEvents {
+export interface OpenCodeProviderEvents {
   /** Raw text content from the assistant */
   text: (content: string) => void;
   /** Tool call was made */
@@ -95,43 +95,34 @@ export interface ClaudeCodeProviderEvents {
 }
 
 /**
- * A single event from the Claude CLI stream-json output
+ * A single event from the OpenCode JSON output
  */
-interface ClaudeStreamEvent {
-  type: 'system' | 'assistant' | 'result' | 'user' | 'stream_event';
-  subtype?: string;
-  message?: {
-    content?: Array<{ type: string; text?: string; name?: string; input?: unknown }>;
-    role?: string;
-    model?: string;
-  };
-  result?: string;
-  session_id?: string;
-  // For stream_event type (with --include-partial-messages)
-  event?: {
-    type: string;
-    index?: number;
-    delta?: {
-      type: string;
-      text?: string;
+interface OpenCodeStreamEvent {
+  type: 'text' | 'tool_use' | 'step_finish';
+  part: {
+    text?: string;
+    tool?: string;
+    state?: {
+      status: string;
+      input?: Record<string, unknown>;
+      output?: string;
     };
-    content_block?: {
-      type: string;
-      text?: string;
-    };
+    reason?: 'stop' | 'tool-calls';
   };
 }
 
 /**
- * Options for creating a Claude Code provider
+ * Options for creating an OpenCode provider
  */
-export interface ClaudeCodeProviderOptions {
+export interface OpenCodeProviderOptions {
   /** Current planning mode */
   mode: PlanMode;
   /** Optional selected bean for context */
   selectedBean?: Bean | null;
   /** Abort signal for cancellation */
   abortSignal?: AbortSignal;
+  /** Model to use (defaults to anthropic/claude-sonnet-4-20250514) */
+  model?: string;
 }
 
 // =============================================================================
@@ -139,11 +130,11 @@ export interface ClaudeCodeProviderOptions {
 // =============================================================================
 
 /**
- * Check if the `claude` CLI is available
+ * Check if the `opencode` CLI is available
  */
-export function isClaudeCliAvailable(): boolean {
+export function isOpenCodeAvailable(): boolean {
   try {
-    execSync('which claude', { encoding: 'utf-8', stdio: 'pipe' });
+    execSync('which opencode', { encoding: 'utf-8', stdio: 'pipe' });
     return true;
   } catch {
     return false;
@@ -151,98 +142,14 @@ export function isClaudeCliAvailable(): boolean {
 }
 
 /**
- * Get the version of the installed claude CLI
+ * Get the version of the installed opencode CLI
  */
-export function getClaudeCliVersion(): string | null {
+export function getOpenCodeVersion(): string | null {
   try {
-    const result = execSync('claude --version', { encoding: 'utf-8', stdio: 'pipe' });
+    const result = execSync('opencode --version', { encoding: 'utf-8', stdio: 'pipe' });
     return result.trim();
   } catch {
     return null;
-  }
-}
-
-// =============================================================================
-// Provider Validation
-// =============================================================================
-
-/**
- * Validation result for planning agent providers
- */
-export interface ProviderValidationResult {
-  valid: boolean;
-  error?: string;
-  hint?: string;
-}
-
-/**
- * Validate that the configured provider is usable.
- * 
- * - For 'claude_code': Check that `claude` CLI is installed
- * - For 'opencode': Check that `opencode` CLI is installed
- * - For 'anthropic'/'claude': Check for ANTHROPIC_API_KEY
- * - For 'openai': Check for OPENAI_API_KEY
- * 
- * @param provider - The provider name from config
- * @returns Validation result with error and hint if invalid
- */
-export function validateProvider(provider: string): ProviderValidationResult {
-  const normalizedProvider = provider.toLowerCase();
-
-  switch (normalizedProvider) {
-    case 'claude_code': {
-      if (!isClaudeCliAvailable()) {
-        return {
-          valid: false,
-          error: 'Claude CLI not found',
-          hint: 'Install Claude Code from https://claude.ai/download or change provider to "claude" with an API key',
-        };
-      }
-      return { valid: true };
-    }
-
-    case 'opencode': {
-      // Import dynamically to avoid circular dependency
-      const { isOpenCodeAvailable } = require('./opencode-provider.js');
-      if (!isOpenCodeAvailable()) {
-        return {
-          valid: false,
-          error: 'OpenCode CLI not found',
-          hint: 'Install OpenCode CLI or change provider to "claude" with an API key',
-        };
-      }
-      return { valid: true };
-    }
-
-    case 'anthropic':
-    case 'claude': {
-      if (!process.env.ANTHROPIC_API_KEY) {
-        return {
-          valid: false,
-          error: 'ANTHROPIC_API_KEY not set',
-          hint: 'Set ANTHROPIC_API_KEY environment variable or use provider "claude_code" with Claude Code subscription',
-        };
-      }
-      return { valid: true };
-    }
-
-    case 'openai': {
-      if (!process.env.OPENAI_API_KEY) {
-        return {
-          valid: false,
-          error: 'OPENAI_API_KEY not set',
-          hint: 'Set OPENAI_API_KEY environment variable',
-        };
-      }
-      return { valid: true };
-    }
-
-    default:
-      return {
-        valid: false,
-        error: `Unknown provider: ${provider}`,
-        hint: 'Valid providers: claude, anthropic, openai, claude_code, opencode',
-      };
   }
 }
 
@@ -252,7 +159,7 @@ export function validateProvider(provider: string): ProviderValidationResult {
 
 /**
  * Instructions to append to the system prompt for beans operations.
- * Since we're using Claude Code's native tools, beans operations
+ * Since we're using OpenCode's native tools, beans operations
  * must be done via the Bash tool.
  */
 const BEANS_INSTRUCTIONS = `
@@ -297,56 +204,17 @@ Always use the beans CLI for issue tracking operations.
 // =============================================================================
 
 /**
- * Parse a line of stream-json output from the claude CLI
+ * Parse a line of JSON output from the opencode CLI
  */
-function parseStreamEvent(line: string): ClaudeStreamEvent | null {
+function parseStreamEvent(line: string): OpenCodeStreamEvent | null {
   if (!line.trim()) return null;
   
   try {
-    return JSON.parse(line) as ClaudeStreamEvent;
+    return JSON.parse(line) as OpenCodeStreamEvent;
   } catch {
     // Not valid JSON, skip
     return null;
   }
-}
-
-/**
- * Extract text content from an assistant message event
- */
-function extractTextContent(event: ClaudeStreamEvent): string {
-  if (event.type !== 'assistant' || !event.message?.content) {
-    return '';
-  }
-
-  let text = '';
-  for (const block of event.message.content) {
-    if (block.type === 'text' && block.text) {
-      text += block.text;
-    }
-  }
-  return text;
-}
-
-/**
- * Extract tool calls from an assistant message event
- */
-function extractToolCalls(
-  event: ClaudeStreamEvent
-): Array<{ name: string; args: Record<string, unknown> }> {
-  if (event.type !== 'assistant' || !event.message?.content) {
-    return [];
-  }
-
-  const toolCalls: Array<{ name: string; args: Record<string, unknown> }> = [];
-  for (const block of event.message.content) {
-    if (block.type === 'tool_use' && block.name) {
-      toolCalls.push({
-        name: block.name,
-        args: (block.input as Record<string, unknown>) ?? {},
-      });
-    }
-  }
-  return toolCalls;
 }
 
 // =============================================================================
@@ -354,11 +222,11 @@ function extractToolCalls(
 // =============================================================================
 
 /**
- * Claude Code Provider - streams responses from claude CLI
+ * OpenCode Provider - streams responses from opencode CLI
  *
  * @example
  * ```typescript
- * const provider = new ClaudeCodeProvider({
+ * const provider = new OpenCodeProvider({
  *   mode: 'brainstorm',
  *   selectedBean: null,
  * });
@@ -369,18 +237,20 @@ function extractToolCalls(
  * await provider.send('Help me plan a new feature', chatHistory);
  * ```
  */
-export class ClaudeCodeProvider extends EventEmitter {
+export class OpenCodeProvider extends EventEmitter {
   private mode: PlanMode;
   private selectedBean: Bean | null;
   private abortSignal?: AbortSignal;
+  private model: string;
   private process: ChildProcess | null = null;
   private fullContent = '';
 
-  constructor(options: ClaudeCodeProviderOptions) {
+  constructor(options: OpenCodeProviderOptions) {
     super();
     this.mode = options.mode;
     this.selectedBean = options.selectedBean ?? null;
     this.abortSignal = options.abortSignal;
+    this.model = options.model ?? 'anthropic/claude-sonnet-4-20250514';
   }
 
   /**
@@ -407,31 +277,31 @@ export class ClaudeCodeProvider extends EventEmitter {
       }
     }
 
+    // Inject system prompt as prefix (OpenCode doesn't have --append-system-prompt)
+    const systemPromptPrefix = `<system>\n${fullSystemPrompt}\n</system>\n\n`;
+    
     // Add the current message
     const fullPrompt = conversationContext
-      ? `${conversationContext}\nUser: ${message}`
-      : message;
+      ? `${systemPromptPrefix}${conversationContext}\nUser: ${message}`
+      : `${systemPromptPrefix}${message}`;
     debug('send', 'Built full prompt', { promptLength: fullPrompt.length, prompt: fullPrompt.slice(0, 500) });
 
-    // Build CLI arguments - prompt MUST come first due to CLI parsing issues with long args
+    // Build CLI arguments
     const args = [
-      fullPrompt, // Prompt first - required when using long --append-system-prompt
-      '--print',
-      '--output-format', 'stream-json',
-      '--verbose',
-      '--include-partial-messages', // Enable streaming text deltas
-      '--append-system-prompt', fullSystemPrompt,
-      '--allowedTools', 'Read,Glob,Grep,Bash',
+      'run',
+      '--format', 'json',
+      '-m', this.model,
+      fullPrompt,
     ];
-    debug('spawn', 'CLI arguments', { argsCount: args.length, promptLength: fullPrompt.length });
+    debug('spawn', 'CLI arguments', { argsCount: args.length, model: this.model });
 
     // Spawn the process
     return new Promise((resolve, reject) => {
-      debug('spawn', 'Spawning claude process', { cwd: process.cwd() });
+      debug('spawn', 'Spawning opencode process', { cwd: process.cwd() });
 
-      this.process = spawn('claude', args, {
+      this.process = spawn('opencode', args, {
         cwd: process.cwd(),
-        stdio: ['ignore', 'pipe', 'pipe'], // stdin ignored - prompt passed as argument
+        stdio: ['ignore', 'pipe', 'pipe'],
         env: {
           ...process.env,
           FORCE_COLOR: '0', // Disable colors for clean parsing
@@ -453,7 +323,7 @@ export class ClaudeCodeProvider extends EventEmitter {
       let stdoutChunks = 0;
       let doneEmitted = false;
 
-      // Handle stdout (stream-json events)
+      // Handle stdout (JSON events)
       this.process.stdout?.on('data', (data: Buffer) => {
         stdoutChunks++;
         const chunk = data.toString();
@@ -475,50 +345,30 @@ export class ClaudeCodeProvider extends EventEmitter {
           }
 
           eventCount++;
-          debug('event', `Event #${eventCount}: ${event.type}${event.subtype ? '/' + event.subtype : ''}`, {
+          debug('event', `Event #${eventCount}: ${event.type}`, {
             type: event.type,
-            subtype: event.subtype,
-            hasMessage: !!event.message,
-            hasResult: !!event.result,
+            hasPart: !!event.part,
           });
 
-          // Handle streaming text deltas (with --include-partial-messages)
-          if (event.type === 'stream_event' && event.event) {
-            if (event.event.type === 'content_block_delta' && event.event.delta?.type === 'text_delta') {
-              const text = event.event.delta.text ?? '';
-              if (text) {
-                debug('stream', 'Received text delta', { textLength: text.length, preview: text.slice(0, 50) });
-                this.fullContent += text;
-                this.emit('text', text);
-              }
-            }
+          // Handle text events
+          if (event.type === 'text' && event.part.text) {
+            const text = event.part.text;
+            debug('text', 'Received text', { textLength: text.length, preview: text.slice(0, 50) });
+            this.fullContent += text;
+            this.emit('text', text);
           }
 
-          // Handle assistant text (final message without streaming)
-          if (event.type === 'assistant') {
-            // Only extract text if we haven't been getting stream events
-            // (stream events already built up fullContent incrementally)
-            if (this.fullContent === '') {
-              const text = extractTextContent(event);
-              if (text) {
-                debug('text', 'Extracted text from assistant message (non-streaming)', { textLength: text.length, preview: text.slice(0, 100) });
-                this.fullContent = text;
-                this.emit('text', text);
-              }
-            }
-
-            // Handle tool calls
-            const toolCalls = extractToolCalls(event);
-            for (const tc of toolCalls) {
-              debug('tool', `Tool call: ${tc.name}`, tc.args);
-              this.emit('toolCall', tc);
-            }
+          // Handle tool use events
+          if (event.type === 'tool_use' && event.part.tool && event.part.state) {
+            const toolName = event.part.tool;
+            const toolArgs = event.part.state.input ?? {};
+            debug('tool', `Tool call: ${toolName}`, toolArgs);
+            this.emit('toolCall', { name: toolName, args: toolArgs });
           }
 
-          // Handle final result
-          if (event.type === 'result' && !doneEmitted) {
-            debug('result', 'Received result event', { fullContentLength: this.fullContent.length });
-            // Result event means we're done
+          // Handle step finish with reason 'stop'
+          if (event.type === 'step_finish' && event.part.reason === 'stop' && !doneEmitted) {
+            debug('result', 'Received step_finish with stop', { fullContentLength: this.fullContent.length });
             doneEmitted = true;
             this.emit('done', this.fullContent);
           }
@@ -545,22 +395,19 @@ export class ClaudeCodeProvider extends EventEmitter {
         if (buffer.trim()) {
           debug('close', 'Processing remaining buffer', { bufferLength: buffer.length });
           const event = parseStreamEvent(buffer);
-          if (event?.type === 'assistant') {
-            const text = extractTextContent(event);
-            if (text) {
-              this.fullContent += text;
-              this.emit('text', text);
-            }
+          if (event?.type === 'text' && event.part.text) {
+            this.fullContent += event.part.text;
+            this.emit('text', event.part.text);
           }
         }
 
         if (code !== 0 && code !== null) {
-          const error = new Error(`claude process exited with code ${code}`);
+          const error = new Error(`opencode process exited with code ${code}`);
           debug('error', 'Process exited with non-zero code', { code });
           this.emit('error', error);
           reject(error);
         } else {
-          // Ensure done is emitted even if no result event (but only once)
+          // Ensure done is emitted even if no step_finish event (but only once)
           if (this.fullContent && !doneEmitted) {
             debug('done', 'Emitting done (from close handler)', { fullContentLength: this.fullContent.length });
             doneEmitted = true;
@@ -610,11 +457,11 @@ export class ClaudeCodeProvider extends EventEmitter {
 // =============================================================================
 
 /**
- * Create a Claude Code provider for the planning agent
+ * Create an OpenCode provider for the planning agent
  *
  * @example
  * ```typescript
- * const provider = createClaudeCodeProvider({
+ * const provider = createOpenCodeProvider({
  *   mode: 'new',
  *   selectedBean: null,
  * });
@@ -628,10 +475,10 @@ export class ClaudeCodeProvider extends EventEmitter {
  * await provider.send('Help me plan a new feature', []);
  * ```
  */
-export function createClaudeCodeProvider(
-  options: ClaudeCodeProviderOptions
-): ClaudeCodeProvider {
-  return new ClaudeCodeProvider(options);
+export function createOpenCodeProvider(
+  options: OpenCodeProviderOptions
+): OpenCodeProvider {
+  return new OpenCodeProvider(options);
 }
 
-export default ClaudeCodeProvider;
+export default OpenCodeProvider;

@@ -105,9 +105,10 @@ const PlanningToolSchema = z.enum([
  * - 'anthropic' / 'claude': Direct Anthropic API (requires ANTHROPIC_API_KEY)
  * - 'openai': OpenAI API (requires OPENAI_API_KEY)
  * - 'claude_code': Claude CLI subscription (requires `claude` CLI installed)
+ * - 'opencode': OpenCode CLI (requires `opencode` CLI installed)
  */
 const PlanningAgentConfigSchema = z.object({
-  provider: z.enum(['anthropic', 'claude', 'openai', 'claude_code']).default('claude'),
+  provider: z.enum(['anthropic', 'claude', 'openai', 'claude_code', 'opencode']).default('claude'),
   model: z.string().default('claude-opus-4-5-20250514'),
   temperature: z.number().min(0).max(2).default(0.7),
   tools: z.array(PlanningToolSchema).default([

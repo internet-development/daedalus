@@ -8,6 +8,7 @@
  * - 'anthropic' / 'claude': Direct Anthropic API (requires ANTHROPIC_API_KEY)
  * - 'openai': OpenAI API (requires OPENAI_API_KEY)
  * - 'claude_code': Claude CLI subscription (uses `claude` CLI)
+ * - 'opencode': OpenCode CLI (uses `opencode` CLI)
  */
 import { EventEmitter } from 'events';
 import { streamText, stepCountIs, type ModelMessage } from 'ai';
@@ -19,6 +20,7 @@ import type { ChatMessage, ToolCall } from './chat-history.js';
 import { getPlanningAgentSystemPrompt } from './system-prompts.js';
 import { getEnabledTools } from './tools.js';
 import { ClaudeCodeProvider } from './claude-code-provider.js';
+import { OpenCodeProvider } from './opencode-provider.js';
 
 // =============================================================================
 // Types
@@ -115,6 +117,7 @@ export class PlanningSession extends EventEmitter {
   private selectedBean: Bean | null;
   private abortController: AbortController | null = null;
   private claudeCodeProvider: ClaudeCodeProvider | null = null;
+  private openCodeProvider: OpenCodeProvider | null = null;
   private streaming = false;
 
   constructor(options: PlanningSessionOptions) {
@@ -162,6 +165,8 @@ export class PlanningSession extends EventEmitter {
 
     if (provider === 'claude_code') {
       await this.sendMessageViaClaude(message, history);
+    } else if (provider === 'opencode') {
+      await this.sendMessageViaOpenCode(message, history);
     } else {
       await this.sendMessageViaApi(message, history);
     }
@@ -178,6 +183,12 @@ export class PlanningSession extends EventEmitter {
     if (this.claudeCodeProvider?.isActive()) {
       this.claudeCodeProvider.cancel();
       this.claudeCodeProvider = null;
+    }
+
+    // Cancel OpenCode provider
+    if (this.openCodeProvider?.isActive()) {
+      this.openCodeProvider.cancel();
+      this.openCodeProvider = null;
     }
 
     this.streaming = false;
@@ -257,6 +268,82 @@ export class PlanningSession extends EventEmitter {
         const error = err instanceof Error ? err : new Error(String(err));
         this.streaming = false;
         this.claudeCodeProvider = null;
+        this.emit('error', error);
+      }
+    }
+  }
+
+  private async sendMessageViaOpenCode(
+    message: string,
+    history: ChatMessage[]
+  ): Promise<void> {
+    // Cancel any existing stream
+    if (this.openCodeProvider?.isActive()) {
+      this.openCodeProvider.cancel();
+    }
+
+    this.streaming = true;
+    this.abortController = new AbortController();
+
+    // Create the provider
+    const provider = new OpenCodeProvider({
+      mode: this.mode,
+      selectedBean: this.selectedBean,
+      abortSignal: this.abortController.signal,
+      model: this.config.model,
+    });
+    this.openCodeProvider = provider;
+
+    // Track content and tool calls
+    let fullContent = '';
+    const toolCalls: ToolCall[] = [];
+
+    // Set up event handlers - forward events
+    provider.on('text', (text: string) => {
+      fullContent += text;
+      this.emit('text', text);
+    });
+
+    provider.on(
+      'toolCall',
+      (tc: { name: string; args: Record<string, unknown> }) => {
+        const toolCall: ToolCall = {
+          name: tc.name,
+          args: tc.args,
+        };
+        toolCalls.push(toolCall);
+        this.emit('toolCall', toolCall);
+      }
+    );
+
+    provider.on('error', (err: Error) => {
+      this.streaming = false;
+      this.openCodeProvider = null;
+      this.emit('error', err);
+    });
+
+    provider.on('done', () => {
+      this.streaming = false;
+      this.openCodeProvider = null;
+      this.emit('done', fullContent, toolCalls);
+    });
+
+    // Convert history to simple format for OpenCode CLI
+    const historyForCli = history
+      .filter((msg) => msg.role === 'user' || msg.role === 'assistant')
+      .map((msg) => ({
+        role: msg.role,
+        content: msg.content,
+      }));
+
+    try {
+      await provider.send(message, historyForCli);
+    } catch (err) {
+      // Error is handled via event, but catch any unhandled
+      if (!(err instanceof Error && err.message.includes('aborted'))) {
+        const error = err instanceof Error ? err : new Error(String(err));
+        this.streaming = false;
+        this.openCodeProvider = null;
         this.emit('error', error);
       }
     }
