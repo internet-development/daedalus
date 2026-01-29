@@ -4,7 +4,8 @@
   "description": "AI planning CLI for agentic coding orchestration",
   "type": "module",
   "bin": {
-    "daedalus": "./dist/cli/index.js"
+    "daedalus": "./dist/cli/index.js",
+    "talos": "./dist/cli/talos.js"
   },
   "engines": {
     "node": ">=20"
@@ -26,6 +27,7 @@
     "ai": "^6.0.50",
     "bash-tool": "^1.3.9",
     "chokidar": "^4.0.0",
+    "commander": "^14.0.2",
     "simple-git": "^3.27.0",
     "yaml": "^2.7.0",
     "zod": "^3.24.0"
