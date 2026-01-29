@@ -17,6 +17,7 @@ import {
 } from './output.js';
 import { selectSession } from './session-selector.js';
 import { runTree } from './tree-simple.js';
+import { openEditor } from './editor.js';
 
 // =============================================================================
 // Command Names for Tab Completion
@@ -31,6 +32,7 @@ export const COMMAND_NAMES: string[] = [
   '/help',
   '/mode',
   '/prompt',
+  '/edit',
   '/start',
   '/stop',
   '/status',
@@ -44,6 +46,7 @@ export const COMMAND_NAMES: string[] = [
   '/?',
   '/m',
   '/p',
+  '/e',
   '/st',
   '/ss',
   '/n',
@@ -125,6 +128,10 @@ export async function handleCommand(
     case 'prompt':
     case 'p':
       return handlePrompt(args, ctx);
+
+    case 'edit':
+    case 'e':
+      return handleEdit();
 
     case 'start':
       return await handleStart(ctx);
@@ -315,6 +322,17 @@ async function handleTree(args: string): Promise<CommandResult> {
   }
 
   return { type: 'continue' };
+}
+
+function handleEdit(): CommandResult {
+  const content = openEditor();
+
+  if (!content) {
+    console.log('Editor cancelled or empty message — not sent.');
+    return { type: 'continue' };
+  }
+
+  return { type: 'send', message: content };
 }
 
 function handleQuit(): CommandResult {

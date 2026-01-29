@@ -117,6 +117,7 @@ export function formatHelp(): string {
     ['/help', 'Show this help message'],
     ['/mode [name]', 'Show or change planning mode'],
     ['/prompt [name]', 'Use a custom prompt'],
+    ['/edit', 'Open $EDITOR for multi-line input'],
     ['/start', 'Start the Talos daemon'],
     ['/stop', 'Stop the Talos daemon'],
     ['/status', 'Show daemon status'],
