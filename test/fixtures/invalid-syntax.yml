@@ -1,0 +1,9 @@
+# Invalid YAML syntax - missing colon, bad indentation
+agent
+  backend: claude
+  model: test
+    nested: wrong
+  list:
+  - item1
+  - item2
+    bad: indentation

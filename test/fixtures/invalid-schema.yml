@@ -1,0 +1,14 @@
+# Valid YAML but invalid schema - wrong types
+agent:
+  backend: invalid_backend  # Not in enum
+  claude:
+    model: 123  # Should be string
+    dangerously_skip_permissions: "yes"  # Should be boolean
+
+scheduler:
+  max_parallel: "two"  # Should be number
+  poll_interval: -100  # Below minimum
+
+planning_agent:
+  provider: unknown_provider  # Not in enum
+  temperature: 5.0  # Above maximum

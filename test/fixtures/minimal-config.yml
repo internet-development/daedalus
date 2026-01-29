@@ -1,0 +1,3 @@
+# Minimal configuration - all defaults should be applied
+agent:
+  backend: claude

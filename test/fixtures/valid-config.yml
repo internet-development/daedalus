@@ -1,0 +1,62 @@
+# Valid complete configuration for testing
+agent:
+  backend: claude
+  claude:
+    model: claude-sonnet-4-20250514
+    dangerously_skip_permissions: true
+
+scheduler:
+  max_parallel: 2
+  poll_interval: 2000
+  auto_enqueue_on_startup: true
+
+on_complete:
+  auto_commit: true
+  push: false
+  commit_style:
+    include_bean_id: true
+
+on_blocked:
+  create_blocker_bean: true
+
+review:
+  test_command: npm test
+  conventions_file: CONVENTIONS.md
+
+planning_agent:
+  provider: claude
+  model: claude-opus-4-5-20250514
+  temperature: 0.5
+  tools:
+    - read_file
+    - glob
+    - grep
+
+experts:
+  enabled: true
+  personas:
+    - pragmatist
+    - architect
+
+planning:
+  skills_directory: ./skills
+  modes:
+    brainstorm:
+      enabled: true
+      skill: beans-brainstorming
+      enforce_for_types:
+        - feature
+        - epic
+    breakdown:
+      enabled: true
+      skill: beans-breakdown
+      min_task_duration_minutes: 3
+      max_task_duration_minutes: 10
+      suggest_test_beans: true
+
+watcher:
+  beansDir: .beans
+
+output:
+  dir: .talos/output
+  autoComplete: false

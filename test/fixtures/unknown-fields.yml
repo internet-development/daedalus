@@ -1,0 +1,14 @@
+# Configuration with unknown fields - should be ignored (Zod strips unknown)
+agent:
+  backend: claude
+  unknown_field: should_be_ignored
+  another_unknown:
+    nested: value
+
+scheduler:
+  max_parallel: 1
+  extra_option: true
+
+completely_unknown_section:
+  foo: bar
+  baz: qux
