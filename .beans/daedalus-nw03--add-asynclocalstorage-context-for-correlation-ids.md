@@ -1,11 +1,11 @@
 ---
 # daedalus-nw03
 title: Add AsyncLocalStorage context for correlation IDs
-status: in-progress
+status: completed
 type: task
 priority: normal
 created_at: 2026-01-29T00:25:47Z
-updated_at: 2026-01-29T06:19:51Z
+updated_at: 2026-01-29T06:23:27Z
 parent: daedalus-pvpy
 blocking:
     - daedalus-ehqe
