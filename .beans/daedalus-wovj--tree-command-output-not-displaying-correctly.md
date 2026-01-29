@@ -1,11 +1,11 @@
 ---
 # daedalus-wovj
 title: /tree command output not displaying correctly
-status: in-progress
+status: completed
 type: bug
 priority: normal
 created_at: 2026-01-28T20:11:59Z
-updated_at: 2026-01-29T06:04:03Z
+updated_at: 2026-01-29T06:06:15Z
 parent: daedalus-tbsm
 ---
 
