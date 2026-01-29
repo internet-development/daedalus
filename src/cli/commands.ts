@@ -10,7 +10,6 @@ import type { Talos } from '../talos/talos.js';
 import type { CustomPrompt } from '../planning/prompts.js';
 import {
   formatHelp,
-  formatModeList,
   formatPromptList,
   formatStatus,
   formatError,
@@ -18,6 +17,11 @@ import {
 import { selectSession } from './session-selector.js';
 import { runTree } from './tree-simple.js';
 import { openEditor } from './editor.js';
+import {
+  interactiveSelect,
+  EXIT_SENTINEL,
+  type SelectOption,
+} from './interactive-select.js';
 
 // =============================================================================
 // Command Names for Tab Completion
@@ -91,6 +95,15 @@ const VALID_MODES: PlanMode[] = [
   'breakdown',
 ];
 
+const MODE_DESCRIPTIONS: Record<PlanMode, string> = {
+  new: 'Create new beans through guided conversation',
+  refine: 'Improve and clarify existing draft beans',
+  critique: 'Run expert review on draft beans',
+  sweep: 'Check consistency across related beans',
+  brainstorm: 'Explore design options with Socratic questioning',
+  breakdown: 'Decompose work into actionable child beans',
+};
+
 function isValidMode(mode: string): mode is PlanMode {
   return VALID_MODES.includes(mode as PlanMode);
 }
@@ -123,7 +136,7 @@ export async function handleCommand(
 
     case 'mode':
     case 'm':
-      return handleMode(args, ctx);
+      return await handleMode(args, ctx);
 
     case 'prompt':
     case 'p':
@@ -187,14 +200,35 @@ function handleHelp(): CommandResult {
   return { type: 'continue' };
 }
 
-function handleMode(args: string, ctx: CommandContext): CommandResult {
+async function handleMode(args: string, ctx: CommandContext): Promise<CommandResult> {
   if (!args.trim()) {
-    // List all modes
-    console.log(formatModeList(ctx.session.getMode()));
+    // Interactive mode selection
+    const options: SelectOption[] = VALID_MODES.map((mode) => ({
+      label: mode,
+      value: mode,
+      meta: MODE_DESCRIPTIONS[mode],
+    }));
+
+    const currentIndex = VALID_MODES.indexOf(ctx.session.getMode());
+    const result = await interactiveSelect(
+      'Planning Modes',
+      options,
+      currentIndex >= 0 ? currentIndex : 0
+    );
+
+    if (result === EXIT_SENTINEL || result === null) {
+      return { type: 'continue' };
+    }
+
+    if (isValidMode(result)) {
+      ctx.session.setMode(result);
+      console.log(`Switched to mode: ${result}`);
+    }
+
     return { type: 'continue' };
   }
 
-  // Switch to mode
+  // Direct mode switch (existing behavior)
   const mode = args.trim().toLowerCase();
   if (!isValidMode(mode)) {
     console.log(formatError(`Unknown mode: ${args}`));
