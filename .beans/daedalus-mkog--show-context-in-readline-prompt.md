@@ -1,11 +1,11 @@
 ---
 # daedalus-mkog
 title: Show context in readline prompt
-status: in-progress
+status: completed
 type: feature
 priority: low
 created_at: 2026-01-28T20:06:55Z
-updated_at: 2026-01-29T06:34:10Z
+updated_at: 2026-01-29T06:37:05Z
 parent: daedalus-tbsm
 ---
 
