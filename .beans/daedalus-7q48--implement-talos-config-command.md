@@ -1,11 +1,11 @@
 ---
 # daedalus-7q48
 title: Implement 'talos config' command
-status: in-progress
+status: completed
 type: task
 priority: normal
 created_at: 2026-01-29T00:32:29Z
-updated_at: 2026-01-29T05:40:16Z
+updated_at: 2026-01-29T05:45:47Z
 parent: daedalus-qkep
 ---
 
