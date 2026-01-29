@@ -1,11 +1,11 @@
 ---
 # daedalus-kwc9
 title: Planner agent offers to work on beans instead of just planning
-status: in-progress
+status: completed
 type: bug
 priority: normal
 created_at: 2026-01-29T17:12:44Z
-updated_at: 2026-01-29T18:28:19Z
+updated_at: 2026-01-29T18:30:03Z
 ---
 
 ## Problem
