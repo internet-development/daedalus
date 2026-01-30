@@ -257,6 +257,18 @@ The `.talos/` directory (gitignored) contains:
 | `.talos/daemon.pid` | Daemon process ID |
 | `.talos/daemon-status.json` | Daemon state |
 
+## Built by the tools it orchestrates
+
+Daedalus is dogfooded — planned, built, and tested using itself. Beans track the work, Daedalus plans the tasks, and Talos writes the code.
+
+| Metric | Count |
+|--------|-------|
+| Source files | 36 |
+| Lines of code | ~12,400 |
+| Test files | 27 |
+| Tests | 422 |
+| Test lines | ~6,200 |
+
 ## Development
 
 | Script | Description |
