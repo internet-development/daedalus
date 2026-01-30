@@ -1,5 +1,5 @@
 {
-  "name": "daedalus",
+  "name": "@internet-dev/daedalus",
   "version": "0.1.0",
   "description": "AI planning CLI for agentic coding orchestration",
   "type": "module",
@@ -28,6 +28,8 @@
   },
   "files": [
     "dist/",
+    "!dist/**/*.test.*",
+    "!dist/test-utils/",
     "README.md",
     "LICENSE",
     "docs/",

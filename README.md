@@ -11,6 +11,12 @@ AI planning CLI and agentic coding orchestration platform. Manages AI agents to 
 ## Installation
 
 ```bash
+npm install -g @internet-dev/daedalus
+```
+
+Or from source:
+
+```bash
 git clone https://github.com/internet-development/daedalus.git
 cd daedalus
 npm install
@@ -21,16 +27,13 @@ npm run build
 
 ```bash
 # Start the planning agent (interactive CLI)
-npm run start -- plan
+daedalus plan
 
 # Start the Talos daemon (watches beans, spawns agents)
-npm run start -- talos
+talos
 
 # View your bean tree
-npm run start -- tree
-
-# Development mode (no build step)
-npm run dev -- plan
+daedalus tree
 ```
 
 ### What to Expect
