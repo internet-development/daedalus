@@ -1,6 +1,6 @@
 {
   "name": "@internet-dev/daedalus",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "AI planning CLI and autonomous agent orchestration for beans-based coding workflows",
   "type": "module",
   "author": "Caidan Williams <caidan@internet.dev>",
