@@ -1,11 +1,11 @@
 ---
 # daedalus-flnm
 title: Squash pre-v2 git history and delete legacy files
-status: todo
+status: completed
 type: task
 priority: critical
 created_at: 2026-01-30T02:22:58Z
-updated_at: 2026-01-30T02:22:58Z
+updated_at: 2026-01-30T02:26:21Z
 parent: daedalus-u7dj
 blocking:
     - daedalus-mjez
