@@ -4,12 +4,12 @@ Guidelines for AI coding agents working in this repository.
 
 ## Project Overview
 
-Daedalus v2 is an agentic coding orchestration platform built with:
-- **TypeScript** - Type-safe codebase
-- **Ink** - React-based terminal UI
-- **Talos** - The core daemon that watches beans and spawns agents
+Daedalus is an agentic coding orchestration platform built with:
+- **TypeScript** — Type-safe codebase with strict mode
+- **Readline CLI** — Terminal interface (no React/Ink)
+- **Talos** — The core daemon that watches beans and spawns coding agents
 
-The architecture is event-driven and designed for eventual migration to Go.
+The architecture is event-driven with loose coupling via EventEmitter.
 
 ## Commands
 
@@ -19,35 +19,56 @@ npm run dev          # Start with tsx (development)
 npm run build        # Compile TypeScript to dist/
 npm run start        # Run compiled version
 npm run typecheck    # Type check without emitting
+npm test             # Run all tests
 ```
 
 ## Project Structure
 
 ```
 src/
-  cli.tsx           # CLI entry point (with shebang for bin)
-  index.tsx         # Main Ink app component
-  cli/              # CLI command handlers
-    tree.tsx        # Bean tree command
+  cli/              # CLI entry point and commands
+    index.ts        # Main daedalus CLI (readline-based)
+    talos.ts        # Talos daemon CLI (start/stop/status/logs/config)
+    plan.ts         # Interactive planning session
+    commands.ts     # Command parser (/help, /mode, /edit, etc.)
+    output.ts       # Terminal formatting and display
+    tree-simple.ts  # Bean tree visualization
   talos/            # Daemon core
-    index.ts        # Exports all daemon modules
-    beans-client.ts # Beans CLI interaction
-    watcher.ts      # File system watcher
+    talos.ts        # Main coordinator, wires all components
+    beans-client.ts # Beans CLI interaction (type-safe wrapper)
+    watcher.ts      # File system watcher for bean changes
     scheduler.ts    # Priority queue + dependency resolution
-    agent-runner.ts # Spawns coding agents
+    agent-runner.ts # Spawns coding agents (Claude, OpenCode, Codex)
     completion-handler.ts # Post-execution tasks
-  ui/               # Ink UI components
-    index.ts        # Component exports
+    logger.ts       # Structured logging with Pino
+    context.ts      # Correlation IDs and async context
+    daemon-manager.ts # PID management and daemon lifecycle
+  planning/         # Planning agent system
+    planning-agent.ts    # Multi-provider AI agent (Anthropic, OpenAI)
+    planning-session.ts  # Session management and message handling
+    system-prompts.ts    # Mode-specific system prompts + expert personas
+    tools.ts             # Planning tools (read_file, glob, grep, beans_cli)
+    chat-history.ts      # Chat persistence to .talos/chat-history.json
   config/           # Configuration loading
     index.ts        # talos.yml loader with Zod validation
+  utils/            # Shared utilities
+    string-helpers.ts
+  test-utils/       # Test utilities (real code, not mocks)
+    beans-fixtures.ts  # Create real bean files for testing
+    cli-helpers.ts     # Capture CLI output and exit codes
+    event-helpers.ts   # Test EventEmitter-based code
+    async-helpers.ts   # Wait for conditions and delays
+    fs-helpers.ts      # Temporary directories and file operations
 ```
 
 ## Runtime Data
 
 The `.talos/` directory contains runtime data (gitignored):
-- `.talos/output/` - Persisted agent output logs
-- `.talos/chat-history.json` - Planning chat persistence
-- `.talos/prompts/` - Custom planning prompts
+- `.talos/output/` — Persisted agent output logs
+- `.talos/chat-history.json` — Planning chat persistence
+- `.talos/prompts/` — Custom planning prompts
+- `.talos/daemon.pid` — Daemon process ID
+- `.talos/daemon-status.json` — Daemon state
 
 ## Code Style
 
@@ -56,28 +77,6 @@ The `.talos/` directory contains runtime data (gitignored):
 - Strict mode enabled
 - Use ES modules (`"type": "module"` in package.json)
 - File extensions in imports: `./module.js` (NodeNext resolution)
-
-### React/Ink
-
-```typescript
-import React, { useState, useEffect } from 'react';
-import { Box, Text, useApp, useInput } from 'ink';
-
-export function MyComponent() {
-  const { exit } = useApp();
-  const [state, setState] = useState(initial);
-
-  useInput((input, key) => {
-    if (input === 'q') exit();
-  });
-
-  return (
-    <Box flexDirection="column">
-      <Text>Hello</Text>
-    </Box>
-  );
-}
-```
 
 ### Event-Driven Pattern
 
@@ -119,19 +118,26 @@ Configuration is loaded from `talos.yml`:
 
 ```yaml
 agent:
-  command: opencode
-  args: [run]
-  model: anthropic/claude-sonnet-4-20250514
+  backend:
+    claude:
+      model: claude-sonnet-4-20250514
 
 scheduler:
   maxConcurrent: 1
 
-watcher:
-  beansDir: .beans
+planning_agent:
+  provider: claude_code
+  model: claude-sonnet-4-20250514
 
-output:
-  dir: .talos/output
-  autoComplete: false
+planning:
+  skills_directory: ./skills
+  modes:
+    brainstorm:
+      enabled: true
+      skill: beans-brainstorming
+    breakdown:
+      enabled: true
+      skill: beans-breakdown
 ```
 
 ## Logging
@@ -153,11 +159,11 @@ const myLogger = logger.child({ component: 'my-component' });
 
 ### Key Patterns
 
-1. **Always include context** - Add relevant fields like `beanId`, `filePath`, `exitCode`
-2. **Use appropriate levels** - `debug` for diagnostics, `info` for operations, `error` for failures
-3. **Log errors properly** - Use `{ err: error }` for error objects
-4. **Use child loggers** - Create one per component for automatic context
-5. **Use correlation IDs** - Wrap operations with `withContext` for tracing
+1. **Always include context** — Add relevant fields like `beanId`, `filePath`, `exitCode`
+2. **Use appropriate levels** — `debug` for diagnostics, `info` for operations, `error` for failures
+3. **Log errors properly** — Use `{ err: error }` for error objects
+4. **Use child loggers** — Create one per component for automatic context
+5. **Use correlation IDs** — Wrap operations with `withContext` for tracing
 
 ```typescript
 import { withContext } from './talos/context.js';
@@ -170,8 +176,8 @@ await withContext({ beanId }, async () => {
 
 ## Key Architectural Decisions
 
-1. **No database** - Beans are the source of truth, stored as files
-2. **Event-driven** - Components communicate via events, not direct calls
-3. **CLI-first** - All beans interaction via CLI for easy Go migration
-4. **Ink for UI** - React patterns in terminal, familiar for web devs
-5. **No Zustand** - Using React Context + EventEmitter instead
+1. **No database** — Beans are the source of truth, stored as files
+2. **Event-driven** — Components communicate via events, not direct calls
+3. **CLI-first** — All beans interaction via CLI, all UI via readline
+4. **Zod validation** — Runtime config validation with Zod schemas
+5. **Real tests** — Test utilities use real code, not mocks

@@ -6,7 +6,7 @@ Thank you for your interest in contributing to Daedalus! This guide covers the d
 
 ```bash
 # Clone the repository
-git clone <repo-url>
+git clone https://github.com/internet-development/daedalus.git
 cd daedalus
 
 # Install dependencies
@@ -39,12 +39,12 @@ beans update <bean-id> --status in-progress
 
 The Red-Green-Refactor cycle:
 
-1. **RED** - Write a failing test that describes the desired behavior
-2. **Verify RED** - Run the test and confirm it fails for the expected reason
-3. **GREEN** - Write the minimal code to make the test pass
-4. **Verify GREEN** - Run the test and confirm it passes
-5. **REFACTOR** - Clean up the code while keeping tests green
-6. **Repeat** - Move to the next behavior
+1. **RED** — Write a failing test that describes the desired behavior
+2. **Verify RED** — Run the test and confirm it fails for the expected reason
+3. **GREEN** — Write the minimal code to make the test pass
+4. **Verify GREEN** — Run the test and confirm it passes
+5. **REFACTOR** — Clean up the code while keeping tests green
+6. **Repeat** — Move to the next behavior
 
 **Core principle:** If you didn't watch the test fail, you don't know if it tests the right thing.
 
@@ -183,28 +183,6 @@ import { myFunction } from './my-module.js';
 import { myFunction } from './my-module';
 ```
 
-### React/Ink
-
-```typescript
-import React, { useState, useEffect } from 'react';
-import { Box, Text, useApp, useInput } from 'ink';
-
-export function MyComponent() {
-  const { exit } = useApp();
-  const [state, setState] = useState(initial);
-
-  useInput((input, key) => {
-    if (input === 'q') exit();
-  });
-
-  return (
-    <Box flexDirection="column">
-      <Text>Hello</Text>
-    </Box>
-  );
-}
-```
-
 ### Event-Driven Pattern
 
 All daemon modules extend EventEmitter:
@@ -223,11 +201,10 @@ export class MyModule extends EventEmitter {
 
 ```
 src/
-  cli/              # CLI entry point and commands
+  cli/              # CLI entry point and commands (readline-based)
   talos/            # Daemon core (orchestration)
-  ui/               # Ink UI components
-  config/           # Configuration loading
   planning/         # Planning agent system
+  config/           # Configuration loading
   utils/            # Shared utilities
   test-utils/       # Test utilities (NOT mocks)
 ```

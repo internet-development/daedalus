@@ -599,4 +599,4 @@ Can't check all boxes? You skipped TDD. Start over.
 
 - [README.md](/README.md) - Quick start and test commands
 - [CONTRIBUTING.md](/CONTRIBUTING.md) - Development workflow
-- [TDD Skill](/.opencode/skills/test-driven-development/SKILL.md) - Agent skill definition
+- [TDD Skill](../skills/beans-tdd-suggestion/SKILL.md) — Agent skill definition

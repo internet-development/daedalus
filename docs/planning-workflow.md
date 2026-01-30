@@ -75,7 +75,7 @@ beans create "User authentication system" -t epic -s draft -d "We need a way to 
 
 ### Step 2: Brainstorm the Design
 
-Switch to brainstorm mode in Plan View (press `Tab` to cycle modes).
+Switch to brainstorm mode with the `/mode brainstorm` command.
 
 The planning agent will:
 1. Ask clarifying questions (one at a time)
@@ -205,7 +205,7 @@ If you choose TDD:
 
 ### Step 6: Execute
 
-Switch to Execute View. Your task beans are now queued:
+Start the Talos daemon with `talos start`. Your task beans are now queued:
 
 ```
 > daedalus-abc1: Create OAuth configuration types      [todo] READY
@@ -380,19 +380,23 @@ beans query '{ bean(id: "...") { title } }'
 
 **Skills**: Read skill files in `skills/` directory
 
-## Keyboard Shortcuts
+## Slash Commands
 
-In Plan View:
+In the planning session (`daedalus plan`):
 
-| Key | Action |
-|-----|--------|
-| `Tab` | Cycle to next mode |
-| `Shift+Tab` | Cycle to previous mode |
-| `Enter` | Send message |
-| `Ctrl+P` | Open prompt selector |
-| `Ctrl+L` | Clear chat |
-| `1-9` | Quick-select multiple choice |
-| `Esc` | Go back |
+| Command | Action |
+|---------|--------|
+| `/help` | Show all commands |
+| `/mode <mode>` | Switch planning mode (new, refine, critique, sweep, brainstorm, breakdown) |
+| `/prompt` | Select a built-in prompt |
+| `/edit` | Open `$EDITOR` for multi-line input |
+| `/sessions` | List and switch planning sessions |
+| `/new` | Start a new session |
+| `/tree` | Display bean tree |
+| `/start` / `/stop` | Start/stop the Talos daemon |
+| `/status` | Show daemon status |
+| `/clear` | Clear the screen |
+| `/quit` | Exit |
 
 ## Tips for Effective Planning
 
@@ -449,6 +453,6 @@ planning:
 
 ## Related Documentation
 
-- [AGENTS.md](/AGENTS.md) - Beans CLI usage guide
-- [Configuration](/src/config/index.ts) - Full config schema
-- [Skills Directory](/skills/) - Agent Skills definitions
+- [AGENTS.md](../AGENTS.md) — Guidelines for AI coding agents
+- [talos.yml](../talos.yml) — Full configuration reference
+- [Skills Directory](../skills/) — Agent skill definitions
