@@ -16,10 +16,8 @@ coverage/
 .env.*
 
 # Tool-specific configs (local)
-.opencode/
 .claude/
 .beans/
-scripts/
 
 # Editor
 .nova
