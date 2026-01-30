@@ -1,16 +1,41 @@
 {
   "name": "daedalus",
-  "version": "2.0.0",
+  "version": "0.1.0",
   "description": "AI planning CLI for agentic coding orchestration",
   "type": "module",
+  "author": "Caidan Williams <caidan@internet.dev>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/internet-development/daedalus.git"
+  },
+  "homepage": "https://github.com/internet-development/daedalus#readme",
+  "bugs": {
+    "url": "https://github.com/internet-development/daedalus/issues"
+  },
+  "keywords": [
+    "ai",
+    "agent",
+    "orchestration",
+    "coding",
+    "cli",
+    "planning",
+    "beans"
+  ],
   "bin": {
     "daedalus": "./dist/cli/index.js",
     "talos": "./dist/cli/talos.js"
   },
+  "files": [
+    "dist/",
+    "README.md",
+    "LICENSE",
+    "docs/",
+    "skills/"
+  ],
   "engines": {
     "node": ">=20"
   },
-  "license": "MIT",
   "scripts": {
     "dev": "tsx src/cli/index.ts",
     "build": "tsc",
@@ -19,7 +44,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "test:ui": "vitest --ui"
+    "test:ui": "vitest --ui",
+    "prepublishOnly": "npm run typecheck && npm run build && npm test"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.23",
