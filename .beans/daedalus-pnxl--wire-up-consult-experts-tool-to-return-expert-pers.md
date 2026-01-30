@@ -1,11 +1,11 @@
 ---
 # daedalus-pnxl
 title: Wire up consult_experts tool to return expert persona prompts
-status: in-progress
+status: completed
 type: feature
 priority: high
 created_at: 2026-01-29T23:55:33Z
-updated_at: 2026-01-29T23:58:27Z
+updated_at: 2026-01-30T00:03:29Z
 ---
 
 ## Context
