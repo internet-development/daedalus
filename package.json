@@ -1,7 +1,7 @@
 {
   "name": "@internet-dev/daedalus",
   "version": "0.1.2",
-  "description": "AI planning CLI for agentic coding orchestration",
+  "description": "AI planning CLI and autonomous agent orchestration for beans-based coding workflows",
   "type": "module",
   "author": "Caidan Williams <caidan@internet.dev>",
   "license": "MIT",
@@ -20,7 +20,11 @@
     "coding",
     "cli",
     "planning",
-    "beans"
+    "beans",
+    "automation",
+    "task-management",
+    "typescript",
+    "daemon"
   ],
   "bin": {
     "daedalus": "dist/cli/index.js",
@@ -28,8 +32,6 @@
   },
   "files": [
     "dist/",
-    "!dist/**/*.test.*",
-    "!dist/test-utils/",
     "README.md",
     "LICENSE",
     "docs/",
@@ -47,7 +49,8 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:ui": "vitest --ui",
-    "prepublishOnly": "npm run typecheck && npm run build && npm test"
+    "clean:dist": "find dist -name '*.test.*' -delete && rm -rf dist/test-utils && rm -rf dist/ui",
+    "prepublishOnly": "npm run typecheck && npm run build && npm test && npm run clean:dist"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.23",

@@ -1,0 +1,32 @@
+# Tests
+*.test.*
+*.test.js
+*.test.d.ts
+*.test.js.map
+*.test.d.ts.map
+*.spec.*
+dist/test-utils/
+
+# Source
+src/
+
+# Dev configs
+vitest.config.ts
+tsconfig.json
+.env*
+.gitignore
+.prettierrc
+
+# Tool-specific
+.opencode/
+.claude/
+.beans/
+.talos/
+.nova
+.vscode
+
+# Dev docs
+CONTRIBUTING.md
+AGENTS.md
+CLAUDE.md
+scripts/
