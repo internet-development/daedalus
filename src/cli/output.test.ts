@@ -77,8 +77,8 @@ describe('CLI Output Formatting', () => {
       const result = formatHeader('stopped');
       const plain = stripAnsi(result);
       const lines = plain.split('\n');
-      // First line: Daedalus v2.0.0 · [⚙ Talos: stopped]
-      expect(lines[0]).toBe('Daedalus v2.0.0 · [⚙ Talos: stopped]');
+      // First line: Daedalus v0.1.0 · [⚙ Talos: stopped]
+      expect(lines[0]).toBe('Daedalus v0.1.0 · [⚙ Talos: stopped]');
     });
   });
 

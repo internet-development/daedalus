@@ -149,7 +149,7 @@ describe('getDefaultConfig', () => {
 
     // Experts defaults
     expect(config.experts.enabled).toBe(true);
-    expect(config.experts.personas).toEqual(['pragmatist', 'architect', 'skeptic']);
+    expect(config.experts.personas).toEqual(['pragmatist', 'architect', 'skeptic', 'simplifier', 'security']);
 
     // Planning defaults
     expect(config.planning.skills_directory).toBe('./skills');
