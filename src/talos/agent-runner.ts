@@ -338,10 +338,10 @@ export class AgentRunner extends EventEmitter {
       try {
         this.process = spawn(command, args, {
           cwd,
-          stdio: ['pipe', 'pipe', 'pipe'],
+          stdio: ['ignore', 'pipe', 'pipe'],
           env: {
             ...process.env,
-            FORCE_COLOR: '1',
+            FORCE_COLOR: '0',
           },
         });
       } catch (error) {
