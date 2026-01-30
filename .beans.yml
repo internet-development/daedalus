@@ -1,0 +1,6 @@
+beans:
+    path: .beans
+    prefix: daedalus-
+    id_length: 4
+    default_status: draft
+    default_type: task
