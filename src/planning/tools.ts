@@ -23,6 +23,7 @@ import {
   type BeanType,
   type BeanPriority,
 } from '../talos/beans-client.js';
+import { EXPERT_PROMPTS, type ExpertType } from './system-prompts.js';
 
 // =============================================================================
 // Read File Tool
@@ -575,28 +576,51 @@ const consultExpertsInputSchema = z.object({
     .describe('Optional specific question to ask the experts'),
   experts: z
     .array(
-      z.enum(['pragmatist', 'architect', 'skeptic', 'simplifier', 'security'])
+      z.enum([
+        'pragmatist',
+        'architect',
+        'skeptic',
+        'simplifier',
+        'security',
+        'researcher',
+        'codebase-explorer',
+        'ux-reviewer',
+        'critic',
+      ])
     )
     .describe('Which experts to consult'),
 });
 
 /**
- * Note: This tool is a placeholder. The actual expert consultation is handled
- * by the usePlanningAgent hook which has access to the config and can spawn
- * sub-agents. This tool definition is here for documentation purposes.
+ * Consult expert advisors by loading their full persona prompts.
+ * The planning agent reads these prompts and role-plays each expert's perspective
+ * in its response, rather than spawning separate LLM calls.
  */
 export const consultExpertsTool = tool({
   description:
-    'Consult expert advisors for feedback on a plan or approach. Each expert provides their unique perspective.',
+    'Consult expert advisors for feedback on a plan or approach. Returns the full persona prompt for each requested expert so you can respond from their perspective.',
   inputSchema: consultExpertsInputSchema,
   execute: async ({ context, question, experts }: z.infer<typeof consultExpertsInputSchema>) => {
-    // This is handled externally by the planning agent hook
-    // The tool definition exists for the AI to understand the capability
+    const found: { expert: string; prompt: string }[] = [];
+    const notFound: string[] = [];
+
+    for (const expert of experts) {
+      const prompt = EXPERT_PROMPTS[expert as ExpertType];
+      if (prompt) {
+        found.push({ expert, prompt });
+      } else {
+        notFound.push(expert);
+      }
+    }
+
+    const instruction = question
+      ? `Review the following context from each expert's perspective and address this question: "${question}"\n\nContext:\n${context}`
+      : `Review the following context from each expert's perspective and provide feedback.\n\nContext:\n${context}`;
+
     return {
-      message:
-        'Expert consultation is handled by the planning agent. Include expert perspectives in your response.',
-      experts,
-      context: context.slice(0, 200) + '...',
+      instruction,
+      experts: found,
+      ...(notFound.length > 0 ? { notFound } : {}),
     };
   },
 });

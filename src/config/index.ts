@@ -130,6 +130,10 @@ const PersonaSchema = z.enum([
   'skeptic',
   'simplifier',
   'security',
+  'researcher',
+  'codebase-explorer',
+  'ux-reviewer',
+  'critic',
 ]);
 
 /**
@@ -137,7 +141,7 @@ const PersonaSchema = z.enum([
  */
 const ExpertsConfigSchema = z.object({
   enabled: z.boolean().default(true),
-  personas: z.array(PersonaSchema).default(['pragmatist', 'architect', 'skeptic']),
+  personas: z.array(PersonaSchema).default(['pragmatist', 'architect', 'skeptic', 'simplifier', 'security']),
 });
 
 /**
