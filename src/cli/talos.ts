@@ -147,7 +147,8 @@ program
       mkdirSync(talosDir, { recursive: true });
 
       const logFile = manager.getLogFile();
-      const logStream = createWriteStream(logFile, { flags: 'a' });
+      const { openSync } = await import('fs');
+      const logFd = openSync(logFile, 'a');
 
       // Spawn the daemon entry point
       const daemonScript = join(__dirname, '../daemon-entry.js');
@@ -155,7 +156,7 @@ program
       
       const child = spawnChild(process.execPath, [daemonScript, ...args], {
         detached: true,
-        stdio: ['ignore', logStream, logStream],
+        stdio: ['ignore', logFd, logFd],
         cwd: process.cwd(),
       });
 
