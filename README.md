@@ -37,9 +37,12 @@ You (planning) ──→ Daedalus ──→ Beans (.beans/) ──→ Talos ─�
 ## Quick Start
 
 ```bash
-# Install
+# Install Daedalus
 npm install -g @internet-dev/daedalus
-npm install -g beans                    # flat-file task tracker
+
+# Install beans (flat-file task tracker)
+brew install hmans/beans/beans          # macOS
+# or: go install github.com/hmans/beans@latest
 
 # Start planning
 cd your-project
@@ -61,7 +64,7 @@ daedalus --mode breakdown               # decompose work into tasks
 ## Prerequisites
 
 - **Node.js** >= 20
-- **[beans](https://github.com/hmans/beans)** CLI — flat-file issue tracker
+- **[beans](https://github.com/hmans/beans)** CLI — install via `brew install hmans/beans/beans` or `go install github.com/hmans/beans@latest`
 - One of the following for the planning agent:
   - **Claude Code CLI** (recommended) — uses your Claude subscription, no API key needed
   - **Anthropic API key** (`ANTHROPIC_API_KEY`) — direct API access
