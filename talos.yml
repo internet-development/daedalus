@@ -3,13 +3,13 @@
 
 # Agent runner configuration
 agent:
-  # Backend to use: opencode, claude, or codex (default: claude)
+  # Backend to use: claude, opencode, or codex
   backend:
-    opencode:
-      model: anthropic/claude-opus-4-5
-  # claude:
-  #   model: claude-opus-4-5-20250514
-  #   dangerously_skip_permissions: true
+    claude:
+      model: claude-sonnet-4-20250514
+      # dangerously_skip_permissions: true
+  # opencode:
+  #   model: anthropic/claude-sonnet-4-20250514
   # codex:
   #   model: codex-mini-latest
 
@@ -37,9 +37,10 @@ planning_agent:
   # - anthropic: Same as claude
   # - openai: OpenAI API (requires OPENAI_API_KEY env var)
   # - claude_code: Claude CLI subscription (no API key needed, uses `claude` CLI)
-  provider: opencode
-  # Model for API-based providers (not used with claude_code)
-  model: claude-opus-4-5
+  # - opencode: OpenCode CLI (no API key needed, uses `opencode` CLI)
+  provider: claude_code
+  # Model for API-based providers (not used with claude_code/opencode)
+  model: claude-sonnet-4-20250514
   # Temperature for response generation
   temperature: 0.7
 
@@ -56,7 +57,7 @@ logging:
     - token
     - secret
   # Destination: stdout or file path (default: stdout)
-  destination: .talos/logs.jsonl
+  destination: stdout
 
 # Planning configuration
 planning:
