@@ -1,11 +1,67 @@
 # Daedalus
 
-AI planning CLI and agentic coding orchestration platform. Manages AI agents to execute development work through a bean-driven task system.
+[![npm version](https://img.shields.io/npm/v/@internet-dev/daedalus)](https://www.npmjs.com/package/@internet-dev/daedalus)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue)](https://www.typescriptlang.org/)
+
+> **The bottleneck isn't agents. It's having clear enough tasks for them to work on.**
+
+Daedalus is an AI planning CLI that creates structured tasks ([beans](https://github.com/hmans/beans)) for coding agents to execute autonomously. Stop babysitting agents. Plan the work, let them build it.
+
+Read the full philosophy: [A Beans Based AI Workflow](https://caidan.dev/blog/2026-01-29-a-beans-based-ai-workflow/)
+
+## Why Daedalus?
+
+Most agentic coding tools focus on running as many agents as possible. But you can't write instructions fast enough to outpace a single agent. The real bottleneck is planning, not execution.
+
+Daedalus flips the approach:
+
+- **You plan with Daedalus** — an interactive AI planning agent with 9 expert personas (critics, architects, skeptics, simplifiers, and more)
+- **Talos executes the plan** — a daemon that watches your task queue, resolves dependencies, and spawns coding agents autonomously
+- **Beans are the interface** — plain markdown files with front matter, checked into git, readable by humans and robots alike
+
+```
+You (planning) ──→ Daedalus ──→ Beans (.beans/) ──→ Talos ──→ Coding Agents
+     ↑                                                              │
+     └──────────── review PRs, iterate on plan ─────────────────────┘
+```
+
+### How it compares
+
+| Approach | What it does | The gap |
+|----------|-------------|---------|
+| **Claude Code, Cursor, Aider** | Interactive coding assistant | You're still the bottleneck, context-switching between planning and building |
+| **Parallel agent runners** | Run 10-1000 agents at once | Who writes 1000 well-scoped tickets? You can't outpace one agent |
+| **Daedalus + Talos** | Plan with AI, execute autonomously | You focus on *what* to build. Talos handles *how* |
+
+## Quick Start
+
+```bash
+# Install
+npm install -g @internet-dev/daedalus
+npm install -g beans                    # flat-file task tracker
+
+# Start planning
+cd your-project
+beans init
+daedalus
+
+# Or jump straight into a mode
+daedalus --mode brainstorm              # explore design options
+daedalus --mode breakdown               # decompose work into tasks
+```
+
+### The workflow
+
+1. **Plan with Daedalus** — Scope features, break them into beans, critique the design
+2. **Beans are created** — Each bean is a markdown file with title, status, priority, and blockedBy fields
+3. **Start Talos** — `talos start` launches the daemon, which picks up todo beans and spawns agents
+4. **Review and iterate** — Check agent output, refine beans, plan the next batch
 
 ## Prerequisites
 
 - **Node.js** >= 20
-- **[beans](https://github.com/internet-development/beans)** CLI — file-based issue tracker that stores tasks as markdown files in `.beans/`
+- **[beans](https://github.com/hmans/beans)** CLI — flat-file issue tracker
 - One of the following for the planning agent:
   - **Claude Code CLI** (recommended) — uses your Claude subscription, no API key needed
   - **Anthropic API key** (`ANTHROPIC_API_KEY`) — direct API access
@@ -24,22 +80,6 @@ git clone https://github.com/internet-development/daedalus.git
 cd daedalus
 npm install
 npm run build
-```
-
-## Quick Start
-
-```bash
-# Start an interactive planning session
-daedalus
-
-# Start in a specific mode
-daedalus --mode brainstorm
-
-# Show your bean tree
-daedalus tree
-
-# Start the Talos daemon (watches beans, spawns agents)
-talos start
 ```
 
 ## Configuration
@@ -132,7 +172,7 @@ daedalus tree                  # Show bean tree
 
 ### Expert Advisors
 
-The planning agent can consult 9 expert advisor personas for multi-perspective analysis:
+The planning agent can consult 9 expert personas for multi-perspective analysis:
 
 | Expert | Focus |
 |--------|-------|
@@ -148,7 +188,7 @@ The planning agent can consult 9 expert advisor personas for multi-perspective a
 
 ## The `talos` CLI
 
-The Talos daemon watches your `.beans/` directory and automatically spawns coding agents to work on todo beans.
+The Talos daemon watches your `.beans/` directory and automatically spawns coding agents to work on todo beans. Named after the bronze automaton that protected Crete — you don't talk to Talos, he finds the next task and starts working.
 
 ```bash
 talos start              # Start daemon (background)
@@ -164,6 +204,19 @@ talos config             # Show configuration
 talos config --validate  # Validate talos.yml
 ```
 
+### The Ralph Loop
+
+Talos runs a [ralph loop](https://www.humanlayer.dev/blog/brief-history-of-ralph) — a while loop that feeds beans to an AI agent until they're done:
+
+1. **Pick a bean** — Query todo/in-progress beans, filter blocked ones, sort by priority
+2. **Mark it in-progress** — Update bean status via CLI
+3. **Generate a prompt** — Implementation prompt for tasks/bugs, review prompt for epics/milestones
+4. **Run the agent** — Claude Code, OpenCode, or Codex
+5. **Handle result** — On success, check bean status and move on. On failure, retry up to 3 times
+6. **Pick next bean** — Repeat until no beans remain
+
+You can also run the ralph loop directly with the [shell script](scripts/ralph-loop.sh).
+
 ## Skills
 
 Skills are portable markdown workflow definitions that teach the planning agent specific behaviors. They live in the `skills/` directory:
@@ -175,7 +228,7 @@ skills/
   beans-tdd-suggestion/   # TDD pattern suggestions
 ```
 
-You can create custom skills by adding a new directory with a `SKILL.md` file. Configure them in `talos.yml`:
+Create custom skills by adding a directory with a `SKILL.md` file. Configure them in `talos.yml`:
 
 ```yaml
 planning:
@@ -201,8 +254,6 @@ The `.talos/` directory (gitignored) contains:
 
 ## Development
 
-### Available Scripts
-
 | Script | Description |
 |--------|-------------|
 | `npm run dev` | Start with tsx for development |
@@ -213,26 +264,13 @@ The `.talos/` directory (gitignored) contains:
 | `npm run test:watch` | Run tests in watch mode |
 | `npm run test:coverage` | Run tests with coverage |
 
-### Project Structure
-
-```
-src/
-  cli/              # CLI entry point and commands (readline-based)
-  talos/            # Daemon core (orchestration)
-  planning/         # Planning agent system
-  config/           # Configuration loading (talos.yml + Zod)
-  utils/            # Shared utilities
-  test-utils/       # Test utilities (real code, not mocks)
-```
-
-## Contributing
-
 See [CONTRIBUTING.md](CONTRIBUTING.md) for development workflow, TDD practices, and code style.
 
 ## Documentation
 
 | Document | Description |
 |----------|-------------|
+| [Blog: A Beans Based AI Workflow](https://caidan.dev/blog/2026-01-29-a-beans-based-ai-workflow/) | Philosophy and design behind Daedalus |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Development workflow and guidelines |
 | [AGENTS.md](AGENTS.md) | Guidelines for AI coding agents |
 | [docs/tdd-workflow.md](docs/tdd-workflow.md) | TDD practices with examples |
