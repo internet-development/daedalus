@@ -1,13 +1,13 @@
 {
   "name": "@internet-dev/daedalus",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "AI planning CLI for agentic coding orchestration",
   "type": "module",
   "author": "Caidan Williams <caidan@internet.dev>",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/internet-development/daedalus.git"
+    "url": "git+https://github.com/internet-development/daedalus.git"
   },
   "homepage": "https://github.com/internet-development/daedalus#readme",
   "bugs": {
@@ -23,8 +23,8 @@
     "beans"
   ],
   "bin": {
-    "daedalus": "./dist/cli/index.js",
-    "talos": "./dist/cli/talos.js"
+    "daedalus": "dist/cli/index.js",
+    "talos": "dist/cli/talos.js"
   },
   "files": [
     "dist/",
