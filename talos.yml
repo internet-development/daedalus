@@ -4,10 +4,10 @@
 # Agent runner configuration
 agent:
   # Backend to use: claude, opencode, or codex
-  backend:
-    claude:
-      model: claude-sonnet-4-20250514
-      # dangerously_skip_permissions: true
+  backend: claude
+  claude:
+    model: claude-sonnet-4-20250514
+    # dangerously_skip_permissions: true
   # opencode:
   #   model: anthropic/claude-sonnet-4-20250514
   # codex:
@@ -16,7 +16,9 @@ agent:
 # Scheduler configuration
 scheduler:
   # Maximum concurrent agents (default: 1)
-  maxConcurrent: 1
+  max_parallel: 1
+  # Auto-enqueue todo beans on daemon startup (default: false)
+  auto_enqueue_on_startup: true
 
 # Watcher configuration
 watcher:
