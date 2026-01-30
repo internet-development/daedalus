@@ -95,19 +95,21 @@ The Talos daemon uses an agent backend to execute coding work on beans:
 
 ```yaml
 agent:
-  backend:
-    # Claude Code CLI (recommended — uses your Claude subscription)
-    claude:
-      model: claude-sonnet-4-20250514
-      # dangerously_skip_permissions: true
+  # Backend to use: claude, opencode, or codex
+  backend: claude
+  claude:
+    model: claude-sonnet-4-20250514
+    # dangerously_skip_permissions: true
 
-    # OR: OpenCode CLI
-    # opencode:
-    #   model: anthropic/claude-sonnet-4-20250514
+  # OR: OpenCode CLI
+  # backend: opencode
+  # opencode:
+  #   model: anthropic/claude-sonnet-4-20250514
 
-    # OR: Codex CLI
-    # codex:
-    #   model: codex-mini-latest
+  # OR: Codex CLI
+  # backend: codex
+  # codex:
+  #   model: codex-mini-latest
 ```
 
 ### Planning Agent Provider
