@@ -1,11 +1,11 @@
 ---
 # daedalus-xfh9
 title: Add branch configuration schema
-status: todo
+status: in-progress
 type: task
 priority: normal
 created_at: 2026-01-31T07:15:18Z
-updated_at: 2026-01-31T07:17:04Z
+updated_at: 2026-01-31T08:21:55Z
 parent: daedalus-8jow
 blocking:
     - daedalus-x58b
@@ -132,13 +132,41 @@ Tests to add:
 
 ## Checklist
 
-- [ ] Add `MergeStrategySchema` enum (`merge`, `squash`)
-- [ ] Add `MergeStrategyByTypeSchema` with per-type defaults (merge for feature/epic/milestone, squash for task/bug)
-- [ ] Add `BranchConfigSchema` (`enabled`, `delete_after_merge`, `default_branch`, `merge_strategy`)
-- [ ] Add `branch` as top-level field in `TalosConfigSchema`
-- [ ] Export new types (`MergeStrategy`, `MergeStrategyByType`, `BranchConfig`)
-- [ ] Add `getMergeStrategy()` helper function
-- [ ] Add `getMergeTarget()` helper function
-- [ ] Add tests for schema defaults in `src/config/index.test.ts`
-- [ ] Add tests for `getMergeStrategy()` helper
-- [ ] Add tests for `getMergeTarget()` helper
+- [x] Add `MergeStrategySchema` enum (`merge`, `squash`)
+- [x] Add `MergeStrategyByTypeSchema` with per-type defaults (merge for feature/epic/milestone, squash for task/bug)
+- [x] Add `BranchConfigSchema` (`enabled`, `delete_after_merge`, `default_branch`, `merge_strategy`)
+- [x] Add `branch` as top-level field in `TalosConfigSchema`
+- [x] Export new types (`MergeStrategy`, `MergeStrategyByType`, `BranchConfig`)
+- [x] Add `getMergeStrategy()` helper function
+- [x] Add `getMergeTarget()` helper function
+- [x] Add tests for schema defaults in `src/config/index.test.ts`
+- [x] Add tests for `getMergeStrategy()` helper
+- [x] Add tests for `getMergeTarget()` helper
+
+## Changelog
+
+### Implemented
+- Added `MergeStrategySchema` (`merge` | `squash`) Zod enum
+- Added `MergeStrategyMapSchema` with per-bean-type defaults (merge for feature/epic/milestone, squash for task/bug)
+- Added `BranchConfigSchema` with `enabled`, `delete_after_merge`, `default_branch`, `merge_strategy` fields
+- Added `branch` as top-level field in `TalosConfigSchema`
+- Exported `MergeStrategy`, `MergeStrategyMap`, `MergeStrategyByType`, and `BranchConfig` types
+- Added standalone `getMergeStrategy(beanType, config)` helper function
+- Added standalone `getMergeTarget(parentId, config)` helper function
+- Added 9 tests for schema defaults, helper functions, and custom overrides
+- Added 7 tests for branch config schema validation (defaults, enums, YAML loading)
+
+### Files Modified
+- `src/config/index.ts` — Added schemas, types, and helper functions
+- `src/config/index.test.ts` — Added test suites for branch config, getMergeStrategy, getMergeTarget
+
+### Deviations from Spec
+- Schema named `MergeStrategyMapSchema` instead of `MergeStrategyByTypeSchema` (prior commit used `Map` naming; added `MergeStrategyByType` as a type alias for compatibility)
+- Schema and branch config tests were already added in a prior commit (`6d82737`); this iteration added the missing helper functions and their tests
+
+### Decisions Made
+- Added `MergeStrategyByType` as a type alias for `MergeStrategyMap` rather than renaming, to avoid breaking existing consumers (BranchManager)
+- Helper functions are pure functions taking `BranchConfig` as parameter (not methods on a class) for maximum reusability
+
+### Known Limitations
+- `getMergeStrategy` fallback to `'squash'` for unknown types is defensive but currently unreachable since `BeanType` is a union of known types
