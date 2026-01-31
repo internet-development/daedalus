@@ -5,7 +5,7 @@ status: todo
 type: bug
 priority: high
 created_at: 2026-01-30T07:45:49Z
-updated_at: 2026-01-30T08:56:37Z
+updated_at: 2026-01-31T05:51:08Z
 parent: daedalus-bmnc
 blocking:
     - daedalus-rbhm
