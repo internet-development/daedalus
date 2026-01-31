@@ -56,6 +56,37 @@ const SchedulerConfigSchema = z.object({
 });
 
 /**
+ * Merge strategy for branch-per-bean
+ * - 'merge': git merge --no-ff (preserves commit history, used for features/epics/milestones)
+ * - 'squash': git merge --squash (single clean commit, used for tasks/bugs)
+ */
+const MergeStrategySchema = z.enum(['merge', 'squash']);
+
+/**
+ * Per-type merge strategy configuration
+ */
+const MergeStrategyMapSchema = z.object({
+  milestone: MergeStrategySchema.default('merge'),
+  epic: MergeStrategySchema.default('merge'),
+  feature: MergeStrategySchema.default('merge'),
+  task: MergeStrategySchema.default('squash'),
+  bug: MergeStrategySchema.default('squash'),
+});
+
+/**
+ * Branch-per-bean configuration
+ *
+ * Top-level config section (not nested under on_complete) because
+ * branching spans the full bean lifecycle: creation → work → merge.
+ */
+const BranchConfigSchema = z.object({
+  enabled: z.boolean().default(true),
+  delete_after_merge: z.boolean().default(true),
+  default_branch: z.string().default('main'),
+  merge_strategy: MergeStrategyMapSchema.default({}),
+});
+
+/**
  * Commit style settings
  */
 const CommitStyleConfigSchema = z.object({
@@ -216,6 +247,7 @@ const LoggingConfigSchema = z.object({
 const TalosConfigSchema = z.object({
   agent: AgentConfigSchema.default({}),
   scheduler: SchedulerConfigSchema.default({}),
+  branch: BranchConfigSchema.default({}),
   on_complete: OnCompleteConfigSchema.default({}),
   on_blocked: OnBlockedConfigSchema.default({}),
   review: ReviewConfigSchema.default({}),
@@ -235,6 +267,9 @@ const TalosConfigSchema = z.object({
 export type TalosConfig = z.infer<typeof TalosConfigSchema>;
 export type AgentConfig = z.infer<typeof AgentConfigSchema>;
 export type SchedulerConfig = z.infer<typeof SchedulerConfigSchema>;
+export type BranchConfig = z.infer<typeof BranchConfigSchema>;
+export type MergeStrategy = z.infer<typeof MergeStrategySchema>;
+export type MergeStrategyMap = z.infer<typeof MergeStrategyMapSchema>;
 export type OnCompleteConfig = z.infer<typeof OnCompleteConfigSchema>;
 export type OnBlockedConfig = z.infer<typeof OnBlockedConfigSchema>;
 export type ReviewConfig = z.infer<typeof ReviewConfigSchema>;
@@ -680,6 +715,9 @@ export {
   TalosConfigSchema,
   AgentConfigSchema,
   SchedulerConfigSchema,
+  BranchConfigSchema,
+  MergeStrategySchema,
+  MergeStrategyMapSchema,
   OnCompleteConfigSchema,
   OnBlockedConfigSchema,
   ReviewConfigSchema,

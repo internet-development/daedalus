@@ -624,6 +624,116 @@ describe('logging configuration', () => {
   });
 });
 
+// =============================================================================
+// Branch Configuration Tests
+// =============================================================================
+
+describe('branch configuration', () => {
+  it('has default branch configuration', () => {
+    const config = getDefaultConfig();
+
+    expect(config.branch).toBeDefined();
+    expect(config.branch.enabled).toBe(true);
+    expect(config.branch.delete_after_merge).toBe(true);
+    expect(config.branch.default_branch).toBe('main');
+  });
+
+  it('has default merge strategies per bean type', () => {
+    const config = getDefaultConfig();
+
+    expect(config.branch.merge_strategy).toBeDefined();
+    expect(config.branch.merge_strategy.milestone).toBe('merge');
+    expect(config.branch.merge_strategy.epic).toBe('merge');
+    expect(config.branch.merge_strategy.feature).toBe('merge');
+    expect(config.branch.merge_strategy.task).toBe('squash');
+    expect(config.branch.merge_strategy.bug).toBe('squash');
+  });
+
+  it('validates merge strategy enum values', () => {
+    const validConfig = {
+      branch: {
+        merge_strategy: {
+          task: 'merge',
+        },
+      },
+    };
+    const result = TalosConfigSchema.safeParse(validConfig);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.branch.merge_strategy.task).toBe('merge');
+    }
+  });
+
+  it('rejects invalid merge strategy values', () => {
+    const invalidConfig = {
+      branch: {
+        merge_strategy: {
+          task: 'rebase', // Not a valid strategy
+        },
+      },
+    };
+    const result = TalosConfigSchema.safeParse(invalidConfig);
+    expect(result.success).toBe(false);
+  });
+
+  it('accepts custom default_branch', () => {
+    const config = {
+      branch: {
+        default_branch: 'develop',
+      },
+    };
+    const result = TalosConfigSchema.safeParse(config);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.branch.default_branch).toBe('develop');
+    }
+  });
+
+  it('accepts disabled branching', () => {
+    const config = {
+      branch: {
+        enabled: false,
+      },
+    };
+    const result = TalosConfigSchema.safeParse(config);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.branch.enabled).toBe(false);
+    }
+  });
+
+  it('loads branch config from YAML file', () => {
+    const tempDir = createTempDir();
+    const configPath = join(tempDir, 'talos.yml');
+
+    try {
+      writeFileSync(
+        configPath,
+        `
+branch:
+  enabled: true
+  delete_after_merge: false
+  default_branch: develop
+  merge_strategy:
+    milestone: merge
+    epic: merge
+    feature: merge
+    task: squash
+    bug: squash
+`
+      );
+      const config = loadConfigFromFile(configPath);
+
+      expect(config.branch.enabled).toBe(true);
+      expect(config.branch.delete_after_merge).toBe(false);
+      expect(config.branch.default_branch).toBe('develop');
+      expect(config.branch.merge_strategy.task).toBe('squash');
+    } finally {
+      cleanupTempDir(tempDir);
+    }
+  });
+});
+
 describe('error message quality', () => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let consoleSpy: any;
