@@ -9,7 +9,6 @@
  * - Emitting events for UI updates
  */
 import { EventEmitter } from 'events';
-import { execSync } from 'child_process';
 import { readFile } from 'fs/promises';
 import type { TalosConfig, CommitStyleConfig } from '../config/index.js';
 import {
@@ -25,6 +24,17 @@ import {
   createBean,
   listBeans,
 } from './beans-client.js';
+import {
+  git,
+  hasStagedChanges,
+  getCurrentBranch,
+  commitChanges,
+  mergeNoFf,
+  mergeSquash,
+  abortMerge,
+  deleteBranch,
+  removeWorktree,
+} from './git.js';
 
 // =============================================================================
 // Types
@@ -54,74 +64,8 @@ export interface CompletionHandlerEvents {
 }
 
 // =============================================================================
-// Git Helpers
+// Git Helpers (delegated to centralized git module)
 // =============================================================================
-
-/**
- * Execute a git command and return stdout
- * @param args Git command arguments
- * @param cwd Working directory (optional)
- * @returns stdout trimmed
- * @throws Error if git command fails
- */
-function git(args: string[], cwd?: string): string {
-  const command = `git ${args.join(' ')}`;
-  try {
-    const result = execSync(command, {
-      cwd: cwd ?? process.cwd(),
-      encoding: 'utf-8',
-      stdio: ['pipe', 'pipe', 'pipe'],
-    });
-    return result.trim();
-  } catch (error: unknown) {
-    const err = error as { message?: string; stderr?: Buffer | string };
-    const stderr = err.stderr?.toString() ?? '';
-    throw new Error(`Git command failed: ${command}\n${stderr}`);
-  }
-}
-
-/**
- * Check if there are staged changes
- */
-function hasStagedChanges(cwd?: string): boolean {
-  try {
-    const diff = git(['diff', '--cached', '--name-only'], cwd);
-    return diff.length > 0;
-  } catch {
-    return false;
-  }
-}
-
-/**
- * Get the current branch name
- */
-function getCurrentBranch(cwd?: string): string {
-  return git(['rev-parse', '--abbrev-ref', 'HEAD'], cwd);
-}
-
-/**
- * Check if we're in a worktree (not the main working directory)
- */
-function isWorktree(cwd?: string): boolean {
-  try {
-    const gitDir = git(['rev-parse', '--git-dir'], cwd);
-    // Worktrees have .git files pointing to main .git directory
-    return gitDir.includes('.git/worktrees/');
-  } catch {
-    return false;
-  }
-}
-
-/**
- * Commit staged changes with the given message
- * @returns The commit SHA
- */
-function commitChanges(message: string, cwd?: string): string {
-  // Write commit message to temp file to avoid shell escaping issues
-  const escapedMessage = message.replace(/'/g, "'\\''");
-  git(['commit', '-m', `'${escapedMessage}'`], cwd);
-  return git(['rev-parse', 'HEAD'], cwd);
-}
 
 /**
  * Push to remote (if configured)
@@ -132,7 +76,7 @@ function pushToRemote(cwd?: string): void {
 }
 
 /**
- * Merge a branch into the current branch
+ * Merge a branch into the current branch (legacy ff-only + fallback)
  * @param branch Branch to merge
  * @param cwd Working directory
  * @returns true if merge succeeded
@@ -150,25 +94,6 @@ function mergeBranch(branch: string, cwd?: string): boolean {
       return false;
     }
   }
-}
-
-/**
- * Delete a branch
- */
-function deleteBranch(branch: string, cwd?: string): void {
-  try {
-    git(['branch', '-d', branch], cwd);
-  } catch {
-    // Force delete if needed
-    git(['branch', '-D', branch], cwd);
-  }
-}
-
-/**
- * Remove a worktree
- */
-function removeWorktree(worktreePath: string, cwd?: string): void {
-  git(['worktree', 'remove', worktreePath, '--force'], cwd);
 }
 
 // =============================================================================

@@ -12,12 +12,15 @@
  * - Git worktree management for parallel mode
  */
 import { EventEmitter } from 'events';
-import { execSync } from 'child_process';
 import { existsSync } from 'fs';
 import { join } from 'path';
 import type { Bean } from './beans-client.js';
 import { getBlockedBy, isStuck } from './beans-client.js';
 import { getLogger } from './logger.js';
+import {
+  createWorktree as gitCreateWorktree,
+  branchExists,
+} from './git.js';
 
 // Create child logger for scheduler component
 const log = getLogger().child({ component: 'scheduler' });
@@ -492,6 +495,7 @@ export class Scheduler extends EventEmitter {
 
   /**
    * Create a git worktree for a bean.
+   * Uses execFileSync via centralized git module (shell-injection safe).
    * @throws Error if worktree creation fails
    */
   private async createWorktree(beanId: string): Promise<string> {
@@ -505,32 +509,17 @@ export class Scheduler extends EventEmitter {
 
     try {
       // Create the worktree with a new branch
-      execSync(`git worktree add "${worktreePath}" -b "${branchName}"`, {
-        encoding: 'utf-8',
-        stdio: ['pipe', 'pipe', 'pipe'],
-      });
+      gitCreateWorktree(worktreePath, branchName, true);
       return worktreePath;
-    } catch (error) {
-      // Branch might already exist - try without -b
+    } catch {
+      // Branch might already exist - try without creating new branch
       try {
-        execSync(`git worktree add "${worktreePath}" "${branchName}"`, {
-          encoding: 'utf-8',
-          stdio: ['pipe', 'pipe', 'pipe'],
-        });
+        gitCreateWorktree(worktreePath, branchName, false);
         return worktreePath;
-      } catch {
-        // If that also fails, try from HEAD
-        try {
-          execSync(`git worktree add "${worktreePath}"`, {
-            encoding: 'utf-8',
-            stdio: ['pipe', 'pipe', 'pipe'],
-          });
-          return worktreePath;
-        } catch (finalError) {
-          throw new Error(
-            `Failed to create worktree for ${beanId}: ${finalError}`
-          );
-        }
+      } catch (finalError) {
+        throw new Error(
+          `Failed to create worktree for ${beanId}: ${finalError}`
+        );
       }
     }
   }
