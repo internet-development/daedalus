@@ -1,11 +1,11 @@
 ---
 # daedalus-oj9h
 title: Extract changelog from bean body for squash commit messages
-status: in-progress
+status: completed
 type: task
 priority: normal
 created_at: 2026-01-31T07:16:29Z
-updated_at: 2026-01-31T08:29:50Z
+updated_at: 2026-01-31T08:32:50Z
 parent: daedalus-8jow
 blocking:
     - daedalus-xf7g
