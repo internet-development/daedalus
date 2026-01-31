@@ -14,12 +14,16 @@
 import { EventEmitter } from 'events';
 import { existsSync } from 'fs';
 import { join } from 'path';
+import type { BranchConfig } from '../config/index.js';
 import type { Bean } from './beans-client.js';
-import { getBlockedBy, isStuck } from './beans-client.js';
+import { getBean, getBlockedBy, isStuck } from './beans-client.js';
 import { getLogger } from './logger.js';
 import {
   createWorktree as gitCreateWorktree,
   branchExists,
+  createBranch,
+  checkoutBranch,
+  isWorkingTreeDirty,
 } from './git.js';
 
 // Create child logger for scheduler component
@@ -33,12 +37,25 @@ export interface SchedulerConfig {
   maxParallel: number; // default: 1
   pollInterval: number; // ms, default: 1000
   worktreeBase?: string; // default: '.worktrees'
+  branchConfig?: BranchConfig; // branch-per-bean configuration
+}
+
+/**
+ * Context passed with the bean-ready event for branch/worktree tracking.
+ */
+export interface BeanExecutionContext {
+  /** Worktree path (parallel mode only) */
+  worktreePath?: string;
+  /** Bean's branch name (e.g., 'bean/daedalus-x58b') */
+  branchName?: string;
+  /** Merge target — parent's branch or default_branch */
+  baseBranch?: string;
 }
 
 export interface SchedulerEvents {
-  'bean-ready': (bean: Bean, worktreePath?: string) => void;
+  'bean-ready': (bean: Bean, context: BeanExecutionContext) => void;
   'queue:updated': (queueLength: number) => void;
-  'bean:in-progress': (beanId: string, worktreePath?: string) => void;
+  'bean:in-progress': (beanId: string, context: BeanExecutionContext) => void;
   'bean:completed': (beanId: string) => void;
   'bean:stuck': (beanId: string, reason: 'blocked' | 'failed') => void;
   error: (error: Error, context?: string) => void;
@@ -72,6 +89,7 @@ export class Scheduler extends EventEmitter {
       maxParallel: config.maxParallel ?? 1,
       pollInterval: config.pollInterval ?? 1000,
       worktreeBase: config.worktreeBase ?? '.worktrees',
+      branchConfig: config.branchConfig,
     };
   }
 
@@ -232,91 +250,121 @@ export class Scheduler extends EventEmitter {
 
   /**
    * Mark a bean as in-progress.
+   * Creates hierarchical branches when branch config is enabled.
    * If in parallel mode (maxParallel > 1), creates a git worktree.
    */
-  async markInProgress(beanId: string): Promise<string | undefined> {
+  async markInProgress(beanId: string): Promise<BeanExecutionContext> {
     const bean = this.queue.find((b) => b.id === beanId);
     if (!bean) {
       log.debug({ beanId }, 'Bean not found in queue for markInProgress');
-      return undefined;
+      return {};
     }
 
     // Remove from queue
     this.dequeue(beanId);
 
-    let worktreePath: string | undefined;
+    const context: BeanExecutionContext = {};
 
-    // Create worktree if in parallel mode
-    if (this.config.maxParallel > 1) {
-      try {
-        log.debug({ beanId }, 'Creating worktree for parallel execution');
-        worktreePath = await this.createWorktree(beanId);
-        log.info({ beanId, worktreePath }, 'Worktree created');
-      } catch (error) {
-        log.error({ 
-          err: error instanceof Error ? error : new Error(String(error)),
-          beanId,
-          context: 'worktree creation'
-        }, 'Failed to create worktree');
-        this.emit(
-          'error',
-          error instanceof Error ? error : new Error(String(error)),
-          `worktree creation for ${beanId}`
-        );
-        // Re-add to queue on failure
-        this.enqueue(bean);
-        return undefined;
+    try {
+      if (this.config.branchConfig?.enabled) {
+        // Ensure ancestor branches exist and get the merge target
+        context.baseBranch = await this.ensureAncestorBranches(bean);
+        context.branchName = `bean/${beanId}`;
+
+        if (this.config.maxParallel > 1) {
+          // Parallel: worktree from parent branch
+          context.worktreePath = await this.createWorktree(beanId, context.baseBranch);
+        } else {
+          // Sequential: checkout branch in main working directory
+          this.assertCleanWorkingTree();
+          this.ensureBranch(context.branchName, context.baseBranch);
+          checkoutBranch(context.branchName);
+        }
+      } else if (this.config.maxParallel > 1) {
+        // Legacy: parallel without branch config
+        context.worktreePath = await this.createWorktree(beanId);
       }
+    } catch (error) {
+      log.error({ 
+        err: error instanceof Error ? error : new Error(String(error)),
+        beanId,
+        context: 'branch/worktree creation'
+      }, 'Failed to create branch or worktree');
+      this.emit(
+        'error',
+        error instanceof Error ? error : new Error(String(error)),
+        `branch/worktree creation for ${beanId}`
+      );
+      // Re-add to queue on failure
+      this.enqueue(bean);
+      return {};
     }
 
-    this.inProgress.set(beanId, { bean, worktreePath });
+    this.inProgress.set(beanId, { bean, worktreePath: context.worktreePath });
     log.info({ 
       beanId, 
-      worktreePath,
+      branchName: context.branchName,
+      baseBranch: context.baseBranch,
+      worktreePath: context.worktreePath,
       inProgressCount: this.inProgress.size 
     }, 'Bean marked in-progress');
-    this.emit('bean:in-progress', beanId, worktreePath);
-    return worktreePath;
+    this.emit('bean:in-progress', beanId, context);
+    return context;
   }
 
   /**
    * Mark a bean as in-progress with a provided bean object.
    * Used when the bean was already removed from queue by getNextEligible().
+   * Creates hierarchical branches when branch config is enabled.
    */
-  async markBeanInProgress(bean: Bean): Promise<string | undefined> {
-    let worktreePath: string | undefined;
+  async markBeanInProgress(bean: Bean): Promise<BeanExecutionContext> {
+    const context: BeanExecutionContext = {};
 
-    // Create worktree if in parallel mode
-    if (this.config.maxParallel > 1) {
-      try {
-        log.debug({ beanId: bean.id }, 'Creating worktree for parallel execution');
-        worktreePath = await this.createWorktree(bean.id);
-        log.info({ beanId: bean.id, worktreePath }, 'Worktree created');
-      } catch (error) {
-        log.error({ 
-          err: error instanceof Error ? error : new Error(String(error)),
-          beanId: bean.id,
-          context: 'worktree creation'
-        }, 'Failed to create worktree');
-        this.emit(
-          'error',
-          error instanceof Error ? error : new Error(String(error)),
-          `worktree creation for ${bean.id}`
-        );
-        // Re-add to queue on failure
-        this.enqueue(bean);
-        return undefined;
+    try {
+      if (this.config.branchConfig?.enabled) {
+        // Ensure ancestor branches exist and get the merge target
+        context.baseBranch = await this.ensureAncestorBranches(bean);
+        context.branchName = `bean/${bean.id}`;
+
+        if (this.config.maxParallel > 1) {
+          // Parallel: worktree from parent branch
+          context.worktreePath = await this.createWorktree(bean.id, context.baseBranch);
+        } else {
+          // Sequential: checkout branch in main working directory
+          this.assertCleanWorkingTree();
+          this.ensureBranch(context.branchName, context.baseBranch);
+          checkoutBranch(context.branchName);
+        }
+      } else if (this.config.maxParallel > 1) {
+        // Legacy: parallel without branch config
+        context.worktreePath = await this.createWorktree(bean.id);
       }
+    } catch (error) {
+      log.error({ 
+        err: error instanceof Error ? error : new Error(String(error)),
+        beanId: bean.id,
+        context: 'branch/worktree creation'
+      }, 'Failed to create branch or worktree');
+      this.emit(
+        'error',
+        error instanceof Error ? error : new Error(String(error)),
+        `branch/worktree creation for ${bean.id}`
+      );
+      // Re-add to queue on failure
+      this.enqueue(bean);
+      return {};
     }
 
-    this.inProgress.set(bean.id, { bean, worktreePath });
+    this.inProgress.set(bean.id, { bean, worktreePath: context.worktreePath });
     log.info({ 
       beanId: bean.id, 
-      worktreePath,
+      branchName: context.branchName,
+      baseBranch: context.baseBranch,
+      worktreePath: context.worktreePath,
       inProgressCount: this.inProgress.size 
     }, 'Bean marked in-progress');
-    this.emit('bean:in-progress', bean.id, worktreePath);
-    return worktreePath;
+    this.emit('bean:in-progress', bean.id, context);
+    return context;
   }
 
   /**
@@ -496,9 +544,11 @@ export class Scheduler extends EventEmitter {
   /**
    * Create a git worktree for a bean.
    * Uses execFileSync via centralized git module (shell-injection safe).
+   * @param beanId Bean ID for the worktree
+   * @param baseBranch Optional base branch to create from (for hierarchical branching)
    * @throws Error if worktree creation fails
    */
-  private async createWorktree(beanId: string): Promise<string> {
+  private async createWorktree(beanId: string, baseBranch?: string): Promise<string> {
     const worktreePath = join(this.config.worktreeBase!, beanId);
     const branchName = `bean/${beanId}`;
 
@@ -507,8 +557,33 @@ export class Scheduler extends EventEmitter {
       return worktreePath;
     }
 
+    // If branch already exists, just add worktree for it
+    if (branchExists(branchName)) {
+      try {
+        gitCreateWorktree(worktreePath, branchName, false);
+        return worktreePath;
+      } catch (finalError) {
+        throw new Error(
+          `Failed to create worktree for ${beanId}: ${finalError}`
+        );
+      }
+    }
+
+    // Branch doesn't exist — create it from baseBranch if provided
+    if (baseBranch) {
+      this.ensureBranch(branchName, baseBranch);
+      try {
+        gitCreateWorktree(worktreePath, branchName, false);
+        return worktreePath;
+      } catch (finalError) {
+        throw new Error(
+          `Failed to create worktree for ${beanId}: ${finalError}`
+        );
+      }
+    }
+
+    // Legacy: create worktree with new branch from HEAD
     try {
-      // Create the worktree with a new branch
       gitCreateWorktree(worktreePath, branchName, true);
       return worktreePath;
     } catch {
@@ -521,6 +596,69 @@ export class Scheduler extends EventEmitter {
           `Failed to create worktree for ${beanId}: ${finalError}`
         );
       }
+    }
+  }
+
+  // ===========================================================================
+  // Private: Hierarchical Branch Management
+  // ===========================================================================
+
+  /**
+   * Ensure the full ancestor branch chain exists for a bean.
+   * Walks up the parent chain, then creates branches top-down from the root ancestor.
+   * @returns The immediate parent's branch name (merge target for this bean)
+   */
+  private async ensureAncestorBranches(bean: Bean): Promise<string> {
+    const defaultBranch = this.config.branchConfig!.default_branch;
+
+    // Walk up parent chain to collect ancestors
+    const ancestors: Bean[] = [];
+    let current = bean;
+    while (current.parentId) {
+      const parent = await getBean(current.parentId);
+      if (!parent) break; // Parent not found — stop walking, use default_branch
+      ancestors.unshift(parent); // prepend so root is first
+      current = parent;
+    }
+
+    // Create branches top-down (root ancestor first)
+    for (const ancestor of ancestors) {
+      const base = ancestor.parentId
+        ? `bean/${ancestor.parentId}`
+        : defaultBranch;
+      this.ensureBranch(`bean/${ancestor.id}`, base);
+    }
+
+    // Return the immediate parent's branch (merge target for this bean)
+    return bean.parentId
+      ? `bean/${bean.parentId}`
+      : defaultBranch;
+  }
+
+  /**
+   * Ensure a branch exists. Creates it from baseBranch if it doesn't.
+   * Idempotent — checks first, creates only if needed.
+   * Uses the centralized git module (shell-injection safe).
+   */
+  private ensureBranch(branchName: string, baseBranch: string): void {
+    if (branchExists(branchName)) {
+      return; // Already exists
+    }
+
+    log.debug({ branchName, baseBranch }, 'Creating branch');
+    createBranch(branchName, baseBranch);
+  }
+
+  /**
+   * Assert the working tree is clean before branch operations.
+   * Prevents silently carrying uncommitted changes to a new branch.
+   * @throws Error if working tree has uncommitted changes
+   */
+  private assertCleanWorkingTree(): void {
+    if (isWorkingTreeDirty()) {
+      throw new Error(
+        'Cannot create branch: working tree has uncommitted changes'
+      );
     }
   }
 
@@ -549,11 +687,11 @@ export class Scheduler extends EventEmitter {
       const bean = await this.getNextEligible();
       if (!bean) break;
 
-      // Mark as in-progress and get worktree path
-      const worktreePath = await this.markBeanInProgress(bean);
+      // Mark as in-progress and get execution context
+      const context = await this.markBeanInProgress(bean);
 
-      // Emit bean-ready event
-      this.emit('bean-ready', bean, worktreePath);
+      // Emit bean-ready event with context
+      this.emit('bean-ready', bean, context);
     }
   }
 }

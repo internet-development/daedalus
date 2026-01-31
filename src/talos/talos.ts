@@ -23,7 +23,13 @@ import {
   type DiscoveredPaths,
 } from '../config/index.js';
 import { BeanWatcher } from './watcher.js';
-import { Scheduler } from './scheduler.js';
+import { Scheduler, type BeanExecutionContext } from './scheduler.js';
+import {
+  hasMergeHead,
+  hasRebaseHead,
+  abortMerge,
+  git as gitExec,
+} from './git.js';
 import {
   AgentRunner,
   type OutputEvent,
@@ -116,6 +122,7 @@ export class Talos extends EventEmitter {
     this.scheduler = new Scheduler({
       maxParallel: config.scheduler.max_parallel,
       pollInterval: config.scheduler.poll_interval,
+      branchConfig: config.branch,
     });
 
     // Build agent config from TalosConfig
@@ -150,6 +157,9 @@ export class Talos extends EventEmitter {
 
     // Find or create Errors epic for organizing crash/blocker beans
     await this.ensureErrorsEpic();
+
+    // Recover from unclean git state (crash recovery)
+    this.recoverGitState();
 
     // Start watcher (loads initial bean state)
     await this.watcher.start();
@@ -479,7 +489,7 @@ export class Talos extends EventEmitter {
    */
   private wireSchedulerEvents(): void {
     // Bean is ready to be worked on
-    this.scheduler.on('bean-ready', async (bean: Bean, worktreePath?: string) => {
+    this.scheduler.on('bean-ready', async (bean: Bean, context: BeanExecutionContext) => {
       // Skip if paused
       if (this.paused) {
         // Re-enqueue for later
@@ -491,14 +501,14 @@ export class Talos extends EventEmitter {
       this.inProgress.set(bean.id, {
         bean,
         startedAt: Date.now(),
-        worktreePath,
+        worktreePath: context.worktreePath,
       });
 
       // Clear previous output file
       this.clearOutput(bean.id);
 
       // Start the agent
-      this.runner.run(bean, worktreePath);
+      this.runner.run(bean, context.worktreePath);
     });
 
     // Queue updated
@@ -619,6 +629,31 @@ export class Talos extends EventEmitter {
   // ===========================================================================
   // Private Helpers
   // ===========================================================================
+
+  /**
+   * Recover from unclean git state left by a previous crash.
+   * Aborts any in-progress merge or rebase so the daemon can start cleanly.
+   */
+  private recoverGitState(): void {
+    try {
+      if (hasMergeHead()) {
+        abortMerge();
+        // Note: no logger available at import time, use console
+        console.warn('[talos] Aborted in-progress merge from previous run');
+      }
+    } catch {
+      // Merge abort failed — not critical, continue
+    }
+
+    try {
+      if (hasRebaseHead()) {
+        gitExec(['rebase', '--abort']);
+        console.warn('[talos] Aborted in-progress rebase from previous run');
+      }
+    } catch {
+      // Rebase abort failed — not critical, continue
+    }
+  }
 
   /**
    * Set up blocking relationships for epic/milestone beans.
