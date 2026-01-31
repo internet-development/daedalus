@@ -23,6 +23,7 @@ permission:
     "git log *": allow
     "git diff *": allow
     "git show *": allow
+    "git commit *": allow
     "ls *": allow
     "tree *": allow
     "wc *": allow
