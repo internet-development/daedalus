@@ -44,7 +44,7 @@ export const COMMAND_NAMES: string[] = [
   '/sessions',
   '/new',
   '/clear',
-  '/tree',
+  '/beans',
   '/history',
   '/quit',
   // Aliases
@@ -57,6 +57,7 @@ export const COMMAND_NAMES: string[] = [
   '/ss',
   '/n',
   '/c',
+  '/tree',
   '/t',
   '/hist',
   '/q',
@@ -173,9 +174,10 @@ export async function handleCommand(
     case 'c':
       return handleClear(ctx);
 
+    case 'beans':
     case 'tree':
     case 't':
-      return await handleTree(args);
+      return await handleBeans(args);
 
     case 'history':
     case 'hist':
@@ -403,14 +405,14 @@ function handleClear(ctx: CommandContext): CommandResult {
   return { type: 'update-history', state: newState };
 }
 
-async function handleTree(args: string): Promise<CommandResult> {
+async function handleBeans(args: string): Promise<CommandResult> {
   const treeArgs = args.trim() ? args.trim().split(/\s+/) : [];
 
   try {
     await runTree({ args: treeArgs });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    console.log(formatError(`Failed to run tree: ${message}`));
+    console.log(formatError(`Failed to run beans: ${message}`));
   }
 
   return { type: 'continue' };

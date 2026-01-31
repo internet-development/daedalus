@@ -73,9 +73,9 @@ export function parsePlanArgs(args: string[]): PlanOptions {
 }
 
 /**
- * Parse args for the tree command
+ * Parse args for the beans command (formerly tree)
  */
-function parseTreeArgs(args: string[]): TreeOptions {
+function parseBeansArgs(args: string[]): TreeOptions {
   return { args }; // Pass all args through to beans tree
 }
 
@@ -89,7 +89,7 @@ Daedalus - AI Planning CLI
 
 Usage:
   daedalus [options]         Start interactive planning session
-  daedalus tree [args]       Show bean tree (delegates to beans tree)
+  daedalus beans [args]      Show bean tree (alias: daedalus tree)
   daedalus help              Show this help message
 
 Planning Options:
@@ -99,7 +99,7 @@ Planning Options:
   --continue, -c             Continue most recent session (skip session selector)
   --list, -l                 List all sessions and exit
 
-Tree Options:
+Beans Options:
   All arguments are passed to 'beans tree'. See 'beans tree --help'.
 
 In-Session Commands:
@@ -112,7 +112,7 @@ In-Session Commands:
   /sessions                  List and switch sessions
   /new                       Start new session
   /clear                     Clear current session
-  /tree [args]               Show bean tree
+   /beans [args]              Show bean tree (alias: /tree, /t)
   /quit, /q                  Exit
 
 Examples:
@@ -120,7 +120,7 @@ Examples:
   daedalus --new             Start fresh planning session
   daedalus -c                Continue most recent session
   daedalus --mode brainstorm Start in brainstorm mode
-  daedalus tree --blocking   Show blocking dependencies
+   daedalus beans --blocking  Show blocking dependencies
 `);
 }
 
@@ -130,8 +130,9 @@ Examples:
 
 async function main(): Promise<void> {
   switch (command) {
+    case 'beans':
     case 'tree': {
-      const options = parseTreeArgs(args.slice(1));
+      const options = parseBeansArgs(args.slice(1));
       await runTree(options);
       break;
     }

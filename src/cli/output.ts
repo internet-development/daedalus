@@ -133,7 +133,7 @@ export function formatHelp(): string {
     ['/new', 'Start a new session'],
     ['/clear', 'Clear current session'],
     ['/history [n|all]', 'Show recent messages (default 10)'],
-    ['/tree', 'Show beans tree'],
+    ['/beans', 'Show beans tree (alias: /tree, /t)'],
     ['/quit', 'Exit (AI names session)'],
   ];
 

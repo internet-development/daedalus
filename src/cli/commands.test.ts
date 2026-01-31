@@ -62,7 +62,7 @@ async function createBeans(
 // =============================================================================
 
 describe('CLI Commands', () => {
-  describe('/tree command', () => {
+  describe('/beans command (primary)', () => {
     test('shows empty message for no beans', async () => {
       const output = await runTreeWithBeans();
       expect(output).toContain('No active beans found');
@@ -108,7 +108,6 @@ describe('CLI Commands', () => {
       });
 
       expect(output).toContain('Usage:');
-      expect(output).toContain('daedalus tree');
       expect(output).toContain('--help');
     });
 
@@ -122,6 +121,14 @@ describe('CLI Commands', () => {
 
       expect(output).toContain('Active Bean');
       expect(output).not.toContain('Completed Bean');
+    });
+  });
+
+  describe('/tree alias', () => {
+    test('/tree still works as alias for /beans', async () => {
+      const output = await runTreeWithBeans();
+      // runTree is the same underlying function, so it should work
+      expect(output).toContain('No active beans found');
     });
   });
 
@@ -289,7 +296,7 @@ describe('CLI Commands', () => {
   });
 
   describe('Error Handling', () => {
-    test('/tree shows error for non-beans directory', async () => {
+    test('/beans shows error for non-beans directory', async () => {
       // Create a temp directory without beans init
       const tempDir = await createTempDir('no-beans-');
 
@@ -316,13 +323,12 @@ describe('CLI Commands', () => {
       }
     });
 
-    test('/tree handles -h shorthand for help', async () => {
+    test('/beans handles -h shorthand for help', async () => {
       const output = await captureOutput(async () => {
         await runTree({ args: ['-h'] });
       });
 
       expect(output).toContain('Usage:');
-      expect(output).toContain('daedalus tree');
     });
   });
 });

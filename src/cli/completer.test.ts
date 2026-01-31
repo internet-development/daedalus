@@ -27,8 +27,12 @@ describe('COMMAND_NAMES', () => {
     expect(COMMAND_NAMES).toContain('/sessions');
     expect(COMMAND_NAMES).toContain('/new');
     expect(COMMAND_NAMES).toContain('/clear');
-    expect(COMMAND_NAMES).toContain('/tree');
+    expect(COMMAND_NAMES).toContain('/beans');
     expect(COMMAND_NAMES).toContain('/quit');
+  });
+
+  test('includes /tree as alias for /beans', () => {
+    expect(COMMAND_NAMES).toContain('/tree');
   });
 
   test('includes all aliases with / prefix', () => {
