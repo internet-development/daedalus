@@ -1,10 +1,11 @@
 ---
 # daedalus-8jow
 title: Branch-per-bean with type-aware merge strategies
-status: todo
+status: in-progress
 type: feature
+priority: normal
 created_at: 2026-01-31T07:14:58Z
-updated_at: 2026-01-31T07:14:58Z
+updated_at: 2026-01-31T08:06:02Z
 ---
 
 ## Summary
@@ -132,12 +133,67 @@ on_complete:
 
 ## Checklist
 
-- [ ] Replace `execSync` with `execFileSync` for git commands (security hardening)
-- [ ] Add top-level `branch` configuration schema to `src/config/index.ts`
-- [ ] Create hierarchical branches in scheduler (ancestor chain auto-creation)
-- [ ] Implement type-aware merge strategies in completion handler (merge into parent branch)
-- [ ] Extract changelog from bean body for squash commit messages (`src/utils/changelog.ts`)
-- [ ] Add merge conflict handling (`--abort` + mark blocked)
-- [ ] Add git state recovery on daemon startup (MERGE_HEAD detection)
-- [ ] Update ralph-loop.sh with branch support
-- [ ] Handle edge cases (dirty working tree, branch already exists, daemon crash)
+- [x] Replace `execSync` with `execFileSync` for git commands (security hardening)
+- [x] Add top-level `branch` configuration schema to `src/config/index.ts`
+- [x] Create hierarchical branches in scheduler (ancestor chain auto-creation)
+- [x] Implement type-aware merge strategies in completion handler (merge into parent branch)
+- [x] Extract changelog from bean body for squash commit messages (`src/utils/changelog.ts`)
+- [x] Add merge conflict handling (`--abort` + mark blocked)
+- [x] Add git state recovery on daemon startup (MERGE_HEAD detection)
+- [x] Update ralph-loop.sh with branch support
+- [x] Handle edge cases (dirty working tree, branch already exists, daemon crash)
+
+## Changelog
+
+### Implemented
+- Created centralized `src/talos/git.ts` module using `execFileSync` for all git operations (shell-injection safe)
+- Added `BranchConfigSchema` to `src/config/index.ts` with `enabled`, `delete_after_merge`, `default_branch`, and per-type `merge_strategy` (merge/squash)
+- Created `src/talos/branch-manager.ts` with `BranchManager` class implementing:
+  - Hierarchical branch creation with ancestor chain auto-creation (walks parent chain top-down)
+  - Type-aware merge: `--no-ff` for features/epics/milestones, `--squash` for tasks/bugs
+  - Merge into parent's branch (not directly to main)
+  - Merge conflict detection and abort (handles both MERGE_HEAD and squash conflict cases)
+  - Git state recovery on startup (MERGE_HEAD/REBASE_HEAD detection)
+  - Dirty working tree detection before branch creation
+  - Branch reuse (idempotent - existing branches are checked out, not recreated)
+  - Configurable branch deletion after merge
+- Created `src/utils/changelog.ts` for extracting `## Changelog` section from bean body and formatting squash commit messages
+- Updated `scripts/ralph-loop.sh` with branch-per-bean support:
+  - `setup_bean_branch` creates/checks out bean branch with ancestor chain
+  - `merge_bean_branch` merges on completion with type-aware strategy
+  - `--no-branch` flag and `TALOS_BRANCH`/`TALOS_DEFAULT_BRANCH` env vars
+  - Auto-stash dirty working tree, git state recovery
+- Migrated `src/talos/completion-handler.ts` and `src/talos/scheduler.ts` to use centralized git module
+
+### Files Modified
+- `src/talos/git.ts` — NEW: Centralized git operations with execFileSync
+- `src/talos/git.test.ts` — NEW: 29 tests for git module
+- `src/talos/branch-manager.ts` — NEW: BranchManager class with hierarchical branching
+- `src/talos/branch-manager.test.ts` — NEW: 25 tests for branch manager
+- `src/utils/changelog.ts` — NEW: Changelog extraction from bean body
+- `src/utils/changelog.test.ts` — NEW: 12 tests for changelog extraction
+- `src/config/index.ts` — Added BranchConfigSchema, MergeStrategySchema, MergeStrategyMapSchema
+- `src/config/index.test.ts` — Added 7 tests for branch configuration
+- `src/talos/completion-handler.ts` — Replaced local git helpers with centralized git module imports
+- `src/talos/scheduler.ts` — Replaced execSync worktree creation with centralized git module
+- `scripts/ralph-loop.sh` — Added branch management functions and integration
+
+### Deviations from Spec
+- Created a standalone `BranchManager` class instead of modifying the scheduler directly. The spec said "hierarchical branch creation in scheduler" but a separate class is cleaner and more testable. The scheduler can instantiate BranchManager when needed.
+- The `BranchManager` is not yet wired into `Talos` orchestrator or `CompletionHandler` — it's a standalone module ready for integration. The sub-task beans (daedalus-x58b, daedalus-xf7g) handle the actual integration into scheduler and completion handler respectively.
+- Squash merge conflict detection uses `git ls-files --unmerged` instead of MERGE_HEAD check, because `git merge --squash` does not create MERGE_HEAD on conflict.
+- Branch safety/rollback on agent failure (daedalus-b9x8) is a separate sub-task in draft status.
+
+### Decisions Made
+- Created `src/talos/git.ts` as a centralized module rather than updating each file's git helpers individually — single source of truth for all git operations
+- Used `execFileSync` throughout (not `execSync`) to prevent shell injection — arguments are passed as array, never interpolated into a shell command
+- Bean ID validation uses `/^[a-zA-Z0-9_-]+$/` regex — strict but covers all beans format IDs
+- `BranchManager` takes `BranchConfig` and `cwd` as constructor args for testability (no global state)
+- Changelog extraction is case-insensitive for the `## Changelog` heading match
+- Ralph-loop.sh auto-stashes dirty working tree before branch switch (pragmatic for agent workflows)
+
+### Known Limitations
+- `BranchManager` is not yet integrated into `Talos` orchestrator — sub-tasks daedalus-x58b and daedalus-xf7g handle this
+- Parallel mode worktree creation in scheduler still uses the old pattern (creates worktree from HEAD, not from parent branch) — needs update when parallel mode is fully implemented
+- No push support for bean branches (spec says `push: false` by default)
+- Branch safety/rollback on agent failure is a separate draft sub-task (daedalus-b9x8)
