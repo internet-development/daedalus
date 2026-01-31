@@ -21,6 +21,7 @@ ONCE=false
 SILENT=false
 SPECIFIC_BEAN=""
 ROOT_BEAN=""
+ROOT_FILE=".talos/ralph-root"
 BRANCH_ENABLED="${TALOS_BRANCH:-true}"
 DEFAULT_BRANCH="${TALOS_DEFAULT_BRANCH:-main}"
 
@@ -64,7 +65,7 @@ while [[ $# -gt 0 ]]; do
     echo "  --dry-run          Show what would be selected, don't run"
     echo "  --once             Complete one bean then exit"
     echo "  --silent, -s       Suppress notifications"
-    echo "  --root BEAN_ID     Root bean for DFS traversal (required for branch mode)"
+    echo "  --root BEAN_ID     Override root bean for DFS (auto-detected if omitted)"
     echo "  --no-branch        Disable branch-per-bean (work on current branch)"
     echo ""
     echo "Environment:"
@@ -134,11 +135,69 @@ log_error() {
   echo -e "${RED}[$(date '+%H:%M:%S')] ✗${NC} $1"
 }
 
-# Select next actionable bean via depth-first traversal.
-# With --root: walks the tree from ROOT_BEAN, always picking the deepest
-# incomplete unblocked leaf. This prevents jumping sideways to branches
-# with stale bean status data.
-# Without --root: falls back to flat priority-based selection.
+# Resolve the root bean for DFS traversal.
+# Priority: --root flag > stored root (if still incomplete) > auto-detect.
+# Stores the active root in .talos/ralph-root so it persists across restarts.
+resolve_root() {
+  # --root flag takes priority
+  if [[ -n "$ROOT_BEAN" ]]; then
+    mkdir -p "$(dirname "$ROOT_FILE")"
+    echo "$ROOT_BEAN" > "$ROOT_FILE"
+    log "Root set: $ROOT_BEAN"
+    return
+  fi
+
+  # Check stored root
+  if [[ -f "$ROOT_FILE" ]]; then
+    local stored
+    stored=$(cat "$ROOT_FILE")
+    if [[ -n "$stored" ]]; then
+      local status
+      status=$(beans query "{ bean(id: \"$stored\") { status } }" --json 2>/dev/null | jq -r '.bean.status // empty')
+      if [[ -n "$status" && "$status" != "completed" && "$status" != "scrapped" ]]; then
+        ROOT_BEAN="$stored"
+        log "Resuming root: $ROOT_BEAN"
+        return
+      fi
+      log "Previous root $stored is $status, selecting new root"
+    fi
+  fi
+
+  # Auto-detect: find highest-priority incomplete bean with no parent
+  # Prefer by type hierarchy (milestone > epic > feature > task/bug), then priority
+  local root_id
+  root_id=$(beans query '{ beans(filter: { status: ["todo", "in-progress"] }) { id type priority status parentId } }' --json 2>/dev/null | jq -r '
+    .beans
+    | map(select(.parentId == null or .parentId == ""))
+    | sort_by(
+        (if .type == "milestone" then 0
+         elif .type == "epic" then 1
+         elif .type == "feature" then 2
+         else 3 end),
+        (if .priority == "critical" then 0
+         elif .priority == "high" then 1
+         elif .priority == "normal" then 2
+         elif .priority == "low" then 3
+         else 4 end)
+      )
+    | .[0].id // empty
+  ')
+
+  if [[ -z "$root_id" ]]; then
+    log "No actionable root bean found"
+    return
+  fi
+
+  ROOT_BEAN="$root_id"
+  mkdir -p "$(dirname "$ROOT_FILE")"
+  echo "$ROOT_BEAN" > "$ROOT_FILE"
+  log "Auto-selected root: $ROOT_BEAN"
+}
+
+# Select next actionable bean via depth-first traversal from ROOT_BEAN.
+# Always picks the deepest incomplete unblocked leaf, preventing jumps
+# to branches with stale bean data.
+# Falls back to flat priority-based selection if no root is set.
 select_bean() {
   if [[ -n "$SPECIFIC_BEAN" ]]; then
     echo "$SPECIFIC_BEAN"
@@ -830,6 +889,11 @@ main() {
   local beans_completed=0
 
   log "Ralph Loop started (agent: $AGENT, model: $MODEL, max iterations: $MAX_ITERATIONS)"
+
+  # Resolve the root bean for DFS (unless running a specific bean)
+  if [[ -z "$SPECIFIC_BEAN" ]]; then
+    resolve_root
+  fi
 
   while true; do
     # Select next bean
