@@ -1,11 +1,11 @@
 ---
 # daedalus-xf7g
 title: Type-aware merge strategies in completion handler
-status: in-progress
+status: completed
 type: task
 priority: normal
 created_at: 2026-01-31T07:16:09Z
-updated_at: 2026-01-31T08:33:04Z
+updated_at: 2026-01-31T08:37:21Z
 parent: daedalus-8jow
 blocking:
     - daedalus-v1sv
