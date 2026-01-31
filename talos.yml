@@ -4,14 +4,14 @@
 # Agent runner configuration
 agent:
   # Backend to use: claude, opencode, or codex
-  backend: claude
+  backend: opencode
   claude:
     model: claude-opus-4-5
     # dangerously_skip_permissions: true
-  # opencode:
-  #   model: anthropic/claude-opus-4-5
-  # codex:
-  #   model: codex-mini-latest
+  opencode:
+    model: anthropic/claude-opus-4-5
+  codex:
+    model: codex-mini-latest
 
 # Scheduler configuration
 scheduler:
