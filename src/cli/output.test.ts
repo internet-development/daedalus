@@ -184,24 +184,27 @@ describe('CLI Output Formatting', () => {
 
     // --- Read/Write tools: show file path ---
 
-    test('shows file path for Read tool', () => {
-      const result = formatToolCall('Read', { filePath: '/src/cli/output.ts' });
+    test('shows relative file path for Read tool', () => {
+      const absPath = process.cwd() + '/src/cli/output.ts';
+      const result = formatToolCall('Read', { filePath: absPath });
       const plain = stripAnsi(result);
-      expect(plain).toBe('  [Tool: Read] /src/cli/output.ts');
+      expect(plain).toBe('  [Tool: Read] src/cli/output.ts');
     });
 
-    test('shows file path for Write tool', () => {
-      const result = formatToolCall('Write', { filePath: '/src/cli/output.ts', content: 'lots of content...' });
+    test('shows relative file path for Write tool', () => {
+      const absPath = process.cwd() + '/src/cli/output.ts';
+      const result = formatToolCall('Write', { filePath: absPath, content: 'lots of content...' });
       const plain = stripAnsi(result);
-      expect(plain).toBe('  [Tool: Write] /src/cli/output.ts');
+      expect(plain).toBe('  [Tool: Write] src/cli/output.ts');
     });
 
     // --- Edit tool: show file path ---
 
-    test('shows file path for Edit tool', () => {
-      const result = formatToolCall('Edit', { filePath: '/src/cli/output.ts', oldString: 'foo', newString: 'bar' });
+    test('shows relative file path for Edit tool', () => {
+      const absPath = process.cwd() + '/src/cli/output.ts';
+      const result = formatToolCall('Edit', { filePath: absPath, oldString: 'foo', newString: 'bar' });
       const plain = stripAnsi(result);
-      expect(plain).toBe('  [Tool: Edit] /src/cli/output.ts');
+      expect(plain).toBe('  [Tool: Edit] src/cli/output.ts');
     });
 
     // --- Glob/Grep tools: show pattern ---
@@ -255,9 +258,10 @@ describe('CLI Output Formatting', () => {
     // --- mcp_ prefix stripping ---
 
     test('strips mcp_ prefix from tool names for display', () => {
-      const result = formatToolCall('mcp_read', { filePath: '/src/foo.ts' });
+      const absPath = process.cwd() + '/src/foo.ts';
+      const result = formatToolCall('mcp_read', { filePath: absPath });
       const plain = stripAnsi(result);
-      expect(plain).toBe('  [Tool: Read] /src/foo.ts');
+      expect(plain).toBe('  [Tool: Read] src/foo.ts');
     });
 
     test('strips mcp_ prefix from grep tool', () => {

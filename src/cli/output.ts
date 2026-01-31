@@ -4,8 +4,9 @@
  * Terminal output utilities with ANSI color codes.
  * Designed for the readline-based planning CLI.
  */
+import { execSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
-import { join, dirname } from 'node:path';
+import { join, dirname, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { ChatSession } from '../planning/chat-history.js';
 import type { CustomPrompt } from '../planning/prompts.js';
@@ -332,6 +333,48 @@ export function wrapText(
 }
 
 // =============================================================================
+// Path Helpers
+// =============================================================================
+
+/** Cached git root: undefined = not computed, null = not in a git repo */
+let _gitRoot: string | null | undefined;
+
+/**
+ * Get the git repository root directory.
+ * Cached after first call (won't change during a session).
+ */
+function getGitRoot(): string | null {
+  if (_gitRoot === undefined) {
+    try {
+      _gitRoot = execSync('git rev-parse --show-toplevel', {
+        encoding: 'utf-8',
+        stdio: ['pipe', 'pipe', 'pipe'],
+      }).trim();
+    } catch {
+      _gitRoot = null;
+    }
+  }
+  return _gitRoot;
+}
+
+/**
+ * Convert an absolute file path to a relative path from the git root.
+ * Falls back to cwd if not in a git repo.
+ */
+export function toRelativePath(absPath: string): string {
+  const root = getGitRoot() || process.cwd();
+  const rel = relative(root, absPath);
+  return rel || absPath;
+}
+
+/**
+ * Reset the cached git root (for testing).
+ */
+export function _resetGitRootCache(): void {
+  _gitRoot = undefined;
+}
+
+// =============================================================================
 // Streaming Output
 // =============================================================================
 
@@ -374,13 +417,13 @@ export function formatToolArgs(name: string, args?: Record<string, unknown>): st
       break;
     }
 
-    // File tools: show the file path
+    // File tools: show relative file path
     case 'read':
     case 'write':
     case 'edit': {
       const filePath = args.filePath;
       if (typeof filePath === 'string') {
-        return filePath;
+        return toRelativePath(filePath);
       }
       break;
     }

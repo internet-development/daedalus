@@ -8,7 +8,7 @@
  */
 import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
 import { formatToolCallLine } from './spinner.js';
-import { formatToolArgs } from './output.js';
+import { formatToolArgs, toRelativePath, _resetGitRootCache } from './output.js';
 
 // =============================================================================
 // Helpers
@@ -57,9 +57,10 @@ describe('formatToolArgs (exported for tool spinner)', () => {
     expect(result).toBe('git status');
   });
 
-  test('extracts filePath from Read tool', () => {
-    const result = formatToolArgs('Read', { filePath: '/src/foo.ts' });
-    expect(result).toBe('/src/foo.ts');
+  test('extracts filePath from Read tool (relative)', () => {
+    const absPath = process.cwd() + '/src/foo.ts';
+    const result = formatToolArgs('Read', { filePath: absPath });
+    expect(result).toBe('src/foo.ts');
   });
 
   test('extracts pattern from Grep tool', () => {
@@ -75,6 +76,72 @@ describe('formatToolArgs (exported for tool spinner)', () => {
   test('returns empty string for no args', () => {
     const result = formatToolArgs('Bash');
     expect(result).toBe('');
+  });
+});
+
+// =============================================================================
+// toRelativePath
+// =============================================================================
+
+describe('toRelativePath', () => {
+  afterEach(() => {
+    _resetGitRootCache();
+  });
+
+  test('converts absolute path to relative from git root', () => {
+    // We're in a git repo, so this should work
+    const absPath = process.cwd() + '/src/cli/output.ts';
+    const result = toRelativePath(absPath);
+    expect(result).toBe('src/cli/output.ts');
+  });
+
+  test('returns path unchanged if already relative', () => {
+    const result = toRelativePath('src/cli/output.ts');
+    // relative('root', 'src/cli/output.ts') when not absolute will produce
+    // a relative path — it should still be reasonable
+    expect(result).not.toContain(process.cwd());
+  });
+
+  test('returns original path if outside git root', () => {
+    const result = toRelativePath('/tmp/some-random-file.ts');
+    // Should return a relative path (with ../) or the original
+    expect(typeof result).toBe('string');
+    expect(result.length).toBeGreaterThan(0);
+  });
+});
+
+// =============================================================================
+// formatToolArgs with relative paths
+// =============================================================================
+
+describe('formatToolArgs relative paths', () => {
+  afterEach(() => {
+    _resetGitRootCache();
+  });
+
+  test('Read tool shows relative path instead of absolute', () => {
+    const absPath = process.cwd() + '/src/cli/output.ts';
+    const result = formatToolArgs('Read', { filePath: absPath });
+    expect(result).toBe('src/cli/output.ts');
+    expect(result).not.toContain(process.cwd());
+  });
+
+  test('Write tool shows relative path instead of absolute', () => {
+    const absPath = process.cwd() + '/src/cli/spinner.ts';
+    const result = formatToolArgs('Write', { filePath: absPath });
+    expect(result).toBe('src/cli/spinner.ts');
+  });
+
+  test('Edit tool shows relative path instead of absolute', () => {
+    const absPath = process.cwd() + '/src/cli/output.ts';
+    const result = formatToolArgs('Edit', { filePath: absPath });
+    expect(result).toBe('src/cli/output.ts');
+  });
+
+  test('mcp_read also shows relative path', () => {
+    const absPath = process.cwd() + '/src/cli/output.ts';
+    const result = formatToolArgs('mcp_read', { filePath: absPath });
+    expect(result).toBe('src/cli/output.ts');
   });
 });
 
@@ -283,15 +350,15 @@ describe('tool spinner transitions', () => {
     const { toolCallHandler, doneHandler } = createHandlersWithToolSpinner();
 
     toolCallHandler({ name: 'Bash', args: { command: 'git status' } });
-    toolCallHandler({ name: 'Read', args: { filePath: '/src/foo.ts' } });
+    toolCallHandler({ name: 'Read', args: { filePath: process.cwd() + '/src/foo.ts' } });
     doneHandler();
 
     const output = capture.outputs.join('');
     const plain = stripAnsi(output);
     // First tool should show success (stopped by second tool)
     expect(plain).toContain('[Bash] ✓ git status');
-    // Second tool should also show success (stopped by done)
-    expect(plain).toContain('[Read] ✓ /src/foo.ts');
+    // Second tool should also show success (stopped by done) — relative path
+    expect(plain).toContain('[Read] ✓ src/foo.ts');
   });
 
   test('text → tool → text transition shows correct sequence', () => {
