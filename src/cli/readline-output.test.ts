@@ -310,6 +310,54 @@ describe('tool spinner with muted readline', () => {
     rl.close();
   });
 
+  test('full streaming cycle: mute → thinking → tool → checkmark → unmute → prompt', async () => {
+    const output = createMutableOutput();
+    const input = new PassThrough();
+    const rl = readline.createInterface({
+      input,
+      output: output.stream,
+      terminal: false,
+    });
+
+    const { createSpinner, createToolSpinner } = await import('./spinner.js');
+
+    // 1. Mute readline (start of sendAndStream)
+    output.mute();
+
+    // 2. Thinking spinner
+    const thinking = createSpinner();
+    thinking.start();
+    vi.advanceTimersByTime(160); // two frames
+    thinking.stop();
+
+    // 3. Tool spinner
+    const tool = createToolSpinner('Bash', 'git status');
+    vi.advanceTimersByTime(160); // two frames
+    tool.stop(true); // success checkmark
+
+    // 4. Unmute readline (end of sendAndStream)
+    output.unmute();
+
+    // 5. Prompt should work
+    rl.setPrompt('plan> ');
+    rl.prompt();
+
+    // Verify: thinking spinner used \r
+    const thinkingWrites = capture.writes.filter(w => w.includes('Thinking'));
+    expect(thinkingWrites.length).toBeGreaterThan(1);
+    expect(thinkingWrites.some(w => w.startsWith('\r'))).toBe(true);
+
+    // Verify: tool spinner final state has checkmark
+    const allOutput = capture.writes.join('');
+    const stripped = allOutput.replace(/\x1b\[[0-9;]*m/g, '');
+    expect(stripped).toContain('[Bash] ✓ git status');
+
+    // Verify: prompt appeared after unmute
+    expect(capture.writes.some(w => w.includes('plan>'))).toBe(true);
+
+    rl.close();
+  });
+
   test('multiple consecutive tool spinners each render correctly', async () => {
     const output = createMutableOutput();
     const input = new PassThrough();
