@@ -17,7 +17,6 @@ coverage/
 
 # Tool-specific configs (local)
 .claude/
-.beans/
 
 # Editor
 .nova
