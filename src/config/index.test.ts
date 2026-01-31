@@ -12,6 +12,8 @@ import {
   loadConfig,
   loadConfigFromFile,
   getDefaultConfig,
+  getMergeStrategy,
+  getMergeTarget,
   TalosConfigSchema,
 } from './index.js';
 
@@ -731,6 +733,73 @@ branch:
     } finally {
       cleanupTempDir(tempDir);
     }
+  });
+});
+
+// =============================================================================
+// getMergeStrategy() Helper Tests
+// =============================================================================
+
+describe('getMergeStrategy', () => {
+  it('returns squash for task type', () => {
+    const config = getDefaultConfig();
+    expect(getMergeStrategy('task', config.branch)).toBe('squash');
+  });
+
+  it('returns squash for bug type', () => {
+    const config = getDefaultConfig();
+    expect(getMergeStrategy('bug', config.branch)).toBe('squash');
+  });
+
+  it('returns merge for feature type', () => {
+    const config = getDefaultConfig();
+    expect(getMergeStrategy('feature', config.branch)).toBe('merge');
+  });
+
+  it('returns merge for epic type', () => {
+    const config = getDefaultConfig();
+    expect(getMergeStrategy('epic', config.branch)).toBe('merge');
+  });
+
+  it('returns merge for milestone type', () => {
+    const config = getDefaultConfig();
+    expect(getMergeStrategy('milestone', config.branch)).toBe('merge');
+  });
+
+  it('respects custom strategy overrides', () => {
+    const result = TalosConfigSchema.parse({
+      branch: {
+        merge_strategy: {
+          task: 'merge',
+        },
+      },
+    });
+    expect(getMergeStrategy('task', result.branch)).toBe('merge');
+  });
+});
+
+// =============================================================================
+// getMergeTarget() Helper Tests
+// =============================================================================
+
+describe('getMergeTarget', () => {
+  it('returns parent branch when parent exists', () => {
+    const config = getDefaultConfig();
+    expect(getMergeTarget('daedalus-abc1', config.branch)).toBe('bean/daedalus-abc1');
+  });
+
+  it('returns default_branch when no parent', () => {
+    const config = getDefaultConfig();
+    expect(getMergeTarget(null, config.branch)).toBe('main');
+  });
+
+  it('respects custom default_branch', () => {
+    const result = TalosConfigSchema.parse({
+      branch: {
+        default_branch: 'develop',
+      },
+    });
+    expect(getMergeTarget(null, result.branch)).toBe('develop');
   });
 });
 

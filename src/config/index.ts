@@ -270,6 +270,8 @@ export type SchedulerConfig = z.infer<typeof SchedulerConfigSchema>;
 export type BranchConfig = z.infer<typeof BranchConfigSchema>;
 export type MergeStrategy = z.infer<typeof MergeStrategySchema>;
 export type MergeStrategyMap = z.infer<typeof MergeStrategyMapSchema>;
+/** Alias for MergeStrategyMap — matches bean spec naming */
+export type MergeStrategyByType = MergeStrategyMap;
 export type OnCompleteConfig = z.infer<typeof OnCompleteConfigSchema>;
 export type OnBlockedConfig = z.infer<typeof OnBlockedConfigSchema>;
 export type ReviewConfig = z.infer<typeof ReviewConfigSchema>;
@@ -705,6 +707,34 @@ export function formatCommitMessage(
   }
 
   return parts.join('\n');
+}
+
+// =============================================================================
+// Branch Helper Functions
+// =============================================================================
+
+/**
+ * Get the merge strategy for a given bean type.
+ * Looks up the per-type strategy from the branch config.
+ * Falls back to 'squash' if the bean type is not in the map.
+ */
+export function getMergeStrategy(
+  beanType: BeanType,
+  config: BranchConfig
+): MergeStrategy {
+  return config.merge_strategy[beanType] ?? 'squash';
+}
+
+/**
+ * Get the branch a bean should merge into on completion.
+ * If the bean has a parent, merge into the parent's branch.
+ * Otherwise, merge into the configured default branch.
+ */
+export function getMergeTarget(
+  parentId: string | null,
+  config: BranchConfig
+): string {
+  return parentId ? `bean/${parentId}` : config.default_branch;
 }
 
 // =============================================================================
