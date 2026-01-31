@@ -288,6 +288,18 @@ export class Talos extends EventEmitter {
     return this.paths;
   }
 
+  /**
+   * Get diagnostic info about the agent runner.
+   * Used for shutdown diagnostics in daemon-entry.ts.
+   */
+  getRunnerInfo(): { isRunning: boolean; beanId?: string; pid?: number } {
+    return {
+      isRunning: this.runner.isRunning(),
+      beanId: this.runner.getRunningBean()?.id,
+      pid: this.runner.getProcessPid(),
+    };
+  }
+
   // ===========================================================================
   // Control Methods
   // ===========================================================================
