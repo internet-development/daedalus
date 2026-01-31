@@ -79,6 +79,96 @@ describe('formatToolArgs (exported for tool spinner)', () => {
 });
 
 // =============================================================================
+// formatToolCallLine dynamic width
+// =============================================================================
+
+describe('formatToolCallLine dynamic terminal width', () => {
+  const originalColumns = process.stdout.columns;
+
+  afterEach(() => {
+    Object.defineProperty(process.stdout, 'columns', {
+      value: originalColumns,
+      writable: true,
+      configurable: true,
+    });
+  });
+
+  test('truncates args based on terminal width, not hardcoded 120', () => {
+    // Set a narrow terminal (60 cols)
+    Object.defineProperty(process.stdout, 'columns', {
+      value: 60,
+      writable: true,
+      configurable: true,
+    });
+
+    const longArgs = 'a'.repeat(200);
+    const result = formatToolCallLine('Bash', longArgs, '✓');
+    const plain = stripAnsi(result);
+
+    // With 60 cols, prefix "  [Bash] ✓ " is 11 chars
+    // So args should be truncated to fit within ~49 chars
+    // Total line should not exceed 60 chars
+    expect(plain.length).toBeLessThanOrEqual(60);
+  });
+
+  test('uses wider truncation for wider terminals', () => {
+    Object.defineProperty(process.stdout, 'columns', {
+      value: 200,
+      writable: true,
+      configurable: true,
+    });
+
+    const longArgs = 'a'.repeat(180);
+    const result = formatToolCallLine('Bash', longArgs, '✓');
+    const plain = stripAnsi(result);
+
+    // With 200 cols, should allow much more than 120 chars of args
+    // Prefix "  [Bash] ✓ " is 11 chars, so args can be up to 189
+    expect(plain.length).toBeLessThanOrEqual(200);
+    // Should be longer than what 120-char hardcoded limit would produce
+    // With hardcoded 120: prefix(11) + 120 = 131 max
+    expect(plain.length).toBeGreaterThan(131);
+  });
+
+  test('enforces minimum args width of 20', () => {
+    // Set an extremely narrow terminal
+    Object.defineProperty(process.stdout, 'columns', {
+      value: 10,
+      writable: true,
+      configurable: true,
+    });
+
+    const longArgs = 'a'.repeat(50);
+    const result = formatToolCallLine('Bash', longArgs, '✓');
+    const plain = stripAnsi(result);
+
+    // Even with tiny terminal, args should get at least 20 chars
+    // Prefix "  [Bash] ✓ " = 11, plus at least 20 for args = 31 min
+    // The args portion (after prefix) should be at least 20 chars
+    const prefixEnd = plain.indexOf('✓') + 2; // "✓ "
+    const argsText = plain.slice(prefixEnd);
+    expect(argsText.length).toBeGreaterThanOrEqual(20);
+  });
+
+  test('defaults to 120 columns when terminal width unavailable', () => {
+    Object.defineProperty(process.stdout, 'columns', {
+      value: undefined,
+      writable: true,
+      configurable: true,
+    });
+
+    const longArgs = 'a'.repeat(200);
+    const result = formatToolCallLine('Bash', longArgs, '✓');
+    const plain = stripAnsi(result);
+
+    // Should behave as if 120 cols
+    // Prefix "  [Bash] ✓ " = 11, args max = 120 - 11 = 109
+    // Total = 11 + 109 = 120
+    expect(plain.length).toBeLessThanOrEqual(120);
+  });
+});
+
+// =============================================================================
 // Tool spinner transition simulation
 // =============================================================================
 

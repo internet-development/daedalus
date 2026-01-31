@@ -339,8 +339,10 @@ export function formatStreamingPrefix(): string {
   return c('cyan', c('bold', 'Planner: '));
 }
 
-/** Max length for the args portion of a tool call display */
-const TOOL_ARGS_MAX_LENGTH = 120;
+/** Dynamic max length for args based on terminal width */
+function getToolArgsMaxLength(): number {
+  return (process.stdout.columns || 120) - 20; // Reserve space for tool prefix
+}
 
 /**
  * Normalize tool name for display: strip mcp_ prefix and capitalize.
@@ -367,7 +369,7 @@ export function formatToolArgs(name: string, args?: Record<string, unknown>): st
     case 'bash': {
       const cmd = args.command;
       if (typeof cmd === 'string') {
-        return truncate(cmd, TOOL_ARGS_MAX_LENGTH);
+        return truncate(cmd, getToolArgsMaxLength());
       }
       break;
     }
@@ -428,7 +430,7 @@ function formatKeyValueArgs(args: Record<string, unknown>): string {
     pairs.push(`${key}=${truncatedValue}`);
   }
   const result = pairs.join(' ');
-  return truncate(result, TOOL_ARGS_MAX_LENGTH);
+  return truncate(result, getToolArgsMaxLength());
 }
 
 /**

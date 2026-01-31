@@ -79,9 +79,6 @@ export function createSpinner(name: SpinnerName = 'dots'): Spinner {
 // Tool Call Line Formatting
 // =============================================================================
 
-/** Max length for the args portion of a tool call spinner line */
-const TOOL_ARGS_MAX_LENGTH = 120;
-
 /**
  * Truncate a string to maxLen, adding ellipsis if needed.
  */
@@ -92,6 +89,9 @@ function truncate(str: string, maxLen: number): string {
 
 /**
  * Format a tool call line with a status indicator.
+ *
+ * Uses terminal width to dynamically calculate how much of the args string
+ * to show, filling the remaining space after the prefix.
  *
  * @param toolName - Display name of the tool (e.g. "Bash", "Read")
  * @param argsStr - Formatted args string (e.g. "git status", "/src/foo.ts")
@@ -107,7 +107,13 @@ export function formatToolCallLine(
   argsStr: string,
   indicator: string
 ): string {
-  const truncatedArgs = argsStr ? truncate(argsStr, TOOL_ARGS_MAX_LENGTH) : '';
+  const cols = process.stdout.columns || 120;
+  // Prefix: "  [ToolName] X " where X is the indicator (1 char)
+  // "  " (2) + "[" (1) + toolName + "]" (1) + " " (1) + indicator (1) + " " (1)
+  const prefixLen = 2 + 1 + toolName.length + 1 + 1 + 1 + 1;
+  const maxArgs = Math.max(20, cols - prefixLen);
+  const truncatedArgs = argsStr ? truncate(argsStr, maxArgs) : '';
+
   const coloredIndicator = indicator === '✓'
     ? `${GREEN}${indicator}${RESET}`
     : indicator === '✗'
