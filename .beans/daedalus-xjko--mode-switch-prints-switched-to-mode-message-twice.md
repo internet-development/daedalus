@@ -1,11 +1,11 @@
 ---
 # daedalus-xjko
 title: Mode switch prints "Switched to mode" message twice
-status: in-progress
+status: completed
 type: bug
 priority: normal
 created_at: 2026-01-30T07:44:17Z
-updated_at: 2026-01-31T06:35:59Z
+updated_at: 2026-01-31T06:45:15Z
 parent: daedalus-bmnc
 ---
 
