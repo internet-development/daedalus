@@ -1,11 +1,11 @@
 ---
 # daedalus-6xlg
 title: Add /history command to view past messages
-status: in-progress
+status: completed
 type: feature
 priority: normal
 created_at: 2026-01-30T07:41:07Z
-updated_at: 2026-01-31T06:17:05Z
+updated_at: 2026-01-31T06:22:12Z
 ---
 
 ## Problem
