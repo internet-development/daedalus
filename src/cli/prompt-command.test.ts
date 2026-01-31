@@ -61,6 +61,7 @@ function makeCtx(overrides?: Partial<CommandContext>): CommandContext {
     },
     talos: null,
     prompts: TEST_PROMPTS,
+    rlOutput: { mute: () => {}, unmute: () => {} },
     saveHistory: () => {},
     startDaemon: async () => {},
     stopDaemon: async () => {},

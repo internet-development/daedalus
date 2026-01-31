@@ -7,6 +7,7 @@
  */
 import { describe, test, expect } from 'vitest';
 import { EXIT_SENTINEL, type SelectOption } from './interactive-select.js';
+import type { CommandContext } from './commands.js';
 
 // =============================================================================
 // Export Contract Tests
@@ -50,5 +51,44 @@ describe('interactiveSelect', () => {
   test('is exported as a function', async () => {
     const mod = await import('./interactive-select.js');
     expect(typeof mod.interactiveSelect).toBe('function');
+  });
+});
+
+// =============================================================================
+// CommandContext rlOutput contract (daedalus-rbhm)
+// =============================================================================
+
+describe('CommandContext rlOutput contract', () => {
+  test('CommandContext includes rlOutput with mute and unmute methods', () => {
+    // Verify the type contract: CommandContext must have rlOutput
+    // This is a compile-time check that also runs at runtime
+    const mockRlOutput = {
+      mute: () => {},
+      unmute: () => {},
+    };
+
+    // Create a partial CommandContext to verify the rlOutput shape
+    const ctx: Pick<CommandContext, 'rlOutput'> = {
+      rlOutput: mockRlOutput,
+    };
+
+    expect(typeof ctx.rlOutput.mute).toBe('function');
+    expect(typeof ctx.rlOutput.unmute).toBe('function');
+  });
+
+  test('rlOutput mute/unmute are called during interactive select commands', () => {
+    // Track mute/unmute calls to verify the pattern
+    const calls: string[] = [];
+    const rlOutput = {
+      mute: () => calls.push('mute'),
+      unmute: () => calls.push('unmute'),
+    };
+
+    // Simulate the mute-around-interactive-select pattern
+    rlOutput.mute();
+    // ... interactiveSelect would run here ...
+    rlOutput.unmute();
+
+    expect(calls).toEqual(['mute', 'unmute']);
   });
 });

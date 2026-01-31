@@ -75,6 +75,8 @@ export interface CommandContext {
   saveHistory: () => void;
   startDaemon: () => Promise<void>;
   stopDaemon: () => Promise<void>;
+  /** Mutable readline output — mute during interactive select to prevent character echo. See daedalus-rbhm. */
+  rlOutput: { mute: () => void; unmute: () => void };
 }
 
 export type CommandResult =
@@ -217,11 +219,21 @@ async function handleMode(args: string, ctx: CommandContext): Promise<CommandRes
     }));
 
     const currentIndex = VALID_MODES.indexOf(ctx.session.getMode());
-    const result = await interactiveSelect(
-      'Planning Modes',
-      options,
-      currentIndex >= 0 ? currentIndex : 0
-    );
+
+    // Mute readline output to prevent character echo during interactive select.
+    // The parent readline interface echoes raw keypresses (j/k) to stdout
+    // unless its output is suppressed. See daedalus-rbhm.
+    ctx.rlOutput.mute();
+    let result: string | null;
+    try {
+      result = await interactiveSelect(
+        'Planning Modes',
+        options,
+        currentIndex >= 0 ? currentIndex : 0
+      );
+    } finally {
+      ctx.rlOutput.unmute();
+    }
 
     if (result === EXIT_SENTINEL || result === null) {
       return { type: 'continue' };
@@ -262,7 +274,15 @@ async function handlePrompt(args: string, ctx: CommandContext): Promise<CommandR
       meta: p.description ?? '(no description)',
     }));
 
-    const result = await interactiveSelect('Available Prompts', options, 0);
+    // Mute readline output to prevent character echo during interactive select.
+    // See daedalus-rbhm.
+    ctx.rlOutput.mute();
+    let result: string | null;
+    try {
+      result = await interactiveSelect('Available Prompts', options, 0);
+    } finally {
+      ctx.rlOutput.unmute();
+    }
 
     if (result === EXIT_SENTINEL || result === null) {
       return { type: 'continue' };
@@ -345,10 +365,18 @@ function handleStatus(ctx: CommandContext): CommandResult {
 }
 
 async function handleSessions(ctx: CommandContext): Promise<CommandResult> {
-  const selection = await selectSession(
-    ctx.history.sessions,
-    ctx.history.currentSessionId
-  );
+  // Mute readline output to prevent character echo during interactive select.
+  // See daedalus-rbhm.
+  ctx.rlOutput.mute();
+  let selection;
+  try {
+    selection = await selectSession(
+      ctx.history.sessions,
+      ctx.history.currentSessionId
+    );
+  } finally {
+    ctx.rlOutput.unmute();
+  }
 
   if (selection.action === 'exit') {
     return { type: 'quit', generateName: true };

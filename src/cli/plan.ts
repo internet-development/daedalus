@@ -155,6 +155,7 @@ export async function runPlan(options: PlanOptions): Promise<void> {
     history: historyState,
     talos,
     prompts,
+    rlOutput,
     saveHistory: () => {
       saveChatHistory(ctx.history);
     },
