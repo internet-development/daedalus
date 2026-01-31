@@ -1,11 +1,11 @@
 ---
 # daedalus-rbhm
 title: Mode select menu prints j/k characters to screen
-status: todo
+status: in-progress
 type: bug
 priority: normal
 created_at: 2026-01-30T07:34:51Z
-updated_at: 2026-01-30T08:56:37Z
+updated_at: 2026-01-31T06:29:05Z
 parent: daedalus-bmnc
 blocking:
     - daedalus-xjko
@@ -54,10 +54,39 @@ This is the same class of bug as **daedalus-8b67** (spinner wall of text) — bo
 
 ## Checklist
 
-- [ ] Verify `process.stdin.setRawMode(true)` is being called successfully (add debug logging if needed)
-- [ ] Check whether the readline `line` event from `plan.ts` fires during interactive select and echoes characters
-- [ ] Investigate whether the parent readline interface in `plan.ts` is echoing characters during interactive select
-- [ ] Pause or suppress the parent readline interface output before entering the interactive select
-- [ ] Restore the parent readline interface after interactive select completes
-- [ ] Test that j/k navigation works without printing characters in `/mode`, `/prompt`, and session selector menus
-- [ ] Confirm the bug does not occur in non-TTY fallback (`simpleSelect`)
+- [x] Verify `process.stdin.setRawMode(true)` is being called successfully (add debug logging if needed)
+- [x] Check whether the readline `line` event from `plan.ts` fires during interactive select and echoes characters
+- [x] Investigate whether the parent readline interface in `plan.ts` is echoing characters during interactive select
+- [x] Pause or suppress the parent readline interface output before entering the interactive select
+- [x] Restore the parent readline interface after interactive select completes
+- [x] Test that j/k navigation works without printing characters in `/mode`, `/prompt`, and session selector menus
+- [x] Confirm the bug does not occur in non-TTY fallback (`simpleSelect`)
+
+## Changelog
+
+### Implemented
+- Added `rlOutput` to `CommandContext` interface so command handlers can mute/unmute the parent readline output
+- Mute readline output before `interactiveSelect()` calls in `handleMode()`, `handlePrompt()`, and `handleSessions()`
+- Unmute in `finally` blocks to ensure restoration even on errors
+- Passed `rlOutput` from `plan.ts` through `CommandContext`
+- Added type contract test verifying `CommandContext.rlOutput` shape
+
+### Root Cause
+The parent readline interface (created in `plan.ts`) was echoing j/k keypresses to stdout during interactive select. The readline's mutable output stream (introduced by daedalus-8b67) was unmuted during command handling, so readline's internal character echo reached stdout. The fix reuses the same mute/unmute pattern from `sendAndStream()`.
+
+### Files Modified
+- `src/cli/commands.ts` — Added `rlOutput` to `CommandContext` interface; mute/unmute around `interactiveSelect()` calls in `handleMode()`, `handlePrompt()`, `handleSessions()`
+- `src/cli/plan.ts` — Pass `rlOutput` through `CommandContext`
+- `src/cli/interactive-select.test.ts` — Added type contract tests for `CommandContext.rlOutput`
+- `src/cli/prompt-command.test.ts` — Added `rlOutput` to test `makeCtx()` helper
+
+### Deviations from Spec
+- None. The fix follows the same pattern established by daedalus-8b67.
+
+### Decisions Made
+- Chose to mute in command handlers rather than inside `interactiveSelect()` itself, keeping the selector generic and unaware of readline
+- Used `try/finally` for unmute to ensure cleanup on errors or early exits
+- The initial session selection in `plan.ts` (before readline is created) does not need muting
+
+### Known Limitations
+- None. The fix covers all three interactive select call sites (`/mode`, `/prompt`, `/sessions`).
