@@ -9,7 +9,8 @@ import {
   extractChangelog,
   formatSquashCommitMessage,
 } from './changelog.js';
-import type { Bean, BeanType } from '../talos/beans-client.js';
+import type { Bean } from '../talos/beans-client.js';
+import type { CommitStyleConfig } from '../config/index.js';
 
 // =============================================================================
 // Test Helpers
@@ -31,12 +32,14 @@ function makeBean(overrides: Partial<Bean> & { id: string }): Bean {
   };
 }
 
+const defaultConfig: CommitStyleConfig = { include_bean_id: true };
+
 // =============================================================================
 // extractChangelog Tests
 // =============================================================================
 
 describe('extractChangelog', () => {
-  it('extracts changelog section from bean body', () => {
+  it('extracts full changelog section from bean body', () => {
     const body = `## Summary
 Some summary text.
 
@@ -58,10 +61,16 @@ Some summary text.
 `;
 
     const changelog = extractChangelog(body);
+    expect(changelog).not.toBeNull();
     expect(changelog).toContain('### Implemented');
     expect(changelog).toContain('- Added retry logic');
+    expect(changelog).toContain('- Created test utilities');
     expect(changelog).toContain('### Deviations from Spec');
+    expect(changelog).toContain('- Used 3 retries instead of 5');
     expect(changelog).toContain('### Decisions Made');
+    expect(changelog).toContain('- Chose exponential backoff');
+    // Should NOT include the ## Changelog header itself
+    expect(changelog).not.toContain('## Changelog');
   });
 
   it('returns null when no changelog section exists', () => {
@@ -72,11 +81,37 @@ Some summary text.
 - [x] Task 1
 `;
 
-    const changelog = extractChangelog(body);
-    expect(changelog).toBeNull();
+    expect(extractChangelog(body)).toBeNull();
   });
 
-  it('handles changelog at end of body', () => {
+  it('returns null for empty changelog section (header only, no content)', () => {
+    const body = `## Changelog
+
+## Next Section
+Content here.
+`;
+
+    expect(extractChangelog(body)).toBeNull();
+  });
+
+  it('stops at next ## heading', () => {
+    const body = `## Changelog
+
+### Implemented
+- Did thing
+
+## Some Other Section
+This should not be included.
+`;
+
+    const changelog = extractChangelog(body);
+    expect(changelog).toContain('### Implemented');
+    expect(changelog).toContain('- Did thing');
+    expect(changelog).not.toContain('Some Other Section');
+    expect(changelog).not.toContain('This should not be included');
+  });
+
+  it('extracts changelog at end of file (no following section)', () => {
     const body = `## Summary
 Text.
 
@@ -89,32 +124,7 @@ Text.
     const changelog = extractChangelog(body);
     expect(changelog).toContain('### Implemented');
     expect(changelog).toContain('- Did thing A');
-  });
-
-  it('stops at next h2 heading after changelog', () => {
-    const body = `## Changelog
-
-### Implemented
-- Did thing
-
-## Some Other Section
-This should not be included.
-`;
-
-    const changelog = extractChangelog(body);
-    expect(changelog).toContain('### Implemented');
-    expect(changelog).not.toContain('Some Other Section');
-  });
-
-  it('handles empty changelog section', () => {
-    const body = `## Changelog
-
-## Next Section
-`;
-
-    const changelog = extractChangelog(body);
-    // Empty changelog should return null or empty
-    expect(changelog === null || changelog.trim() === '').toBe(true);
+    expect(changelog).toContain('- Did thing B');
   });
 
   it('is case-insensitive for heading match', () => {
@@ -134,7 +144,7 @@ This should not be included.
 // =============================================================================
 
 describe('formatSquashCommitMessage', () => {
-  it('formats a squash commit message with changelog', () => {
+  it('formats message with changelog content', () => {
     const bean = makeBean({
       id: 'daedalus-abc1',
       title: 'Add retry logic',
@@ -153,28 +163,46 @@ Add retry logic.
 `,
     });
 
-    const message = formatSquashCommitMessage(bean, 'scope');
+    const message = formatSquashCommitMessage(bean, 'scope', defaultConfig);
 
     expect(message).toContain('chore(scope): Add retry logic');
     expect(message).toContain('### Implemented');
-    expect(message).toContain('- Added retry logic');
+    expect(message).toContain('- Added retry logic with exponential backoff');
     expect(message).toContain('### Deviations from Spec');
     expect(message).toContain('Bean: daedalus-abc1');
   });
 
-  it('uses feat prefix for feature beans', () => {
+  it('falls back to first paragraph when no changelog', () => {
     const bean = makeBean({
-      id: 'daedalus-feat1',
-      title: 'New feature',
-      type: 'feature',
-      body: '## Changelog\n\n### Implemented\n- Feature\n',
+      id: 'daedalus-abc1',
+      title: 'Simple task',
+      type: 'task',
+      body: `When squash-merging task/bug branches, the commit message should include the changelog.
+
+## Checklist
+- [x] Task 1
+`,
     });
 
-    const message = formatSquashCommitMessage(bean, null);
-    expect(message).toMatch(/^feat: New feature/);
+    const message = formatSquashCommitMessage(bean, null, defaultConfig);
+    expect(message).toContain('chore: Simple task');
+    expect(message).toContain('When squash-merging task/bug branches');
+    expect(message).not.toContain('### Implemented');
   });
 
-  it('uses fix prefix for bug beans', () => {
+  it('uses correct conventional commit type for task (chore)', () => {
+    const bean = makeBean({
+      id: 'daedalus-t1',
+      title: 'Do task',
+      type: 'task',
+      body: '## Changelog\n\n### Implemented\n- Thing\n',
+    });
+
+    const message = formatSquashCommitMessage(bean, null, defaultConfig);
+    expect(message).toMatch(/^chore: Do task/);
+  });
+
+  it('uses correct conventional commit type for bug (fix)', () => {
     const bean = makeBean({
       id: 'daedalus-bug1',
       title: 'Fix crash',
@@ -182,23 +210,44 @@ Add retry logic.
       body: '## Changelog\n\n### Implemented\n- Fix\n',
     });
 
-    const message = formatSquashCommitMessage(bean, null);
+    const message = formatSquashCommitMessage(bean, null, defaultConfig);
     expect(message).toMatch(/^fix: Fix crash/);
   });
 
-  it('falls back to title-only when no changelog', () => {
+  it('uses correct conventional commit type for feature (feat)', () => {
     const bean = makeBean({
-      id: 'daedalus-abc1',
-      title: 'Simple task',
-      type: 'task',
-      body: '## Summary\nJust a task.\n',
+      id: 'daedalus-feat1',
+      title: 'New feature',
+      type: 'feature',
+      body: '## Changelog\n\n### Implemented\n- Feature\n',
     });
 
-    const message = formatSquashCommitMessage(bean, null);
-    expect(message).toContain('chore: Simple task');
+    const message = formatSquashCommitMessage(bean, null, defaultConfig);
+    expect(message).toMatch(/^feat: New feature/);
+  });
+
+  it('includes Bean: {id} when include_bean_id is true', () => {
+    const bean = makeBean({
+      id: 'daedalus-abc1',
+      title: 'Task',
+      type: 'task',
+      body: '',
+    });
+
+    const message = formatSquashCommitMessage(bean, null, { include_bean_id: true });
     expect(message).toContain('Bean: daedalus-abc1');
-    // Should not have changelog subsections
-    expect(message).not.toContain('### Implemented');
+  });
+
+  it('omits Bean: {id} when include_bean_id is false', () => {
+    const bean = makeBean({
+      id: 'daedalus-abc1',
+      title: 'Task',
+      type: 'task',
+      body: '',
+    });
+
+    const message = formatSquashCommitMessage(bean, null, { include_bean_id: false });
+    expect(message).not.toContain('Bean:');
   });
 
   it('omits scope when null', () => {
@@ -209,7 +258,7 @@ Add retry logic.
       body: '',
     });
 
-    const message = formatSquashCommitMessage(bean, null);
+    const message = formatSquashCommitMessage(bean, null, defaultConfig);
     expect(message).toMatch(/^chore: Task/);
     expect(message).not.toContain('(');
   });
@@ -222,7 +271,7 @@ Add retry logic.
       body: '',
     });
 
-    const message = formatSquashCommitMessage(bean, 'my-epic');
+    const message = formatSquashCommitMessage(bean, 'my-epic', defaultConfig);
     expect(message).toMatch(/^chore\(my-epic\): Task/);
   });
 });

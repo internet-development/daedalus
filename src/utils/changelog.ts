@@ -6,6 +6,7 @@
  * implemented, deviations from spec, and decisions made.
  */
 import type { Bean } from '../talos/beans-client.js';
+import type { CommitStyleConfig } from '../config/index.js';
 import { beanTypeToCommitType } from '../config/index.js';
 
 // =============================================================================
@@ -73,7 +74,8 @@ export function extractChangelog(body: string): string | null {
  */
 export function formatSquashCommitMessage(
   bean: Bean,
-  scope: string | null
+  scope: string | null,
+  config: CommitStyleConfig
 ): string {
   const type = beanTypeToCommitType(bean.type);
   const header = scope
@@ -82,16 +84,24 @@ export function formatSquashCommitMessage(
 
   const parts: string[] = [header];
 
-  // Extract and include changelog if present
+  // Try to extract changelog, fall back to first paragraph
   const changelog = extractChangelog(bean.body);
   if (changelog) {
     parts.push(''); // Empty line after header
     parts.push(changelog);
+  } else {
+    const bodyParagraphs = bean.body.trim().split(/\n\n+/);
+    const firstParagraph = bodyParagraphs[0]?.trim() || '';
+    if (firstParagraph) {
+      parts.push(''); // Empty line after header
+      parts.push(firstParagraph);
+    }
   }
 
-  // Always include bean reference
-  parts.push(''); // Empty line before bean reference
-  parts.push(`Bean: ${bean.id}`);
+  if (config.include_bean_id) {
+    parts.push(''); // Empty line before bean reference
+    parts.push(`Bean: ${bean.id}`);
+  }
 
   return parts.join('\n');
 }
