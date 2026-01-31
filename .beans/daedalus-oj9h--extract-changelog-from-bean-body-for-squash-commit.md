@@ -1,11 +1,11 @@
 ---
 # daedalus-oj9h
 title: Extract changelog from bean body for squash commit messages
-status: todo
+status: in-progress
 type: task
 priority: normal
 created_at: 2026-01-31T07:16:29Z
-updated_at: 2026-01-31T07:17:04Z
+updated_at: 2026-01-31T08:29:50Z
 parent: daedalus-8jow
 blocking:
     - daedalus-xf7g
@@ -170,7 +170,25 @@ Tests to add:
 
 ## Checklist
 
-- [ ] Add `extractChangelog()` function to parse `## Changelog` section from bean body
-- [ ] Add `formatSquashCommitMessage()` that includes changelog in commit message
-- [ ] Export both new functions from `src/utils/changelog.ts`
-- [ ] Add unit tests in `src/utils/changelog.test.ts`
+- [x] Add `extractChangelog()` function to parse `## Changelog` section from bean body
+- [x] Add `formatSquashCommitMessage()` that includes changelog in commit message
+- [x] Export both new functions from `src/utils/changelog.ts`
+- [x] Add unit tests in `src/utils/changelog.test.ts`
+
+## Changelog
+
+### Implemented
+- `extractChangelog()` — Parses `## Changelog` section from bean body markdown, returns content without the heading, stops at next `## ` heading or EOF, case-insensitive matching
+- `formatSquashCommitMessage()` — Builds conventional commit message with changelog content in body, falls back to first paragraph when no changelog exists, conditionally includes `Bean: {id}` based on `CommitStyleConfig.include_bean_id`
+- 15 unit tests covering: full changelog extraction, no changelog, empty changelog, heading boundary, EOF boundary, case-insensitivity, commit type mapping (chore/fix/feat), scope handling, bean ID inclusion/exclusion, first-paragraph fallback
+
+### Files Modified
+- `src/utils/changelog.ts` — NEW: `extractChangelog()` and `formatSquashCommitMessage()` functions
+- `src/utils/changelog.test.ts` — NEW: 15 unit tests for both functions
+
+### Deviations from Spec
+- The `extractChangelog` implementation uses a slightly different structure than the spec pseudocode: it checks `!inChangelog` to return null (distinguishing "no changelog heading found" from "changelog heading found but empty"), rather than checking `changelogLines.length === 0`. Both produce the same results for all specified edge cases.
+
+### Decisions Made
+- Added guard against matching `## Changelog` as a "next section" stop (line 33: `!/^## changelog/i.test(line)`) to handle edge cases where the heading might appear in a different form
+- Used `CommitStyleConfig` type import from config module to match the existing `formatCommitMessage()` pattern in `src/config/index.ts`
