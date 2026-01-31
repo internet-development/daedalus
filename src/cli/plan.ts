@@ -39,6 +39,7 @@ import { handleCommand, isCommand, type CommandContext } from './commands.js';
 import { loadInputHistory, appendToHistory } from './input-history.js';
 import { completer } from './completer.js';
 import { generateSessionName as generateSessionNameWithAI } from './session-naming.js';
+import { StreamingMarkdownRenderer } from './markdown-renderer.js';
 
 
 // =============================================================================
@@ -291,6 +292,10 @@ async function sendAndStream(
   // Add blank line after user input
   console.log();
 
+  // Set up streaming markdown renderer (daedalus-imv7)
+  const renderer = new StreamingMarkdownRenderer();
+  renderer.reset();
+
   // Set up streaming output
   let fullContent = '';
   const toolCalls: ToolCall[] = [];
@@ -328,7 +333,7 @@ async function sendAndStream(
       process.stdout.write('\n\x1b[36m\x1b[1mPlanner:\x1b[0m ');
       afterToolCall = false;
     }
-    process.stdout.write(text);
+    renderer.write(text);
     fullContent += text;
   };
 
@@ -383,6 +388,8 @@ async function sendAndStream(
 
     // Check if cancelled
     if (isCancelled()) {
+      // Flush any buffered markdown content before showing [Cancelled] (daedalus-imv7)
+      renderer.flush();
       // Stop any active tool spinner (daedalus-pjmp)
       stopToolSpinner(false);
       // Handle cancellation output
@@ -403,6 +410,9 @@ async function sendAndStream(
 
     // Stop any active tool spinner on completion (daedalus-pjmp)
     stopToolSpinner(true);
+
+    // Flush any remaining buffered markdown content (daedalus-imv7)
+    renderer.flush();
 
     // Stop spinner if still running (no output case)
     spinner.stop();
@@ -427,6 +437,8 @@ async function sendAndStream(
 
     // Check if this was a cancellation
     if (isCancelled()) {
+      // Flush any buffered markdown content before showing [Cancelled] (daedalus-imv7)
+      renderer.flush();
       // Handle cancellation output
       // First, clear the ^C that the terminal echoed
       if (hasOutput) {
