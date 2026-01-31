@@ -20,6 +20,7 @@ DRY_RUN=false
 ONCE=false
 SILENT=false
 SPECIFIC_BEAN=""
+ROOT_BEAN=""
 BRANCH_ENABLED="${TALOS_BRANCH:-true}"
 DEFAULT_BRANCH="${TALOS_DEFAULT_BRANCH:-main}"
 
@@ -50,6 +51,10 @@ while [[ $# -gt 0 ]]; do
     BRANCH_ENABLED=false
     shift
     ;;
+  --root)
+    ROOT_BEAN="$2"
+    shift 2
+    ;;
   --help | -h)
     echo "Usage: ralph-loop.sh [bean-id] [options]"
     echo ""
@@ -59,6 +64,7 @@ while [[ $# -gt 0 ]]; do
     echo "  --dry-run          Show what would be selected, don't run"
     echo "  --once             Complete one bean then exit"
     echo "  --silent, -s       Suppress notifications"
+    echo "  --root BEAN_ID     Root bean for DFS traversal (required for branch mode)"
     echo "  --no-branch        Disable branch-per-bean (work on current branch)"
     echo ""
     echo "Environment:"
@@ -128,32 +134,86 @@ log_error() {
   echo -e "${RED}[$(date '+%H:%M:%S')] ✗${NC} $1"
 }
 
-# Select next actionable bean
+# Select next actionable bean via depth-first traversal.
+# With --root: walks the tree from ROOT_BEAN, always picking the deepest
+# incomplete unblocked leaf. This prevents jumping sideways to branches
+# with stale bean status data.
+# Without --root: falls back to flat priority-based selection.
 select_bean() {
   if [[ -n "$SPECIFIC_BEAN" ]]; then
     echo "$SPECIFIC_BEAN"
     return
   fi
 
-  # Query for todo and in-progress beans (including epics/milestones)
-  # Include blockedBy and children to check eligibility
+  if [[ -z "$ROOT_BEAN" ]]; then
+    select_bean_flat
+    return
+  fi
+
+  # DFS: fetch full tree from root (5 levels deep covers any hierarchy)
+  local query
+  query=$(cat <<'GRAPHQL'
+{ bean(id: "ROOT_ID") { id type status priority tags blockedBy { id status } children { id type status priority tags blockedBy { id status } children { id type status priority tags blockedBy { id status } children { id type status priority tags blockedBy { id status } children { id type status priority tags blockedBy { id status } } } } } } }
+GRAPHQL
+)
+  query="${query//ROOT_ID/$ROOT_BEAN}"
+
+  local result
+  result=$(beans query "$query" --json 2>/dev/null)
+
+  if [[ -z "$result" ]] || [[ "$(echo "$result" | jq -r '.bean')" == "null" ]]; then
+    return
+  fi
+
+  # Walk depth-first:
+  #   - Skip completed/scrapped/draft
+  #   - Skip stuck (blocked/failed tags)
+  #   - Skip beans with incomplete blockers
+  #   - If bean has incomplete children, recurse into first child (sorted by status/priority)
+  #   - If bean is a leaf (or all children done), pick it
+  echo "$result" | jq -r '
+    def dfs:
+      if .status == "completed" or .status == "scrapped" or .status == "draft" then
+        empty
+      elif ((.tags // []) | any(. == "blocked" or . == "failed")) then
+        empty
+      elif ((.blockedBy // []) | length > 0) and ((.blockedBy // []) | any(.status != "completed" and .status != "scrapped")) then
+        empty
+      else
+        ((.children // []) | map(select(.status != "completed" and .status != "scrapped" and .status != "draft"))) as $ic |
+        if ($ic | length) > 0 then
+          $ic
+          | sort_by(
+              (if .status == "in-progress" then 0 else 1 end),
+              (if .priority == "critical" then 0
+               elif .priority == "high" then 1
+               elif .priority == "normal" then 2
+               elif .priority == "low" then 3
+               elif .priority == "deferred" then 4
+               else 2 end)
+            )
+          | .[0] | dfs
+        else
+          .id
+        end
+      end;
+    .bean | dfs
+  '
+}
+
+# Flat bean selection (original behavior, for --no-branch or no --root)
+select_bean_flat() {
   local query='{ beans(filter: { status: ["todo", "in-progress"] }) { id title type priority status tags blockedBy { status } children { status } } }'
   local result
   result=$(beans query "$query" --json 2>/dev/null)
 
-  # Filter out stuck beans (blocked/failed tags) and beans with incomplete blockers
-  # For epic/milestone: also require all children to be completed
-  # Prioritize in-progress over todo, then by priority
   echo "$result" | jq -r '
     .beans
     | map(select(.id != null))
     | map(select(
-        # Not stuck (no blocked/failed tags)
         ((.tags // []) | map(select(. == "blocked" or . == "failed")) | length == 0) and
-        # Not blocked by incomplete beans
         ((.blockedBy | length == 0) or
          (.blockedBy | all(.status == "completed" or .status == "scrapped"))) and
-        # For epic/milestone: all children must be complete
         (if .type == "epic" or .type == "milestone" then
            (.children | length == 0) or (.children | all(.status == "completed" or .status == "scrapped"))
          else true end)
@@ -467,11 +527,32 @@ ensure_ancestor_branches() {
 }
 
 # Commit any new/modified .beans/ files to the current branch before switching.
-# Bean files are metadata that must be visible from all branches.
+# Only commits substantive changes — skips timestamp-only diffs (updated_at)
+# to avoid noisy commits on every branch switch.
 commit_bean_files() {
-  local bean_files
-  bean_files=$(git status --porcelain .beans/ 2>/dev/null | head -1)
-  if [[ -n "$bean_files" ]]; then
+  local dominated=false
+
+  # New (untracked) bean files — always commit
+  local new_files
+  new_files=$(git status --porcelain .beans/ 2>/dev/null | grep '^?' || true)
+  if [[ -n "$new_files" ]]; then
+    dominated=true
+  fi
+
+  # Modified bean files — only if changes go beyond updated_at timestamps
+  if [[ "$dominated" == "false" ]]; then
+    local diff_lines
+    diff_lines=$(git diff .beans/ 2>/dev/null \
+      | grep '^[+-]' \
+      | grep -v '^[+-][+-][+-]' \
+      | grep -v 'updated_at' \
+      || true)
+    if [[ -n "$diff_lines" ]]; then
+      dominated=true
+    fi
+  fi
+
+  if [[ "$dominated" == "true" ]]; then
     log "Committing bean files to current branch before switching"
     git add .beans/ 2>/dev/null
     git commit --no-verify -m "chore: commit bean files before branch switch" 2>/dev/null || true
