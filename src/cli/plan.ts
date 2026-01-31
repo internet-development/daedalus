@@ -32,6 +32,7 @@ import {
   formatToolArgs,
 } from './output.js';
 import { createSpinner, createToolSpinner, type ToolSpinner } from './spinner.js';
+import { createMutableOutput } from './readline-output.js';
 import { processInputLine } from './multiline-input.js';
 import { selectSession } from './session-selector.js';
 import { handleCommand, isCommand, type CommandContext } from './commands.js';
@@ -130,10 +131,15 @@ export async function runPlan(options: PlanOptions): Promise<void> {
   }
 
   // 8. Load input history and create readline interface
+  //    Use a mutable output stream so we can mute readline's cursor
+  //    management during streaming/spinner output. This prevents
+  //    readline from interfering with \r-based in-place updates.
+  //    See bean daedalus-8b67.
   const inputHistory = await loadInputHistory();
+  const rlOutput = createMutableOutput();
   const rl = readline.createInterface({
     input: process.stdin,
-    output: process.stdout,
+    output: rlOutput.stream,
     history: inputHistory,
     historySize: 1000,
     removeHistoryDuplicates: true,
@@ -185,7 +191,7 @@ export async function runPlan(options: PlanOptions): Promise<void> {
   console.log();
 
   // 13. Main loop
-  await mainLoop(rl, ctx, initialPrompt, isCancelled, resetCancelled);
+  await mainLoop(rl, rlOutput, ctx, initialPrompt, isCancelled, resetCancelled);
 }
 
 // =============================================================================
@@ -194,6 +200,7 @@ export async function runPlan(options: PlanOptions): Promise<void> {
 
 async function mainLoop(
   rl: readline.Interface,
+  rlOutput: { mute: () => void; unmute: () => void },
   ctx: CommandContext,
   initialPrompt: string | null,
   isCancelled: () => boolean,
@@ -201,7 +208,7 @@ async function mainLoop(
 ): Promise<void> {
   // Send initial prompt if provided
   if (initialPrompt) {
-    await sendAndStream(initialPrompt, ctx, isCancelled, resetCancelled);
+    await sendAndStream(initialPrompt, ctx, rlOutput, isCancelled, resetCancelled);
   }
 
   // Interactive loop
@@ -229,7 +236,7 @@ async function mainLoop(
           return;
 
         case 'send':
-          await sendAndStream(result.message, ctx, isCancelled, resetCancelled);
+          await sendAndStream(result.message, ctx, rlOutput, isCancelled, resetCancelled);
           break;
 
         case 'update-history':
@@ -251,7 +258,7 @@ async function mainLoop(
       }
     } else {
       // Regular message
-      await sendAndStream(input, ctx, isCancelled, resetCancelled);
+      await sendAndStream(input, ctx, rlOutput, isCancelled, resetCancelled);
     }
   }
 }
@@ -263,6 +270,7 @@ async function mainLoop(
 async function sendAndStream(
   message: string,
   ctx: CommandContext,
+  rlOutput: { mute: () => void; unmute: () => void },
   isCancelled: () => boolean,
   resetCancelled: () => void
 ): Promise<void> {
@@ -273,6 +281,11 @@ async function sendAndStream(
     timestamp: Date.now(),
   });
   ctx.saveHistory();
+
+  // Mute readline output during streaming so its cursor management
+  // doesn't interfere with spinner \r-based in-place updates.
+  // See bean daedalus-8b67.
+  rlOutput.mute();
 
   // Add blank line after user input
   console.log();
@@ -450,6 +463,9 @@ async function sendAndStream(
     if (errorHandler) ctx.session.removeListener('error', errorHandler);
     // Reset cancelled state for next message
     resetCancelled();
+    // Unmute readline output so prompt/echoing works for next input.
+    // See bean daedalus-8b67.
+    rlOutput.unmute();
   }
 }
 
