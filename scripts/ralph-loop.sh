@@ -20,6 +20,8 @@ DRY_RUN=false
 ONCE=false
 SILENT=false
 SPECIFIC_BEAN=""
+BRANCH_ENABLED="${TALOS_BRANCH:-true}"
+DEFAULT_BRANCH="${TALOS_DEFAULT_BRANCH:-main}"
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
@@ -44,6 +46,10 @@ while [[ $# -gt 0 ]]; do
     SILENT=true
     shift
     ;;
+  --no-branch)
+    BRANCH_ENABLED=false
+    shift
+    ;;
   --help | -h)
     echo "Usage: ralph-loop.sh [bean-id] [options]"
     echo ""
@@ -53,11 +59,14 @@ while [[ $# -gt 0 ]]; do
     echo "  --dry-run          Show what would be selected, don't run"
     echo "  --once             Complete one bean then exit"
     echo "  --silent, -s       Suppress notifications"
+    echo "  --no-branch        Disable branch-per-bean (work on current branch)"
     echo ""
     echo "Environment:"
     echo "  TALOS_AGENT        Agent to use: opencode, claude, codex (default: opencode)"
-    echo "  TALOS_MODEL        Model to use (default: anthropic/claude-sonnet-4-5)
-  OPENCODE_AGENT     OpenCode agent to use (default: code)"
+    echo "  TALOS_MODEL        Model to use (default: anthropic/claude-sonnet-4-5)"
+    echo "  OPENCODE_AGENT     OpenCode agent to use (default: code)"
+    echo "  TALOS_BRANCH       Enable branch-per-bean (default: true)"
+    echo "  TALOS_DEFAULT_BRANCH  Default branch name (default: main)"
     exit 0
     ;;
   -*)
@@ -366,6 +375,160 @@ run_agent() {
   esac
 }
 
+# =============================================================================
+# Branch Management
+# =============================================================================
+
+# Get the branch name for a bean
+bean_branch() {
+  echo "bean/$1"
+}
+
+# Get the merge target for a bean (parent's branch or default branch)
+get_merge_target() {
+  local bean_id="$1"
+  local parent_id
+  parent_id=$(beans query "{ bean(id: \"$bean_id\") { parentId } }" --json 2>/dev/null | jq -r '.bean.parentId // empty')
+
+  if [[ -n "$parent_id" ]]; then
+    echo "bean/$parent_id"
+  else
+    echo "$DEFAULT_BRANCH"
+  fi
+}
+
+# Get the merge strategy for a bean type (merge or squash)
+get_merge_strategy() {
+  local bean_type="$1"
+  case "$bean_type" in
+    milestone|epic|feature) echo "merge" ;;
+    task|bug) echo "squash" ;;
+    *) echo "squash" ;;
+  esac
+}
+
+# Ensure ancestor branch chain exists (top-down)
+ensure_ancestor_branches() {
+  local bean_id="$1"
+
+  # Build ancestor chain by walking up parent IDs
+  local ancestors=()
+  local current_id="$bean_id"
+
+  while true; do
+    local parent_id
+    parent_id=$(beans query "{ bean(id: \"$current_id\") { parentId } }" --json 2>/dev/null | jq -r '.bean.parentId // empty')
+    [[ -z "$parent_id" ]] && break
+    ancestors=("$parent_id" "${ancestors[@]}")
+    current_id="$parent_id"
+  done
+
+  # Create branches top-down
+  for ancestor_id in "${ancestors[@]}"; do
+    local branch_name
+    branch_name=$(bean_branch "$ancestor_id")
+    if ! git rev-parse --verify "refs/heads/$branch_name" >/dev/null 2>&1; then
+      local base
+      base=$(get_merge_target "$ancestor_id")
+      log "Creating ancestor branch: $branch_name from $base"
+      git branch "$branch_name" "$base" 2>/dev/null || true
+    fi
+  done
+}
+
+# Create and checkout bean branch
+setup_bean_branch() {
+  local bean_id="$1"
+
+  [[ "$BRANCH_ENABLED" != "true" ]] && return 0
+
+  # Recover from interrupted git state
+  if [[ -f .git/MERGE_HEAD ]]; then
+    log_warn "Detected interrupted merge, aborting"
+    git merge --abort 2>/dev/null || true
+  fi
+
+  # Check for dirty working tree
+  if [[ -n $(git status --porcelain 2>/dev/null) ]]; then
+    log_warn "Dirty working tree, stashing changes"
+    git stash push -m "ralph-loop: auto-stash before branch switch" 2>/dev/null || true
+  fi
+
+  # Ensure ancestor branches exist
+  ensure_ancestor_branches "$bean_id"
+
+  local branch_name
+  branch_name=$(bean_branch "$bean_id")
+  local base
+  base=$(get_merge_target "$bean_id")
+
+  if git rev-parse --verify "refs/heads/$branch_name" >/dev/null 2>&1; then
+    log "Checking out existing branch: $branch_name"
+    git checkout "$branch_name" 2>/dev/null
+  else
+    log "Creating branch: $branch_name from $base"
+    git checkout -b "$branch_name" "$base" 2>/dev/null
+  fi
+}
+
+# Merge bean branch back to target on completion
+merge_bean_branch() {
+  local bean_id="$1"
+  local bean_type="$2"
+
+  [[ "$BRANCH_ENABLED" != "true" ]] && return 0
+
+  local branch_name
+  branch_name=$(bean_branch "$bean_id")
+  local target
+  target=$(get_merge_target "$bean_id")
+  local strategy
+  strategy=$(get_merge_strategy "$bean_type")
+
+  # Ensure we're on the bean branch
+  local current
+  current=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
+  if [[ "$current" != "$branch_name" ]]; then
+    log_warn "Not on bean branch ($current), skipping merge"
+    return 0
+  fi
+
+  # Check if there are any commits to merge
+  if git diff --quiet "$target..$branch_name" 2>/dev/null; then
+    log "No changes to merge for $bean_id"
+    git checkout "$target" 2>/dev/null
+    return 0
+  fi
+
+  log "Merging $branch_name into $target (strategy: $strategy)"
+  git checkout "$target" 2>/dev/null
+
+  if [[ "$strategy" == "squash" ]]; then
+    if git merge --squash "$branch_name" 2>/dev/null; then
+      # Commit the squashed changes
+      git commit --no-verify -m "chore: $bean_id completed" 2>/dev/null || true
+      log_success "Squash-merged $branch_name into $target"
+    else
+      log_error "Merge conflict, aborting"
+      git reset --hard HEAD 2>/dev/null || true
+      git checkout "$branch_name" 2>/dev/null
+      return 1
+    fi
+  else
+    if git merge --no-ff -m "Merge $branch_name" "$branch_name" 2>/dev/null; then
+      log_success "Merged $branch_name into $target"
+    else
+      log_error "Merge conflict, aborting"
+      git merge --abort 2>/dev/null || true
+      git checkout "$branch_name" 2>/dev/null
+      return 1
+    fi
+  fi
+
+  # Clean up branch
+  git branch -d "$branch_name" 2>/dev/null || true
+}
+
 # Fallback WIP commit if there are uncommitted changes
 fallback_commit() {
   local bean_id="$1"
@@ -399,6 +562,9 @@ work_on_bean() {
 
   # Mark as in-progress
   beans update "$bean_id" --status in-progress >/dev/null 2>&1 || true
+
+  # Set up bean branch
+  setup_bean_branch "$bean_id" || log_warn "Branch setup failed, continuing on current branch"
 
   while [[ $iteration -lt $MAX_ITERATIONS ]]; do
     iteration=$((iteration + 1))
@@ -457,6 +623,10 @@ work_on_bean() {
       local end_time duration
       end_time=$(date +%s)
       duration=$((end_time - start_time))
+
+      # Merge bean branch on completion
+      merge_bean_branch "$bean_id" "$bean_type" || log_warn "Branch merge failed"
+
       log_success "Bean completed: $bean_id (${iteration} iterations, ${duration}s)"
       notify_bean_complete "$bean_id"
       return 0
