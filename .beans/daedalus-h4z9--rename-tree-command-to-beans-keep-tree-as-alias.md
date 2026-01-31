@@ -1,11 +1,11 @@
 ---
 # daedalus-h4z9
 title: Rename /tree command to /beans (keep /tree as alias)
-status: in-progress
+status: completed
 type: task
 priority: normal
 created_at: 2026-01-30T07:37:37Z
-updated_at: 2026-01-31T06:45:32Z
+updated_at: 2026-01-31T06:49:52Z
 ---
 
 ## Summary
