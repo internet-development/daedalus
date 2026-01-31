@@ -1,11 +1,11 @@
 ---
 # daedalus-rbhm
 title: Mode select menu prints j/k characters to screen
-status: in-progress
+status: completed
 type: bug
 priority: normal
 created_at: 2026-01-30T07:34:51Z
-updated_at: 2026-01-31T06:29:05Z
+updated_at: 2026-01-31T06:35:32Z
 parent: daedalus-bmnc
 blocking:
     - daedalus-xjko
