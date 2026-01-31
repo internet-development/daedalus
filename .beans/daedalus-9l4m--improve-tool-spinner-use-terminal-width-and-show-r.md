@@ -1,11 +1,11 @@
 ---
 # daedalus-9l4m
 title: 'Improve tool spinner: use terminal width and show relative paths'
-status: in-progress
+status: completed
 type: task
 priority: normal
 created_at: 2026-01-30T08:05:22Z
-updated_at: 2026-01-31T06:22:35Z
+updated_at: 2026-01-31T06:28:47Z
 parent: daedalus-bmnc
 ---
 
