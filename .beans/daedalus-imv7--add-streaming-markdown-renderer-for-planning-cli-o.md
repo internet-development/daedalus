@@ -1,11 +1,11 @@
 ---
 # daedalus-imv7
 title: Add streaming markdown renderer for planning CLI output
-status: in-progress
+status: completed
 type: task
 priority: normal
 created_at: 2026-01-30T08:37:53Z
-updated_at: 2026-01-31T06:50:10Z
+updated_at: 2026-01-31T06:58:51Z
 parent: daedalus-bmnc
 ---
 
