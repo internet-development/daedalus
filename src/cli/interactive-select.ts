@@ -81,6 +81,12 @@ export async function interactiveSelect(
   };
 
   // Initial render
+  // Track total lines rendered so we can clear the menu on exit.
+  // Layout: blank + title + divider + N options + blank + instructions = N + 5
+  const headerLines = 3; // blank, title, divider
+  const instructionLines = 2; // blank line (from \n) + instruction text
+  const totalLines = headerLines + options.length + instructionLines;
+
   console.log();
   console.log(bold(title));
   console.log(formatDivider(40));
@@ -94,7 +100,22 @@ export async function interactiveSelect(
     }
     process.stdin.resume();
 
+    /** Erase the entire menu from the terminal and restore cursor. */
+    const clearMenu = () => {
+      // Cursor is at start of line after instructions (totalLines + 1).
+      // Move up to the first menu line (the blank line before the title).
+      process.stdout.write(CURSOR_UP(totalLines));
+      for (let i = 0; i < totalLines; i++) {
+        process.stdout.write(CLEAR_LINE + '\n');
+      }
+      // Move back up to where the menu started so caller output
+      // appears in the right place (no gap left behind).
+      process.stdout.write(CURSOR_UP(totalLines));
+      process.stdout.write(CURSOR_TO_START);
+    };
+
     const cleanup = () => {
+      clearMenu();
       process.stdout.write(SHOW_CURSOR);
       if (process.stdin.setRawMode) {
         process.stdin.setRawMode(false);
@@ -122,13 +143,11 @@ export async function interactiveSelect(
       // Enter
       else if (key === '\r' || key === '\n') {
         cleanup();
-        console.log(); // Extra newline after selection
         resolve(options[selectedIndex].value);
       }
       // q or Escape - exit
       else if (key === 'q' || key === '\x1b') {
         cleanup();
-        console.log();
         resolve(EXIT_SENTINEL);
       }
       // Ctrl+C - exit immediately
