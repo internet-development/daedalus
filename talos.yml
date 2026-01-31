@@ -6,10 +6,10 @@ agent:
   # Backend to use: claude, opencode, or codex
   backend: claude
   claude:
-    model: claude-sonnet-4-20250514
+    model: claude-opus-4-5
     # dangerously_skip_permissions: true
   # opencode:
-  #   model: anthropic/claude-sonnet-4-20250514
+  #   model: anthropic/claude-opus-4-5
   # codex:
   #   model: codex-mini-latest
 
@@ -42,7 +42,7 @@ planning_agent:
   # - opencode: OpenCode CLI (no API key needed, uses `opencode` CLI)
   provider: claude_code
   # Model for API-based providers (not used with claude_code/opencode)
-  model: claude-sonnet-4-20250514
+  model: claude-opus-4-5
   # Temperature for response generation
   temperature: 0.7
 
