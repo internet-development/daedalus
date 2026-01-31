@@ -1,11 +1,11 @@
 ---
 # daedalus-8jow
 title: Branch-per-bean with type-aware merge strategies
-status: in-progress
+status: completed
 type: feature
 priority: normal
 created_at: 2026-01-31T07:14:58Z
-updated_at: 2026-01-31T08:06:02Z
+updated_at: 2026-01-31T08:19:08Z
 ---
 
 ## Summary
