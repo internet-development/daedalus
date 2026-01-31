@@ -1,11 +1,11 @@
 ---
 # daedalus-fjs6
 title: Replace execSync with execFileSync for git commands
-status: in-progress
+status: completed
 type: task
 priority: normal
 created_at: 2026-01-31T07:55:49Z
-updated_at: 2026-01-31T08:19:27Z
+updated_at: 2026-01-31T08:21:19Z
 parent: daedalus-8jow
 blocking:
     - daedalus-x58b
