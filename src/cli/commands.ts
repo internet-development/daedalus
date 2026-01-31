@@ -14,6 +14,7 @@ import {
   formatStatus,
   formatError,
 } from './output.js';
+import { parseHistoryArgs, filterHistoryMessages, formatHistory } from './history.js';
 import { selectSession } from './session-selector.js';
 import { runTree } from './tree-simple.js';
 import { openEditor } from './editor.js';
@@ -44,6 +45,7 @@ export const COMMAND_NAMES: string[] = [
   '/new',
   '/clear',
   '/tree',
+  '/history',
   '/quit',
   // Aliases
   '/h',
@@ -56,6 +58,7 @@ export const COMMAND_NAMES: string[] = [
   '/n',
   '/c',
   '/t',
+  '/hist',
   '/q',
   '/exit',
 ];
@@ -171,6 +174,10 @@ export async function handleCommand(
     case 'tree':
     case 't':
       return await handleTree(args);
+
+    case 'history':
+    case 'hist':
+      return handleHistory(args, ctx);
 
     case 'quit':
     case 'q':
@@ -378,6 +385,21 @@ async function handleTree(args: string): Promise<CommandResult> {
     console.log(formatError(`Failed to run tree: ${message}`));
   }
 
+  return { type: 'continue' };
+}
+
+function handleHistory(args: string, ctx: CommandContext): CommandResult {
+  const session = getCurrentSession(ctx.history);
+  const messages = session?.messages ?? [];
+
+  if (messages.length === 0) {
+    console.log('\x1b[2mNo messages in this session.\x1b[0m');
+    return { type: 'continue' };
+  }
+
+  const { count } = parseHistoryArgs(args);
+  const filtered = filterHistoryMessages(messages);
+  console.log(formatHistory(filtered, count));
   return { type: 'continue' };
 }
 

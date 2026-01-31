@@ -131,6 +131,7 @@ export function formatHelp(): string {
     ['/sessions', 'List all sessions'],
     ['/new', 'Start a new session'],
     ['/clear', 'Clear current session'],
+    ['/history [n|all]', 'Show recent messages (default 10)'],
     ['/tree', 'Show beans tree'],
     ['/quit', 'Exit (AI names session)'],
   ];
