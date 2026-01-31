@@ -1,11 +1,11 @@
 ---
 # daedalus-imv7
 title: Add streaming markdown renderer for planning CLI output
-status: todo
+status: in-progress
 type: task
 priority: normal
 created_at: 2026-01-30T08:37:53Z
-updated_at: 2026-01-30T08:56:37Z
+updated_at: 2026-01-31T06:50:10Z
 parent: daedalus-bmnc
 ---
 
@@ -114,17 +114,52 @@ write(chunk):
 ## Checklist
 
 - [x] Confirmed all providers emit raw markdown (verified during planning)
-- [ ] Create `StreamingMarkdownRenderer` class in `src/cli/markdown-renderer.ts`
-- [ ] Implement line buffering with `write()`, `flush()`, `reset()`
-- [ ] Implement inline transforms: bold, italic, inline code
-- [ ] Implement heading rendering with color and bold
-- [ ] Implement checklist rendering (`☐` / `☑`)
-- [ ] Implement bullet list rendering (`•`)
-- [ ] Implement horizontal rule rendering
-- [ ] Implement code block state tracking and rendering
-- [ ] Implement blockquote rendering
-- [ ] Integrate into `src/cli/plan.ts` textHandler
-- [ ] Add `flush()` calls on done and cancel
-- [ ] Add `reset()` call at start of each message
-- [ ] Write tests for each rendering rule
-- [ ] Test with real planning session output
+- [x] Create `StreamingMarkdownRenderer` class in `src/cli/markdown-renderer.ts`
+- [x] Implement line buffering with `write()`, `flush()`, `reset()`
+- [x] Implement inline transforms: bold, italic, inline code
+- [x] Implement heading rendering with color and bold
+- [x] Implement checklist rendering (`☐` / `☑`)
+- [x] Implement bullet list rendering (`•`)
+- [x] Implement horizontal rule rendering
+- [x] Implement code block state tracking and rendering
+- [x] Implement blockquote rendering
+- [x] Integrate into `src/cli/plan.ts` textHandler
+- [x] Add `flush()` calls on done and cancel
+- [x] Add `reset()` call at start of each message
+- [x] Write tests for each rendering rule
+- [x] Test with real planning session output
+
+## Changelog
+
+### Implemented
+- Created `StreamingMarkdownRenderer` class with line-buffered markdown-to-ANSI rendering
+- Implemented all Phase 1 rendering rules: bold, italic, inline code, headings (h1-h6 with per-level colors), checklists (☐/☑), bullet lists (•), numbered lists, horizontal rules, code blocks (with language labels), and blockquotes
+- Line buffering accumulates tokens until `\n`, then regex-transforms complete lines — avoids partial-token issues during streaming
+- Code block state tracking prevents inline transforms inside fenced code blocks
+- Integrated renderer into `sendAndStream()` in plan.ts: `renderer.write()` replaces `process.stdout.write()`, with `flush()` on done/cancel and `reset()` at message start
+- 53 tests covering all rendering rules, streaming simulation, and edge cases
+
+### Files Modified
+- `src/cli/markdown-renderer.ts` — NEW: StreamingMarkdownRenderer class
+- `src/cli/markdown-renderer.test.ts` — NEW: 53 tests for all rendering rules
+- `src/cli/plan.ts` — Integrated renderer into textHandler, added flush/reset calls
+
+### Deviations from Spec
+- Italic uses ANSI italic (`\x1b[3m`) instead of dim — italic is the semantically correct choice and supported by modern terminals
+- Horizontal rule uses box-drawing `─` character instead of ASCII `-` — matches existing `formatDivider()` in output.ts for visual consistency
+- Heading colors vary by level (h1=magenta, h2=cyan, h3=yellow, h4=green) — spec said "colored" without specifying, this adds visual hierarchy
+- Code fence headers use `── lang ──` format instead of just the language name — provides clearer visual boundary
+
+### Decisions Made
+- Used `\x1b[48;5;236m` (256-color dark gray background) for inline code — provides subtle contrast without being distracting
+- Inline transforms processed in order: code first (to protect contents), then bold+italic, bold, italic — prevents nested marker conflicts
+- Underscore italic uses word-boundary lookbehind/ahead to avoid matching `snake_case` identifiers
+- `renderer.reset()` called at start of `sendAndStream()` rather than constructor — allows reuse across messages
+
+### Known Limitations
+- No nested list support (Phase 2 per spec)
+- No table rendering (Phase 2 per spec)
+- No link rendering (Phase 2 per spec)
+- No syntax highlighting in code blocks (Phase 2, would require dependency)
+- Nested blockquotes not supported (Phase 2 per spec)
+- `***bold italic***` renders with bold+italic but nested `**bold *italic* bold**` may not render perfectly — spec says "handle gracefully, don't need to be perfect"
