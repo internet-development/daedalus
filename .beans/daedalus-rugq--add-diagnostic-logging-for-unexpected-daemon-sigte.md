@@ -1,13 +1,13 @@
 ---
 # daedalus-rugq
 title: Add diagnostic logging for unexpected daemon SIGTERM
-status: in-progress
+status: completed
 type: task
 priority: high
 tags:
     - failed
 created_at: 2026-01-31T04:56:41Z
-updated_at: 2026-01-31T05:51:35Z
+updated_at: 2026-01-31T05:52:49Z
 ---
 
 ## Context
