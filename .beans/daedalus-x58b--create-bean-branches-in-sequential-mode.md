@@ -1,11 +1,11 @@
 ---
 # daedalus-x58b
 title: Create bean branches in sequential mode
-status: todo
+status: in-progress
 type: task
 priority: normal
 created_at: 2026-01-31T07:15:39Z
-updated_at: 2026-01-31T07:17:04Z
+updated_at: 2026-01-31T08:24:29Z
 parent: daedalus-8jow
 blocking:
     - daedalus-xf7g
@@ -205,20 +205,20 @@ private recoverGitState(): void {
 
 ## Checklist
 
-- [ ] Add `branchConfig: BranchConfig` to scheduler config interface
-- [ ] Pass `config.branch` from talos.ts to scheduler
-- [ ] Add `ensureBranch()` method (idempotent, uses `execFileSync`)
-- [ ] Add `ensureAncestorBranches()` method (walks parent chain, creates top-down)
-- [ ] Update `markInProgress()` to create hierarchical branches in sequential mode
-- [ ] Update `markBeanInProgress()` to create hierarchical branches in sequential mode
-- [ ] Update `createWorktree()` to accept a base branch parameter for parallel mode
-- [ ] Define `BeanExecutionContext` interface (`branchName`, `baseBranch`, `worktreePath`)
-- [ ] Update `bean-ready` event to emit `BeanExecutionContext`
-- [ ] Update talos.ts event handler to forward context to completion handler
-- [ ] Add `assertCleanWorkingTree()` check before branch creation
-- [ ] Add `recoverGitState()` to talos.ts startup (abort MERGE_HEAD/REBASE_HEAD)
-- [ ] Handle edge case: branch already exists (idempotent)
-- [ ] Handle edge case: parent bean not found (fall back to default_branch)
+- [x] Add `branchConfig: BranchConfig` to scheduler config interface
+- [x] Pass `config.branch` from talos.ts to scheduler
+- [x] Add `ensureBranch()` method (idempotent, uses `execFileSync`)
+- [x] Add `ensureAncestorBranches()` method (walks parent chain, creates top-down)
+- [x] Update `markInProgress()` to create hierarchical branches in sequential mode
+- [x] Update `markBeanInProgress()` to create hierarchical branches in sequential mode
+- [x] Update `createWorktree()` to accept a base branch parameter for parallel mode
+- [x] Define `BeanExecutionContext` interface (`branchName`, `baseBranch`, `worktreePath`)
+- [x] Update `bean-ready` event to emit `BeanExecutionContext`
+- [x] Update talos.ts event handler to forward context to completion handler
+- [x] Add `assertCleanWorkingTree()` check before branch creation
+- [x] Add `recoverGitState()` to talos.ts startup (abort MERGE_HEAD/REBASE_HEAD)
+- [x] Handle edge case: branch already exists (idempotent)
+- [x] Handle edge case: parent bean not found (fall back to default_branch)
 
 ## Testing
 
@@ -230,3 +230,38 @@ private recoverGitState(): void {
 - The `BeanExecutionContext` interface is just a type — no runtime behavior to test
 
 If integration tests are desired later, they should be a separate task with proper git repo fixtures (like `beans-client.integration.test.ts` uses real `beans` CLI).
+
+## Changelog
+
+### Implemented
+- Added `branchConfig?: BranchConfig` to `SchedulerConfig` interface
+- Passed `config.branch` from `talos.ts` to scheduler constructor
+- Added `BeanExecutionContext` interface with `worktreePath`, `branchName`, `baseBranch`
+- Added `ensureBranch()` — idempotent branch creation using centralized `git.ts` module
+- Added `ensureAncestorBranches()` — walks parent chain, creates branches top-down
+- Added `assertCleanWorkingTree()` — prevents dirty state from leaking into new branches
+- Updated `markInProgress()` and `markBeanInProgress()` to create hierarchical branches in sequential mode (checkout) and parallel mode (worktree from parent branch)
+- Updated `createWorktree()` to accept optional `baseBranch` parameter
+- Updated `bean-ready` and `bean:in-progress` events to emit `BeanExecutionContext` instead of bare `worktreePath`
+- Updated `talos.ts` `wireSchedulerEvents` to destructure `BeanExecutionContext`
+- Added `recoverGitState()` to `talos.ts` startup — aborts in-progress merge/rebase from previous crash
+
+### Files Modified
+- `src/talos/scheduler.ts` — Added `BranchConfig` import, `BeanExecutionContext` interface, `ensureBranch()`, `ensureAncestorBranches()`, `assertCleanWorkingTree()`, updated `markInProgress()`, `markBeanInProgress()`, `createWorktree()`, `pollForReady()`, and event signatures
+- `src/talos/talos.ts` — Added git imports, passed `branchConfig` to scheduler, updated `wireSchedulerEvents` to use `BeanExecutionContext`, added `recoverGitState()` called on startup
+
+### Deviations from Spec
+- Used centralized `git.ts` module functions (`branchExists`, `createBranch`, `checkoutBranch`, `isWorkingTreeDirty`) instead of raw `execFileSync` calls as shown in the spec pseudocode — this is consistent with the existing codebase pattern established by daedalus-fjs6
+- `recoverGitState()` uses `console.warn` instead of a logger since it runs very early in startup — the logger may not be fully initialized yet
+- `markInProgress()` and `markBeanInProgress()` return `BeanExecutionContext` instead of `string | undefined` — this is a breaking change to the return type but aligns with the new event signature
+
+### Decisions Made
+- Reused existing `git.ts` functions rather than duplicating `execFileSync` calls — keeps all git operations centralized and shell-injection safe
+- Made `branchConfig` optional in `SchedulerConfig` (using `?`) so existing code without branch config continues to work unchanged
+- Error handling in branch/worktree creation re-enqueues the bean for retry, matching existing worktree error handling pattern
+- `createWorktree()` checks `branchExists()` first to handle the case where a branch was created by `ensureAncestorBranches()` but worktree doesn't exist yet
+
+### Known Limitations
+- No unit tests (per spec — git operations require real repo fixtures)
+- `recoverGitState()` only handles MERGE_HEAD and REBASE_HEAD; other git states (CHERRY_PICK_HEAD, etc.) are not recovered
+- The completion handler still receives `worktreePath` as a string, not the full `BeanExecutionContext` — the context forwarding to completion handler is done via the existing `RunningBean.worktreePath` field
