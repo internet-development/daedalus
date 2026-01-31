@@ -407,6 +407,36 @@ get_merge_strategy() {
   esac
 }
 
+# Extract changelog section from a bean's body
+extract_changelog() {
+  local bean_id="$1"
+  beans query "{ bean(id: \"$bean_id\") { body } }" --json 2>/dev/null \
+    | jq -r ".bean.body" \
+    | sed -n "/^## Changelog/,/^## [^C]/p" \
+    | sed "1d" \
+    | sed "/^## /d"
+}
+
+# Format a squash commit message with conventional commit prefix
+format_squash_commit() {
+  local bean_id="$1" bean_type="$2" bean_title="$3"
+  local type_prefix="chore"
+  case "$bean_type" in
+    feature) type_prefix="feat" ;;
+    bug) type_prefix="fix" ;;
+    task) type_prefix="chore" ;;
+  esac
+
+  local changelog
+  changelog=$(extract_changelog "$bean_id")
+
+  if [[ -n "$changelog" ]]; then
+    printf "%s: %s\n\n%s\n\nBean: %s" "$type_prefix" "$bean_title" "$changelog" "$bean_id"
+  else
+    printf "%s: %s\n\nBean: %s" "$type_prefix" "$bean_title" "$bean_id"
+  fi
+}
+
 # Ensure ancestor branch chain exists (top-down)
 ensure_ancestor_branches() {
   local bean_id="$1"
@@ -475,6 +505,7 @@ setup_bean_branch() {
 merge_bean_branch() {
   local bean_id="$1"
   local bean_type="$2"
+  local bean_title="${3:-}"
 
   [[ "$BRANCH_ENABLED" != "true" ]] && return 0
 
@@ -503,30 +534,34 @@ merge_bean_branch() {
   log "Merging $branch_name into $target (strategy: $strategy)"
   git checkout "$target" 2>/dev/null
 
-  if [[ "$strategy" == "squash" ]]; then
-    if git merge --squash "$branch_name" 2>/dev/null; then
-      # Commit the squashed changes
-      git commit --no-verify -m "chore: $bean_id completed" 2>/dev/null || true
-      log_success "Squash-merged $branch_name into $target"
-    else
-      log_error "Merge conflict, aborting"
-      git reset --hard HEAD 2>/dev/null || true
-      git checkout "$branch_name" 2>/dev/null
-      return 1
-    fi
-  else
-    if git merge --no-ff -m "Merge $branch_name" "$branch_name" 2>/dev/null; then
-      log_success "Merged $branch_name into $target"
-    else
-      log_error "Merge conflict, aborting"
-      git merge --abort 2>/dev/null || true
-      git checkout "$branch_name" 2>/dev/null
-      return 1
-    fi
-  fi
+  case "$strategy" in
+    squash)
+      if git merge --squash "$branch_name" 2>/dev/null; then
+        local commit_msg
+        commit_msg=$(format_squash_commit "$bean_id" "$bean_type" "$bean_title")
+        git commit --no-verify -m "$commit_msg" 2>/dev/null || true
+        log_success "Squash-merged $branch_name into $target"
+      else
+        log_error "Merge conflict, aborting"
+        git reset --hard HEAD 2>/dev/null || true
+        git checkout "$branch_name" 2>/dev/null
+        return 1
+      fi
+      ;;
+    merge)
+      if git merge --no-ff "$branch_name" -m "merge: ${bean_type}/${bean_id} - ${bean_title}" 2>/dev/null; then
+        log_success "Merged $branch_name into $target"
+      else
+        log_error "Merge conflict, aborting"
+        git merge --abort 2>/dev/null || true
+        git checkout "$branch_name" 2>/dev/null
+        return 1
+      fi
+      ;;
+  esac
 
-  # Clean up branch
-  git branch -d "$branch_name" 2>/dev/null || true
+  # Delete branch after successful merge
+  git branch -D "$branch_name" 2>/dev/null || true
 }
 
 # Fallback WIP commit if there are uncommitted changes
@@ -550,9 +585,11 @@ work_on_bean() {
   local start_time
   start_time=$(date +%s)
 
-  # Check bean type for mode
-  local bean_type
-  bean_type=$(beans query "{ bean(id: \"$bean_id\") { type } }" --json 2>/dev/null | jq -r '.bean.type')
+  # Check bean type and title for mode and merge messages
+  local bean_info bean_type bean_title
+  bean_info=$(beans query "{ bean(id: \"$bean_id\") { type title } }" --json 2>/dev/null)
+  bean_type=$(echo "$bean_info" | jq -r '.bean.type')
+  bean_title=$(echo "$bean_info" | jq -r '.bean.title')
 
   if is_review_mode "$bean_type"; then
     log "Reviewing ${bean_type}: $bean_id"
@@ -576,6 +613,16 @@ work_on_bean() {
 
     if [[ -z "$bean_json" ]] || [[ "$(echo "$bean_json" | jq -r '.bean')" == "null" ]]; then
       log_error "Failed to fetch bean: $bean_id"
+
+      # Leave branch for inspection, checkout parent's branch
+      if [[ "$BRANCH_ENABLED" == "true" ]]; then
+        local branch_name base_branch
+        branch_name=$(bean_branch "$bean_id")
+        base_branch=$(get_merge_target "$bean_id")
+        log_warn "Leaving branch $branch_name for inspection"
+        git checkout "$base_branch" 2>/dev/null || true
+      fi
+
       return 1
     fi
 
@@ -601,6 +648,16 @@ work_on_bean() {
       
       if [[ $consecutive_failures -ge $max_consecutive_failures ]]; then
         log_error "Too many consecutive failures, stopping"
+
+        # Leave branch for inspection, checkout parent's branch
+        if [[ "$BRANCH_ENABLED" == "true" ]]; then
+          local branch_name base_branch
+          branch_name=$(bean_branch "$bean_id")
+          base_branch=$(get_merge_target "$bean_id")
+          log_warn "Leaving branch $branch_name for inspection"
+          git checkout "$base_branch" 2>/dev/null || true
+        fi
+
         return 1
       fi
       
@@ -625,7 +682,7 @@ work_on_bean() {
       duration=$((end_time - start_time))
 
       # Merge bean branch on completion
-      merge_bean_branch "$bean_id" "$bean_type" || log_warn "Branch merge failed"
+      merge_bean_branch "$bean_id" "$bean_type" "$bean_title" || log_warn "Branch merge failed"
 
       log_success "Bean completed: $bean_id (${iteration} iterations, ${duration}s)"
       notify_bean_complete "$bean_id"
@@ -637,6 +694,16 @@ work_on_bean() {
       end_time=$(date +%s)
       duration=$((end_time - start_time))
       log_warn "Bean is stuck (blocked/failed): $bean_id (${iteration} iterations, ${duration}s)"
+
+      # Leave branch for inspection, checkout parent's branch
+      if [[ "$BRANCH_ENABLED" == "true" ]]; then
+        local branch_name base_branch
+        branch_name=$(bean_branch "$bean_id")
+        base_branch=$(get_merge_target "$bean_id")
+        log_warn "Leaving branch $branch_name for inspection"
+        git checkout "$base_branch" 2>/dev/null || true
+      fi
+
       notify_error "Bean stuck: $bean_id"
       return 0
     fi
@@ -649,6 +716,16 @@ work_on_bean() {
   end_time=$(date +%s)
   duration=$((end_time - start_time))
   log_warn "Max iterations reached for $bean_id (${iteration} iterations, ${duration}s)"
+
+  # Leave branch for inspection, checkout parent's branch
+  if [[ "$BRANCH_ENABLED" == "true" ]]; then
+    local branch_name base_branch
+    branch_name=$(bean_branch "$bean_id")
+    base_branch=$(get_merge_target "$bean_id")
+    log_warn "Leaving branch $branch_name for inspection"
+    git checkout "$base_branch" 2>/dev/null || true
+  fi
+
   return 0
 }
 
