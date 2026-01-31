@@ -466,6 +466,18 @@ ensure_ancestor_branches() {
   done
 }
 
+# Commit any new/modified .beans/ files to the current branch before switching.
+# Bean files are metadata that must be visible from all branches.
+commit_bean_files() {
+  local bean_files
+  bean_files=$(git status --porcelain .beans/ 2>/dev/null | head -1)
+  if [[ -n "$bean_files" ]]; then
+    log "Committing bean files to current branch before switching"
+    git add .beans/ 2>/dev/null
+    git commit --no-verify -m "chore: commit bean files before branch switch" 2>/dev/null || true
+  fi
+}
+
 # Create and checkout bean branch
 setup_bean_branch() {
   local bean_id="$1"
@@ -478,7 +490,10 @@ setup_bean_branch() {
     git merge --abort 2>/dev/null || true
   fi
 
-  # Check for dirty working tree
+  # Commit bean files first so they're visible from all branches
+  commit_bean_files
+
+  # Check for dirty working tree (after committing bean files)
   if [[ -n $(git status --porcelain 2>/dev/null) ]]; then
     log_warn "Dirty working tree, stashing changes"
     git stash push -m "ralph-loop: auto-stash before branch switch" 2>/dev/null || true

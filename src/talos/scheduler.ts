@@ -24,6 +24,7 @@ import {
   createBranch,
   checkoutBranch,
   isWorkingTreeDirty,
+  git,
 } from './git.js';
 
 // Create child logger for scheduler component
@@ -650,11 +651,34 @@ export class Scheduler extends EventEmitter {
   }
 
   /**
+   * Commit any new/modified .beans/ files to the current branch before switching.
+   * Bean files are metadata that must be visible from all branches — if they're
+   * left uncommitted, switching branches makes them invisible to the beans CLI.
+   */
+  private commitBeanFiles(): void {
+    try {
+      const status = git(['status', '--porcelain', '.beans/']);
+      if (status.length > 0) {
+        log.info('Committing bean files to current branch before switching');
+        git(['add', '.beans/']);
+        git(['commit', '--no-verify', '-m', 'chore: commit bean files before branch switch']);
+      }
+    } catch {
+      // Non-fatal — if commit fails, assertCleanWorkingTree will catch it
+      log.debug('No bean files to commit or commit failed');
+    }
+  }
+
+  /**
    * Assert the working tree is clean before branch operations.
-   * Prevents silently carrying uncommitted changes to a new branch.
-   * @throws Error if working tree has uncommitted changes
+   * First commits any .beans/ files (metadata that should be on every branch),
+   * then checks for remaining dirty state.
+   * @throws Error if working tree has uncommitted changes after bean file commit
    */
   private assertCleanWorkingTree(): void {
+    // Always commit bean files first — they're metadata, not implementation
+    this.commitBeanFiles();
+
     if (isWorkingTreeDirty()) {
       throw new Error(
         'Cannot create branch: working tree has uncommitted changes'
