@@ -63,6 +63,8 @@ export interface RunningBean {
   bean: Bean;
   startedAt: number;
   worktreePath?: string;
+  /** Full execution context from scheduler (branch info, worktree path) */
+  context: BeanExecutionContext;
 }
 
 /**
@@ -497,11 +499,12 @@ export class Talos extends EventEmitter {
         return;
       }
 
-      // Track in-progress
+      // Track in-progress with full execution context
       this.inProgress.set(bean.id, {
         bean,
         startedAt: Date.now(),
         worktreePath: context.worktreePath,
+        context,
       });
 
       // Clear previous output file
@@ -547,15 +550,15 @@ export class Talos extends EventEmitter {
         return;
       }
 
-      const { bean, worktreePath } = runningBean;
+      const { bean, context } = runningBean;
       const outputPath = this.getOutputPath(bean.id);
 
-      // Handle completion
+      // Handle completion with full execution context
       const completionResult = await this.completionHandler.handleCompletion(
         bean,
         result.code,
         outputPath,
-        worktreePath
+        context
       );
 
       // Update internal state based on outcome
@@ -566,7 +569,7 @@ export class Talos extends EventEmitter {
     this.runner.on('error', async (error: Error) => {
       const runningBean = this.findRunningBean();
       if (runningBean) {
-        const { bean, worktreePath } = runningBean;
+        const { bean, context } = runningBean;
 
         // Write error to output file so crash bean has context
         this.appendOutput(bean.id, `Spawn error: ${error.message}\n`);
@@ -579,7 +582,7 @@ export class Talos extends EventEmitter {
           bean,
           -1,
           this.getOutputPath(bean.id),
-          worktreePath
+          context
         );
 
         this.handleCompletionResult(bean, completionResult);

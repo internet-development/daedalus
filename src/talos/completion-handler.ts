@@ -3,6 +3,8 @@
  *
  * Handles post-execution tasks after an agent completes work on a bean:
  * - Detecting completion type (success, blocked, failed/crashed)
+ * - Type-aware merge strategies (squash for tasks/bugs, merge for features/epics)
+ * - Hierarchical branch merging (into parent's branch, not main)
  * - Committing staged changes (sequential mode or worktree merge)
  * - Updating bean status
  * - Creating blocker beans when needed
@@ -10,12 +12,13 @@
  */
 import { EventEmitter } from 'events';
 import { readFile } from 'fs/promises';
-import type { TalosConfig, CommitStyleConfig } from '../config/index.js';
+import type { TalosConfig, MergeStrategy } from '../config/index.js';
 import {
-  beanTypeToCommitType,
   extractScope,
   formatCommitMessage,
+  getMergeStrategy,
 } from '../config/index.js';
+import { formatSquashCommitMessage } from '../utils/changelog.js';
 import {
   type Bean,
   getBean,
@@ -24,6 +27,7 @@ import {
   createBean,
   listBeans,
 } from './beans-client.js';
+import type { BeanExecutionContext } from './scheduler.js';
 import {
   git,
   hasStagedChanges,
@@ -34,6 +38,7 @@ import {
   abortMerge,
   deleteBranch,
   removeWorktree,
+  checkoutBranch,
 } from './git.js';
 
 // =============================================================================
@@ -60,6 +65,7 @@ export interface CompletionHandlerEvents {
   'bean-completed': (data: { beanId: string; commitSha?: string }) => void;
   'bean-blocked': (data: { beanId: string; blockerBeanId?: string }) => void;
   'bean-failed': (data: { beanId: string; exitCode: number; error: string }) => void;
+  'branch:merge-failed': (data: { beanId: string; branchName: string; baseBranch: string }) => void;
   error: (error: Error) => void;
 }
 
@@ -73,27 +79,6 @@ export interface CompletionHandlerEvents {
 function pushToRemote(cwd?: string): void {
   const branch = getCurrentBranch(cwd);
   git(['push', 'origin', branch], cwd);
-}
-
-/**
- * Merge a branch into the current branch (legacy ff-only + fallback)
- * @param branch Branch to merge
- * @param cwd Working directory
- * @returns true if merge succeeded
- */
-function mergeBranch(branch: string, cwd?: string): boolean {
-  try {
-    git(['merge', '--ff-only', branch], cwd);
-    return true;
-  } catch {
-    // Non-fast-forward, try regular merge
-    try {
-      git(['merge', '--no-edit', branch], cwd);
-      return true;
-    } catch {
-      return false;
-    }
-  }
 }
 
 // =============================================================================
@@ -140,13 +125,17 @@ export class CompletionHandler extends EventEmitter {
   }
 
   /**
-   * Handle completion based on exit code and bean state
+   * Handle completion based on exit code and bean state.
+   * @param bean The bean that was being worked on
+   * @param exitCode Agent exit code (0 = success)
+   * @param outputPath Path to agent output file
+   * @param context Execution context from scheduler (branch info, worktree path)
    */
   async handleCompletion(
     bean: Bean,
     exitCode: number,
     outputPath: string,
-    worktreePath?: string
+    context: BeanExecutionContext = {}
   ): Promise<CompletionResult> {
     // Re-fetch bean to check for tags added by agent
     const currentBean = await getBean(bean.id);
@@ -159,16 +148,16 @@ export class CompletionHandler extends EventEmitter {
     // Determine completion type
     if (exitCode !== 0) {
       // Agent crashed or errored
-      return this.handleFailure(currentBean, exitCode, outputPath, worktreePath);
+      return this.handleFailure(currentBean, exitCode, outputPath, context.worktreePath);
     }
 
     // Check if agent added 'blocked' tag
     if (currentBean.tags.includes('blocked')) {
-      return this.handleBlocked(currentBean, worktreePath);
+      return this.handleBlocked(currentBean, context.worktreePath);
     }
 
     // Success!
-    return this.handleSuccess(currentBean, worktreePath);
+    return this.handleSuccess(currentBean, context);
   }
 
   // ===========================================================================
@@ -180,39 +169,33 @@ export class CompletionHandler extends EventEmitter {
    */
   private async handleSuccess(
     bean: Bean,
-    worktreePath?: string
+    context: BeanExecutionContext
   ): Promise<CompletionResult> {
     const result: CompletionResult = { outcome: 'completed' };
-    const isParallel = worktreePath !== undefined;
-    const cwd = worktreePath;
 
     try {
       // Update bean status to completed
       await updateBeanStatus(bean.id, 'completed');
 
-      // Handle git commit if configured and there are staged changes
+      // Handle git operations if configured
       if (this.config.on_complete.auto_commit && !this.options.dryRun) {
-        if (hasStagedChanges(cwd)) {
-          // Build commit message
+        if (context.branchName && context.baseBranch) {
+          // Branch mode: merge into parent branch using type-aware strategy
+          result.commitSha = await this.mergeBeanBranch(bean, context);
+        } else if (hasStagedChanges(context.worktreePath)) {
+          // Legacy mode (no branching): commit directly
           const scope = await extractScope(bean, getBean);
           const message = formatCommitMessage(
             bean,
             scope,
             this.config.on_complete.commit_style
           );
+          result.commitSha = commitChanges(message, context.worktreePath);
+        }
 
-          if (isParallel) {
-            // Parallel mode: commit in worktree, merge to main
-            result.commitSha = await this.commitAndMerge(message, worktreePath!);
-          } else {
-            // Sequential mode: commit directly
-            result.commitSha = commitChanges(message, cwd);
-          }
-
-          // Push if configured
-          if (this.config.on_complete.push) {
-            pushToRemote();
-          }
+        // Push if configured
+        if (this.config.on_complete.push) {
+          pushToRemote(context.worktreePath);
         }
       }
 
@@ -230,40 +213,137 @@ export class CompletionHandler extends EventEmitter {
     }
   }
 
+  // ===========================================================================
+  // Type-Aware Merge
+  // ===========================================================================
+
   /**
-   * Commit in worktree and merge to main branch
+   * Merge a branch using the specified strategy.
+   *
+   * - `squash`: `git merge --squash` + `git commit -m <message>` (single clean commit)
+   * - `merge`: `git merge --no-ff -m <message>` (preserves commit history)
+   *
+   * @returns The resulting commit SHA
    */
-  private async commitAndMerge(
-    message: string,
-    worktreePath: string
+  private mergeByStrategy(
+    branchName: string,
+    strategy: MergeStrategy,
+    commitMessage: string,
+    cwd?: string
+  ): string {
+    switch (strategy) {
+      case 'squash':
+        // Squash merge stages changes but does NOT commit
+        mergeSquash(branchName, cwd);
+        // Commit with our formatted message (includes changelog)
+        commitChanges(commitMessage, cwd);
+        return git(['rev-parse', 'HEAD'], cwd);
+
+      case 'merge':
+        // Merge commit preserves full history
+        mergeNoFf(branchName, commitMessage, cwd);
+        return git(['rev-parse', 'HEAD'], cwd);
+    }
+  }
+
+  /**
+   * Unified merge method for both sequential and parallel modes.
+   *
+   * Steps:
+   * 1. Commit any remaining staged changes on the bean branch
+   * 2. Checkout the merge target (baseBranch from context)
+   * 3. Merge using type-aware strategy (squash or merge)
+   * 4. Handle merge conflicts (abort + emit event + mark blocked)
+   * 5. Clean up branch and worktree
+   *
+   * @returns The resulting commit SHA on the target branch
+   */
+  private async mergeBeanBranch(
+    bean: Bean,
+    context: BeanExecutionContext
   ): Promise<string> {
-    // Get the worktree branch name
-    const worktreeBranch = getCurrentBranch(worktreePath);
-    
-    // Commit in worktree
-    const commitSha = commitChanges(message, worktreePath);
-    
-    // Switch to main working directory and merge
-    const mainBranch = getCurrentBranch();
-    
-    // Merge worktree branch to main
-    const merged = mergeBranch(worktreeBranch);
-    if (!merged) {
+    const { branchName, baseBranch, worktreePath } = context;
+    if (!branchName || !baseBranch) {
+      throw new Error('Branch context missing for merge');
+    }
+
+    const strategy = getMergeStrategy(bean.type, this.config.branch);
+    const cwd = worktreePath;
+
+    // Commit any remaining staged changes on the bean branch
+    if (hasStagedChanges(cwd)) {
+      const scope = await extractScope(bean, getBean);
+      const message = formatCommitMessage(
+        bean,
+        scope,
+        this.config.on_complete.commit_style
+      );
+      commitChanges(message, cwd);
+    }
+
+    // Checkout the merge target (parent's branch or default_branch)
+    checkoutBranch(baseBranch, cwd);
+
+    // Build commit message based on strategy
+    const scope = await extractScope(bean, getBean);
+    const commitMessage =
+      strategy === 'squash'
+        ? formatSquashCommitMessage(
+            bean,
+            scope,
+            this.config.on_complete.commit_style
+          )
+        : formatCommitMessage(
+            bean,
+            scope,
+            this.config.on_complete.commit_style
+          );
+
+    // Merge with conflict handling
+    try {
+      const sha = this.mergeByStrategy(branchName, strategy, commitMessage, cwd);
+
+      // Clean up branch
+      if (this.config.branch.delete_after_merge) {
+        try {
+          deleteBranch(branchName, cwd);
+        } catch {
+          // Non-fatal: branch may already be deleted or is checked out elsewhere
+        }
+      }
+
+      // Clean up worktree (parallel mode)
+      if (worktreePath) {
+        try {
+          removeWorktree(worktreePath);
+        } catch {
+          // Non-fatal: worktree cleanup failure
+        }
+      }
+
+      return sha;
+    } catch (error) {
+      // Merge failed (likely conflict) — abort and mark blocked
+      try {
+        abortMerge(cwd);
+      } catch {
+        /* already clean */
+      }
+
+      // Mark bean as blocked instead of completed
+      await updateBeanStatus(bean.id, 'in-progress');
+      await updateBeanTags(bean.id, ['blocked']);
+
+      this.emit('branch:merge-failed', {
+        beanId: bean.id,
+        branchName,
+        baseBranch,
+      });
+
       throw new Error(
-        `Failed to merge ${worktreeBranch} into ${mainBranch}. Manual resolution required.`
+        `Merge conflict: ${branchName} into ${baseBranch}. Bean marked as blocked.`
       );
     }
-
-    // Clean up worktree and branch
-    try {
-      removeWorktree(worktreePath);
-      deleteBranch(worktreeBranch);
-    } catch {
-      // Non-fatal, log warning
-      this.emit('error', new Error(`Warning: Failed to clean up worktree ${worktreePath}`));
-    }
-
-    return commitSha;
   }
 
   // ===========================================================================
