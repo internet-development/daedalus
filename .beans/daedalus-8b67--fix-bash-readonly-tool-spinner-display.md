@@ -1,11 +1,11 @@
 ---
 # daedalus-8b67
 title: Spinner prints wall of text instead of updating in-place
-status: in-progress
+status: completed
 type: bug
 priority: high
 created_at: 2026-01-30T07:45:49Z
-updated_at: 2026-01-31T05:53:02Z
+updated_at: 2026-01-31T06:04:21Z
 parent: daedalus-bmnc
 blocking:
     - daedalus-rbhm
