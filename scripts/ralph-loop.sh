@@ -249,7 +249,8 @@ GRAPHQL
                elif .priority == "normal" then 2
                elif .priority == "low" then 3
                elif .priority == "deferred" then 4
-               else 2 end)
+               else 2 end),
+              .id
             )
           | .[0] | dfs
         else
