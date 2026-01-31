@@ -515,6 +515,14 @@ export class AgentRunner extends EventEmitter {
     return this.startedAt;
   }
 
+  /**
+   * Get the PID of the currently running child process (if any).
+   * Used for diagnostic logging in daemon shutdown.
+   */
+  getProcessPid(): number | undefined {
+    return this.process?.pid;
+  }
+
   // ===========================================================================
   // Private Methods
   // ===========================================================================
