@@ -1,10 +1,11 @@
 ---
 # daedalus-bmnc
 title: CLI Terminal Output Fixes
-status: todo
+status: completed
 type: epic
+priority: normal
 created_at: 2026-01-30T08:56:32Z
-updated_at: 2026-01-30T08:56:32Z
+updated_at: 2026-01-31T07:00:39Z
 ---
 
 Groups all CLI terminal output and readline-related bugs and improvements.
