@@ -1,11 +1,11 @@
 ---
 # daedalus-9l4m
 title: 'Improve tool spinner: use terminal width and show relative paths'
-status: todo
+status: in-progress
 type: task
 priority: normal
 created_at: 2026-01-30T08:05:22Z
-updated_at: 2026-01-30T08:56:37Z
+updated_at: 2026-01-31T06:22:35Z
 parent: daedalus-bmnc
 ---
 
@@ -81,8 +81,42 @@ In `src/cli/output.ts`, update `formatToolArgs()`:
 
 ## Checklist
 
-- [ ] Replace hardcoded `TOOL_ARGS_MAX_LENGTH` with dynamic terminal width calculation in `src/cli/spinner.ts`
-- [ ] Add `getGitRoot()` and `toRelativePath()` helpers in `src/cli/output.ts`
-- [ ] Update `formatToolArgs()` read/write/edit cases to use `toRelativePath()`
-- [ ] Update existing tests in `src/cli/plan-tool-spinner.test.ts` if affected
-- [ ] Add test for `toRelativePath()` showing relative conversion
+- [x] Replace hardcoded `TOOL_ARGS_MAX_LENGTH` with dynamic terminal width calculation in `src/cli/spinner.ts`
+- [x] Add `getGitRoot()` and `toRelativePath()` helpers in `src/cli/output.ts`
+- [x] Update `formatToolArgs()` read/write/edit cases to use `toRelativePath()`
+- [x] Update existing tests in `src/cli/plan-tool-spinner.test.ts` if affected
+- [x] Add test for `toRelativePath()` showing relative conversion
+
+## Changelog
+
+### Implemented
+- Replaced hardcoded `TOOL_ARGS_MAX_LENGTH = 120` in `spinner.ts` with dynamic calculation using `process.stdout.columns`
+- Replaced hardcoded `TOOL_ARGS_MAX_LENGTH = 120` in `output.ts` with `getToolArgsMaxLength()` function
+- Added `getGitRoot()` helper that caches the git root directory (via `git rev-parse --show-toplevel`)
+- Added exported `toRelativePath()` that converts absolute paths to relative from git root
+- Added `_resetGitRootCache()` for test isolation
+- Updated `formatToolArgs()` read/write/edit cases to call `toRelativePath()`
+- Added 7 new tests: 4 for dynamic width, 3 for toRelativePath
+- Added 4 new tests for formatToolArgs relative path behavior
+- Updated 6 existing tests (2 in plan-tool-spinner, 4 in output) to use real absolute paths
+
+### Files Modified
+- `src/cli/spinner.ts` — Removed `TOOL_ARGS_MAX_LENGTH` constant, added dynamic width calculation in `formatToolCallLine()`
+- `src/cli/output.ts` — Added `getGitRoot()`, `toRelativePath()`, `_resetGitRootCache()`, `getToolArgsMaxLength()`; updated `formatToolArgs()` file cases
+- `src/cli/plan-tool-spinner.test.ts` — Added tests for dynamic width and relative paths; updated existing tests
+- `src/cli/output.test.ts` — Updated 4 file path tests to use real absolute paths and expect relative output
+
+### Deviations from Spec
+- Spec suggested `prefixLen = 2 + 1 + toolName.length + 1 + 1 + 1` (6 + name). Actual calculation is `2 + 1 + toolName.length + 1 + 1 + 1 + 1` (7 + name) to account for the space before the args text
+- Added `getToolArgsMaxLength()` function in `output.ts` (not in spec) to replace the hardcoded constant used by `formatToolArgs` and `formatKeyValueArgs`
+- Added `_resetGitRootCache()` export (not in spec) for test isolation of the cached git root
+- Used `stdio: ['pipe', 'pipe', 'pipe']` in `execSync` to suppress stderr from git command
+
+### Decisions Made
+- Exported `toRelativePath` and `_resetGitRootCache` so tests can verify behavior and reset state
+- Used `getToolArgsMaxLength()` returning `columns - 20` for the output.ts truncation (reserves space for `[Tool: Name]` prefix)
+- Minimum args width of 20 chars enforced in spinner.ts to prevent unusable output on very narrow terminals
+
+### Known Limitations
+- `getGitRoot()` calls `execSync` once per session — if the process changes working directory to a different repo, the cached root will be stale
+- `toRelativePath()` on paths outside the git root will produce `../..` relative paths rather than keeping the absolute path
