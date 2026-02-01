@@ -720,18 +720,61 @@ merge_bean_branch() {
   git branch -D "$branch_name" 2>/dev/null || true
 }
 
-# Fallback WIP commit if there are uncommitted changes
+# Fallback commit for any uncommitted changes after agent runs.
+# Smart about bean files:
+#   - If only .beans/ changed and last commit touched the same file → amend
+#   - If only .beans/ changed but last commit didn't → new chore commit
+#   - If real implementation files changed too → wip commit (includes everything)
+#   - Timestamp-only .beans/ changes are discarded as noise
 fallback_commit() {
   local bean_id="$1"
   local iteration="$2"
 
-  # Discard bean file changes (status/timestamp bookkeeping) — not implementation work
-  git checkout -- .beans/ 2>/dev/null || true
+  # Discard timestamp-only .beans/ changes (updated_at noise)
+  # Keep substantive changes like status: completed
+  local bean_diff
+  bean_diff=$(git diff .beans/ 2>/dev/null \
+    | grep '^[+-]' \
+    | grep -v '^[+-][+-][+-]' \
+    | grep -v 'updated_at' \
+    || true)
+  if [[ -z "$bean_diff" ]]; then
+    # Only timestamp changes — discard them
+    git checkout -- .beans/ 2>/dev/null || true
+  fi
 
-  if [[ -n $(git status --porcelain 2>/dev/null) ]]; then
+  # Check what's dirty
+  local dirty
+  dirty=$(git status --porcelain 2>/dev/null)
+  [[ -z "$dirty" ]] && return
+
+  # Separate bean files from other changes
+  local bean_changes other_changes
+  bean_changes=$(echo "$dirty" | grep '\.beans/' || true)
+  other_changes=$(echo "$dirty" | grep -v '\.beans/' || true)
+
+  if [[ -n "$other_changes" ]]; then
+    # Real implementation files left uncommitted — commit everything together
     log_warn "Agent left uncommitted changes, creating WIP commit"
     git add -A
     git commit -m "wip($bean_id): ralph loop iteration $iteration" --no-verify || true
+  elif [[ -n "$bean_changes" ]]; then
+    # Only bean files changed (e.g. status: completed)
+    # Check if the last commit already touched this bean's file
+    local bean_file_pattern
+    bean_file_pattern=".beans/${bean_id}"
+    local last_commit_touched
+    last_commit_touched=$(git diff --name-only HEAD~1 HEAD 2>/dev/null | grep "$bean_file_pattern" || true)
+
+    if [[ -n "$last_commit_touched" ]]; then
+      # Last commit touched the same bean file — amend it in
+      git add .beans/
+      git commit --amend --no-edit --no-verify 2>/dev/null || true
+    else
+      # Last commit didn't touch this bean — new clean commit
+      git add .beans/
+      git commit -m "chore($bean_id): mark bean as completed" --no-verify 2>/dev/null || true
+    fi
   fi
 }
 
