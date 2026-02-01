@@ -780,7 +780,6 @@ merge_bean_branch() {
 }
 
 # Fallback commit for any uncommitted changes after agent runs.
-# Also used after the loop marks a bean as completed.
 # Smart about bean files:
 #   - If only .beans/ changed and last commit touched the same file → amend
 #   - If only .beans/ changed but last commit didn't → new chore commit
@@ -941,11 +940,22 @@ work_on_bean() {
       # Mark bean as completed (the loop owns status, not the agent)
       beans update "$bean_id" --status completed >/dev/null 2>&1 || true
 
-      # Commit the status change (changelog + completed status)
-      fallback_commit "$bean_id" "$iteration"
+      # Commit the status change directly (avoid fallback_commit's amend
+      # heuristic which could amend into the wrong commit after the first
+      # fallback_commit already ran above)
+      git add .beans/ 2>/dev/null
+      git diff --cached --quiet .beans/ 2>/dev/null || \
+        git commit -m "chore($bean_id): mark as completed" --no-verify 2>/dev/null || true
 
-      # Merge bean branch on completion
-      merge_bean_branch "$bean_id" "$bean_type" "$bean_title" || log_warn "Branch merge failed"
+      # Merge bean branch on completion — revert status if merge fails
+      if ! merge_bean_branch "$bean_id" "$bean_type" "$bean_title"; then
+        log_warn "Branch merge failed, reverting bean to in-progress"
+        beans update "$bean_id" --status in-progress >/dev/null 2>&1 || true
+        git add .beans/ 2>/dev/null
+        git diff --cached --quiet .beans/ 2>/dev/null || \
+          git commit -m "chore($bean_id): revert to in-progress (merge failed)" --no-verify 2>/dev/null || true
+        return 1
+      fi
 
       log_success "Bean completed: $bean_id (${iteration} iterations, ${duration}s)"
       notify_bean_complete "$bean_id"
