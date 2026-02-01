@@ -569,33 +569,56 @@ format_squash_commit() {
   fi
 }
 
-# Ensure ancestor branch chain exists (top-down)
+# Ensure ancestor branch chain exists (top-down).
+# For each new ancestor branch: creates it, checks it out, marks the bean
+# as in-progress, and commits — giving each branch a meaningful first commit.
 ensure_ancestor_branches() {
   local bean_id="$1"
+  local current_branch
+  current_branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
 
-  # Build ancestor chain by walking up parent IDs
-  local ancestors=()
+  # Build ancestor chain with types by walking up parent IDs
+  local ancestor_ids=()
+  local ancestor_types=()
   local current_id="$bean_id"
 
   while true; do
+    local result
+    result=$(beans query "{ bean(id: \"$current_id\") { parentId parent { type } } }" --json 2>/dev/null)
     local parent_id
-    parent_id=$(beans query "{ bean(id: \"$current_id\") { parentId } }" --json 2>/dev/null | jq -r '.bean.parentId // empty')
+    parent_id=$(echo "$result" | jq -r '.bean.parentId // empty')
     [[ -z "$parent_id" ]] && break
-    ancestors=("$parent_id" "${ancestors[@]}")
+    local parent_type
+    parent_type=$(echo "$result" | jq -r '.bean.parent.type // "feature"')
+    ancestor_ids=("$parent_id" "${ancestor_ids[@]}")
+    ancestor_types=("$parent_type" "${ancestor_types[@]}")
     current_id="$parent_id"
   done
 
-  # Create branches top-down
-  for ancestor_id in "${ancestors[@]}"; do
+  # Create branches top-down, committing "begin" on each new branch
+  local i
+  for i in "${!ancestor_ids[@]}"; do
+    local ancestor_id="${ancestor_ids[$i]}"
+    local ancestor_type="${ancestor_types[$i]}"
     local branch_name
-    branch_name=$(bean_branch "$ancestor_id")
+    branch_name=$(bean_branch "$ancestor_id" "$ancestor_type")
+
     if ! git rev-parse --verify "refs/heads/$branch_name" >/dev/null 2>&1; then
       local base
       base=$(get_merge_target "$ancestor_id")
       log "Creating ancestor branch: $branch_name from $base"
       git branch "$branch_name" "$base" 2>/dev/null || true
+
+      # Checkout, mark in-progress, commit as first commit on the branch
+      git checkout "$branch_name" 2>/dev/null
+      beans update "$ancestor_id" --status in-progress >/dev/null 2>&1 || true
+      git add .beans/ 2>/dev/null
+      git commit --no-verify -m "chore($ancestor_id): begin $ancestor_type" 2>/dev/null || true
     fi
   done
+
+  # Return to where we started
+  git checkout "$current_branch" 2>/dev/null || true
 }
 
 # Discard bean file modifications before switching branches.
@@ -654,6 +677,11 @@ setup_bean_branch() {
   else
     log "Creating branch: $branch_name from $base"
     git checkout -b "$branch_name" "$base" 2>/dev/null
+
+    # Mark in-progress and commit as meaningful first commit
+    beans update "$bean_id" --status in-progress >/dev/null 2>&1 || true
+    git add .beans/ 2>/dev/null
+    git commit --no-verify -m "chore($bean_id): begin $bean_type" 2>/dev/null || true
   fi
 }
 
@@ -799,10 +827,7 @@ work_on_bean() {
     log "Working on bean: $bean_id"
   fi
 
-  # Mark as in-progress
-  beans update "$bean_id" --status in-progress >/dev/null 2>&1 || true
-
-  # Set up bean branch
+  # Set up bean branch (also marks bean as in-progress with a begin commit)
   setup_bean_branch "$bean_id" "$bean_type" || log_warn "Branch setup failed, continuing on current branch"
 
   while [[ $iteration -lt $MAX_ITERATIONS ]]; do
