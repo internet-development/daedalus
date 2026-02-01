@@ -499,19 +499,31 @@ run_agent() {
 # Branch Management
 # =============================================================================
 
-# Get the branch name for a bean
+# Get the branch name for a bean: {type}/{id}
 bean_branch() {
-  echo "bean/$1"
+  local bean_id="$1"
+  local bean_type="${2:-}"
+
+  # If type not provided, look it up
+  if [[ -z "$bean_type" ]]; then
+    bean_type=$(beans query "{ bean(id: \"$bean_id\") { type } }" --json 2>/dev/null | jq -r '.bean.type // "task"')
+  fi
+
+  echo "${bean_type}/${bean_id}"
 }
 
 # Get the merge target for a bean (parent's branch or default branch)
 get_merge_target() {
   local bean_id="$1"
+  local result
+  result=$(beans query "{ bean(id: \"$bean_id\") { parentId parent { type } } }" --json 2>/dev/null)
   local parent_id
-  parent_id=$(beans query "{ bean(id: \"$bean_id\") { parentId } }" --json 2>/dev/null | jq -r '.bean.parentId // empty')
+  parent_id=$(echo "$result" | jq -r '.bean.parentId // empty')
 
   if [[ -n "$parent_id" ]]; then
-    echo "bean/$parent_id"
+    local parent_type
+    parent_type=$(echo "$result" | jq -r '.bean.parent.type // "feature"')
+    echo "${parent_type}/${parent_id}"
   else
     echo "$DEFAULT_BRANCH"
   fi
@@ -609,6 +621,7 @@ discard_bean_changes() {
 # Create and checkout bean branch
 setup_bean_branch() {
   local bean_id="$1"
+  local bean_type="${2:-}"
 
   [[ "$BRANCH_ENABLED" != "true" ]] && return 0
 
@@ -631,7 +644,7 @@ setup_bean_branch() {
   ensure_ancestor_branches "$bean_id"
 
   local branch_name
-  branch_name=$(bean_branch "$bean_id")
+  branch_name=$(bean_branch "$bean_id" "$bean_type")
   local base
   base=$(get_merge_target "$bean_id")
 
@@ -653,7 +666,7 @@ merge_bean_branch() {
   [[ "$BRANCH_ENABLED" != "true" ]] && return 0
 
   local branch_name
-  branch_name=$(bean_branch "$bean_id")
+  branch_name=$(bean_branch "$bean_id" "$bean_type")
   local target
   target=$(get_merge_target "$bean_id")
   local strategy
@@ -744,7 +757,7 @@ work_on_bean() {
   beans update "$bean_id" --status in-progress >/dev/null 2>&1 || true
 
   # Set up bean branch
-  setup_bean_branch "$bean_id" || log_warn "Branch setup failed, continuing on current branch"
+  setup_bean_branch "$bean_id" "$bean_type" || log_warn "Branch setup failed, continuing on current branch"
 
   while [[ $iteration -lt $MAX_ITERATIONS ]]; do
     iteration=$((iteration + 1))
@@ -760,7 +773,7 @@ work_on_bean() {
       # Leave branch for inspection, checkout parent's branch
       if [[ "$BRANCH_ENABLED" == "true" ]]; then
         local branch_name base_branch
-        branch_name=$(bean_branch "$bean_id")
+        branch_name=$(bean_branch "$bean_id" "$bean_type")
         base_branch=$(get_merge_target "$bean_id")
         log_warn "Leaving branch $branch_name for inspection"
         git checkout "$base_branch" 2>/dev/null || true
@@ -795,7 +808,7 @@ work_on_bean() {
         # Leave branch for inspection, checkout parent's branch
         if [[ "$BRANCH_ENABLED" == "true" ]]; then
           local branch_name base_branch
-          branch_name=$(bean_branch "$bean_id")
+          branch_name=$(bean_branch "$bean_id" "$bean_type")
           base_branch=$(get_merge_target "$bean_id")
           log_warn "Leaving branch $branch_name for inspection"
           git checkout "$base_branch" 2>/dev/null || true
@@ -841,7 +854,7 @@ work_on_bean() {
       # Leave branch for inspection, checkout parent's branch
       if [[ "$BRANCH_ENABLED" == "true" ]]; then
         local branch_name base_branch
-        branch_name=$(bean_branch "$bean_id")
+        branch_name=$(bean_branch "$bean_id" "$bean_type")
         base_branch=$(get_merge_target "$bean_id")
         log_warn "Leaving branch $branch_name for inspection"
         git checkout "$base_branch" 2>/dev/null || true
@@ -863,7 +876,7 @@ work_on_bean() {
   # Leave branch for inspection, checkout parent's branch
   if [[ "$BRANCH_ENABLED" == "true" ]]; then
     local branch_name base_branch
-    branch_name=$(bean_branch "$bean_id")
+    branch_name=$(bean_branch "$bean_id" "$bean_type")
     base_branch=$(get_merge_target "$bean_id")
     log_warn "Leaving branch $branch_name for inspection"
     git checkout "$base_branch" 2>/dev/null || true
