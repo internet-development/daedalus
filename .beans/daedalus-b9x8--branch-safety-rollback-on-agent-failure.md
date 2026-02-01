@@ -3,9 +3,9 @@
 title: 'Branch safety: rollback on agent failure'
 status: draft
 type: task
+priority: normal
 created_at: 2026-01-31T07:16:58Z
 updated_at: 2026-01-31T07:16:58Z
-parent: daedalus-8jow
 ---
 
 ## Summary
