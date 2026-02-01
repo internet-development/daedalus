@@ -572,13 +572,12 @@ get_merge_strategy() {
 }
 
 # Extract changelog section from a bean's body
+# Captures everything between "## Changelog" and the next "## " heading (or EOF)
 extract_changelog() {
   local bean_id="$1"
   beans query "{ bean(id: \"$bean_id\") { body } }" --json 2>/dev/null \
     | jq -r ".bean.body" \
-    | sed -n "/^## Changelog/,/^## [^C]/p" \
-    | sed "1d" \
-    | sed "/^## /d"
+    | sed -n '/^## Changelog$/,/^## /{ /^## /d; p; }'
 }
 
 # Format a squash commit message with conventional commit prefix
