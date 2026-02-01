@@ -1023,13 +1023,19 @@ main() {
     log "Selected: ${YELLOW}$bean_id${NC} - $bean_title"
 
     if $DRY_RUN; then
-      work_on_bean "$bean_id"
+      work_on_bean "$bean_id" || true
       break
     fi
 
-    # Work on the bean
-    work_on_bean "$bean_id"
-    beans_completed=$((beans_completed + 1))
+    # Work on the bean (guard against set -e killing the loop)
+    local work_result=0
+    work_on_bean "$bean_id" || work_result=$?
+
+    if [[ $work_result -eq 0 ]]; then
+      beans_completed=$((beans_completed + 1))
+    else
+      log_warn "Bean $bean_id failed (exit $work_result), moving to next"
+    fi
 
     # If specific bean or --once, exit after one
     if [[ -n "$SPECIFIC_BEAN" ]] || $ONCE; then
