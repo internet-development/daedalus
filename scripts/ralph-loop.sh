@@ -725,6 +725,9 @@ fallback_commit() {
   local bean_id="$1"
   local iteration="$2"
 
+  # Discard bean file changes (status/timestamp bookkeeping) — not implementation work
+  git checkout -- .beans/ 2>/dev/null || true
+
   if [[ -n $(git status --porcelain 2>/dev/null) ]]; then
     log_warn "Agent left uncommitted changes, creating WIP commit"
     git add -A
