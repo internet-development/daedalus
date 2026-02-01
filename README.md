@@ -3,6 +3,7 @@
 [![npm version](https://img.shields.io/npm/v/@internet-dev/daedalus)](https://www.npmjs.com/package/@internet-dev/daedalus)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue)](https://www.typescriptlang.org/)
+![Visitors](https://ghvc.kabelkultur.se?username=internet-development&repository=daedalus&label=Visitors&style=flat&color=blueviolet)
 
 > **The bottleneck isn't agents. It's having clear enough tasks for them to work on.**
 
