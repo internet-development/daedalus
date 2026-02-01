@@ -297,10 +297,13 @@ get_bean() {
   beans query "{ bean(id: \"$bean_id\") { id title status type priority body parent { id title type body } children { id title status type body } } }" --json 2>/dev/null
 }
 
-# Check if bean is epic or milestone (needs review mode)
+# Check if bean needs review mode (parent beans whose children did the work)
+# Epics and milestones are always review. Features are review if they have children.
 is_review_mode() {
   local bean_type="$1"
-  [[ "$bean_type" == "epic" || "$bean_type" == "milestone" ]]
+  local has_children="${2:-false}"
+  [[ "$bean_type" == "epic" || "$bean_type" == "milestone" ]] || \
+    [[ "$bean_type" == "feature" && "$has_children" == "true" ]]
 }
 
 # Check if bean is stuck (has blocked or failed tag)
@@ -323,80 +326,103 @@ get_status() {
   beans query "{ bean(id: \"$bean_id\") { status } }" --json 2>/dev/null | jq -r '.bean.status'
 }
 
+# Check if the bean's changelog has been written (non-empty, not just placeholder)
+has_changelog() {
+  local bean_id="$1"
+  local changelog
+  changelog=$(extract_changelog "$bean_id")
+  # Strip the placeholder text and whitespace
+  changelog=$(echo "$changelog" | grep -v '_To be filled' | grep -v '^$' | head -1)
+  [[ -n "$changelog" ]]
+}
+
 # Generate prompt for agent (implementation mode)
 generate_impl_prompt() {
   local bean_json="$1"
-  local bean_id bean_title bean_body parent_title parent_body children
+  local bean_id bean_title bean_type bean_body parent_title parent_type parent_body
 
   bean_id=$(echo "$bean_json" | jq -r '.bean.id')
   bean_title=$(echo "$bean_json" | jq -r '.bean.title')
+  bean_type=$(echo "$bean_json" | jq -r '.bean.type')
   bean_body=$(echo "$bean_json" | jq -r '.bean.body')
   parent_title=$(echo "$bean_json" | jq -r '.bean.parent.title // empty')
-  parent_body=$(echo "$bean_json" | jq -r '.bean.parent.body // empty' | head -20)
-  children=$(echo "$bean_json" | jq -r '.bean.children // [] | .[] | "- [\(.status)] \(.id): \(.title)"' 2>/dev/null)
+  parent_type=$(echo "$bean_json" | jq -r '.bean.parent.type // empty')
+  parent_body=$(echo "$bean_json" | jq -r '.bean.parent.body // empty')
+
+  local branch_name="${bean_type}/${bean_id}"
+  local parent_branch="${DEFAULT_BRANCH}"
+  if [[ -n "$parent_type" ]]; then
+    local parent_id
+    parent_id=$(echo "$bean_json" | jq -r '.bean.parent.id // empty')
+    parent_branch="${parent_type}/${parent_id}"
+  fi
 
   cat <<EOF
-# Ralph Loop - Autonomous Implementation
+# ${bean_type}: ${bean_id} — ${bean_title}
 
-You are in a ralph loop implementing bean **$bean_id**. You will be re-prompted
-until the bean is marked complete. Your previous work persists in the codebase
-and git history.
+Branch: \`${branch_name}\` (from \`${parent_branch}\`)
 
 EOF
 
   if [[ -n "$parent_title" ]]; then
     cat <<EOF
-## Parent Context: $parent_title
-$parent_body
+## Parent: ${parent_title}
 
-EOF
-  fi
+${parent_body}
 
-  cat <<EOF
-## Bean: $bean_id
-### $bean_title
-
-$bean_body
-
-EOF
-
-  if [[ -n "$children" ]]; then
-    cat <<EOF
-### Sub-tasks
-$children
-
-EOF
-  fi
-
-  cat <<EOF
 ---
 
-## Ralph Loop Protocol
+EOF
+  fi
 
-1. **Check git log** to see what you did in previous iterations
-2. **Implement** following TDD (your agent has the workflow built-in)
-3. **Update the bean** as you complete checklist items
-4. **Write changelog** before marking complete (document deviations from spec!)
-5. **Mark complete** when ALL checklist items are done AND changelog is written
+  cat <<EOF
+## Spec
+
+${bean_body}
+
+---
+
+## Instructions
+
+1. Check \`git log --oneline -5\` — you may be resuming previous work
+2. Implement what's described above
+3. Commit your work with clear conventional commit messages
+4. When done, write a changelog to the bean (see below)
+
+Your commits will be squash-merged into \`${parent_branch}\`, so good
+commit messages become the squash changelog.
+
+## When Done
+
+Write the changelog to the bean's \`## Changelog\` section, documenting
+what you implemented and any deviations from the spec:
+
+\`\`\`bash
+beans update ${bean_id} -d "\$(cat <<'BODY'
+{paste the full bean body here, with the ## Changelog section filled in}
+BODY
+)"
+\`\`\`
+
+That's it — we handle marking the bean complete and merging.
 
 ## If Blocked
 
-If you hit a blocker you cannot resolve:
 \`\`\`bash
-beans update $bean_id --tag blocked
-beans create "Blocker: {description}" -t bug --blocking $bean_id -d "..."
+beans update ${bean_id} --tag blocked
+beans create "Blocker: {description}" -t bug --blocking ${bean_id} -d "..."
 \`\`\`
-Then exit cleanly - the loop will pause for human help.
+Then exit — we'll create a branch for the fix.
 
-## Key Reminders
+## Rules
 
-- You WILL be re-run if the bean isn't complete
-- Check \`git log --oneline -10\` to see previous iteration work
-- The changelog is MANDATORY before completion
+- Do NOT switch branches or push
+- Do NOT run \`beans update --status\` — we manage bean status
+- Do NOT modify beans other than ${bean_id}
 EOF
 }
 
-# Generate prompt for agent (review mode for epic/milestone)
+# Generate prompt for agent (review mode for feature/epic/milestone with children)
 generate_review_prompt() {
   local bean_json="$1"
   local bean_id bean_title bean_type bean_body
@@ -406,67 +432,73 @@ generate_review_prompt() {
   bean_type=$(echo "$bean_json" | jq -r '.bean.type')
   bean_body=$(echo "$bean_json" | jq -r '.bean.body')
 
-  # Get children with their bodies for review
+  local branch_name="${bean_type}/${bean_id}"
+
+  # Get children with their changelogs
   local children_details
   children_details=$(echo "$bean_json" | jq -r '
     .bean.children // [] | .[] |
-    "### \(.id): \(.title)\nType: \(.type) | Status: \(.status)\n\n\(.body)\n\n---\n"
+    "### \(.id) (\(.type)): \(.title)\n\n\(.body)\n\n---\n"
   ' 2>/dev/null)
 
   cat <<EOF
-# Ralph Loop - ${bean_type^} Review
+# Review ${bean_type}: ${bean_id} — ${bean_title}
 
-You are reviewing **$bean_id** before marking it complete. All children are done.
+Branch: \`${branch_name}\`
+All children are complete. Review their work before we merge up.
 
-## ${bean_type^}: $bean_id
-### $bean_title
+## Spec
 
-$bean_body
+${bean_body}
 
 ---
 
 ## Completed Children
 
-$children_details
+${children_details}
 
----
+## Review Steps
 
-## Review Process
+1. Read each child's \`## Changelog\` section
+2. Verify files mentioned in changelogs exist and make sense
+3. Run \`npm test\` — all tests must pass
+4. Check for integration issues between children
 
-1. **Read each child's changelog** - understand what was actually implemented
-2. **Verify the code** - check files mentioned in changelogs exist and make sense
-3. **Run the test suite**: \`npm test\`
-4. **Check for integration issues** - do the pieces work together?
+## When Done
 
-## Outcome
+Write a review changelog to the bean:
 
-**All good?**
 \`\`\`bash
-beans update $bean_id --status completed
+beans update ${bean_id} -d "\$(cat <<'BODY'
+{paste the full bean body here, with the ## Changelog section filled in
+summarizing what the children implemented and any issues found}
+BODY
+)"
 \`\`\`
 
-**Found issues?**
+If issues found:
 \`\`\`bash
-beans create "Issue: {description}" -t bug --parent $bean_id -d "..."
+beans create "Issue: {description}" -t bug --parent ${bean_id} -d "..."
 \`\`\`
-Then exit - the ${bean_type} will wait for fixes.
+Then exit — we'll create a branch for the fix.
 
-## Review Guidelines
+## Rules
 
+- Do NOT switch branches or push
+- Do NOT run \`beans update --status\` — we manage bean status
 - Focus on correctness and integration, not style
-- Check changelogs for deviations from spec
-- Verify tests actually run and pass
-- Be practical - ship if it works
+- Be practical — ship if it works
 EOF
 }
 
 # Generate prompt based on bean type
 generate_prompt() {
   local bean_json="$1"
-  local bean_type
+  local bean_type has_children
   bean_type=$(echo "$bean_json" | jq -r '.bean.type')
+  has_children=$(echo "$bean_json" | jq -r 'if (.bean.children // [] | length) > 0 then "true" else "false" end')
 
-  if is_review_mode "$bean_type"; then
+  if is_review_mode "$bean_type" "$has_children"; then
     generate_review_prompt "$bean_json"
   else
     generate_impl_prompt "$bean_json"
@@ -749,6 +781,7 @@ merge_bean_branch() {
 }
 
 # Fallback commit for any uncommitted changes after agent runs.
+# Also used after the loop marks a bean as completed.
 # Smart about bean files:
 #   - If only .beans/ changed and last commit touched the same file → amend
 #   - If only .beans/ changed but last commit didn't → new chore commit
@@ -759,7 +792,7 @@ fallback_commit() {
   local iteration="$2"
 
   # Discard timestamp-only .beans/ changes (updated_at noise)
-  # Keep substantive changes like status: completed
+  # Keep substantive changes like changelog writes, status updates
   local bean_diff
   bean_diff=$(git diff .beans/ 2>/dev/null \
     | grep '^[+-]' \
@@ -815,13 +848,14 @@ work_on_bean() {
   local start_time
   start_time=$(date +%s)
 
-  # Check bean type and title for mode and merge messages
-  local bean_info bean_type bean_title
-  bean_info=$(beans query "{ bean(id: \"$bean_id\") { type title } }" --json 2>/dev/null)
+  # Check bean type, title, and children for mode and merge messages
+  local bean_info bean_type bean_title has_children
+  bean_info=$(beans query "{ bean(id: \"$bean_id\") { type title children { id status } } }" --json 2>/dev/null)
   bean_type=$(echo "$bean_info" | jq -r '.bean.type')
   bean_title=$(echo "$bean_info" | jq -r '.bean.title')
+  has_children=$(echo "$bean_info" | jq -r 'if (.bean.children // [] | length) > 0 then "true" else "false" end')
 
-  if is_review_mode "$bean_type"; then
+  if is_review_mode "$bean_type" "$has_children"; then
     log "Reviewing ${bean_type}: $bean_id"
   else
     log "Working on bean: $bean_id"
@@ -899,14 +933,17 @@ work_on_bean() {
     # Fallback commit
     fallback_commit "$bean_id" "$iteration"
 
-    # Check status
-    local status
-    status=$(get_status "$bean_id")
-
-    if [[ "$status" == "completed" ]]; then
+    # Check if agent wrote a changelog (our completion signal)
+    if has_changelog "$bean_id"; then
       local end_time duration
       end_time=$(date +%s)
       duration=$((end_time - start_time))
+
+      # Mark bean as completed (the loop owns status, not the agent)
+      beans update "$bean_id" --status completed >/dev/null 2>&1 || true
+
+      # Commit the status change (changelog + completed status)
+      fallback_commit "$bean_id" "$iteration"
 
       # Merge bean branch on completion
       merge_bean_branch "$bean_id" "$bean_type" "$bean_title" || log_warn "Branch merge failed"
@@ -935,7 +972,7 @@ work_on_bean() {
       return 0
     fi
 
-    log "Status: $status - continuing..."
+    log "No changelog yet — continuing..."
     notify_iteration
   done
 
