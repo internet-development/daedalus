@@ -586,37 +586,24 @@ ensure_ancestor_branches() {
   done
 }
 
-# Commit any new/modified .beans/ files to the current branch before switching.
-# Only commits substantive changes — skips timestamp-only diffs (updated_at)
-# to avoid noisy commits on every branch switch.
-commit_bean_files() {
-  local dominated=false
-
-  # New (untracked) bean files — always commit
+# Discard bean file modifications before switching branches.
+# Bean status changes (todo→in-progress, updated_at) are ephemeral bookkeeping
+# that don't need to be committed — the DFS merge flow ensures each branch has
+# accurate status data from its children's squash/merge commits.
+# New (untracked) bean files ARE committed, since the agent may have created
+# blocker beans that need to be visible on other branches.
+discard_bean_changes() {
+  # Commit any NEW bean files (agent may have created blocker beans)
   local new_files
   new_files=$(git status --porcelain .beans/ 2>/dev/null | grep '^?' || true)
   if [[ -n "$new_files" ]]; then
-    dominated=true
-  fi
-
-  # Modified bean files — only if changes go beyond updated_at timestamps
-  if [[ "$dominated" == "false" ]]; then
-    local diff_lines
-    diff_lines=$(git diff .beans/ 2>/dev/null \
-      | grep '^[+-]' \
-      | grep -v '^[+-][+-][+-]' \
-      | grep -v 'updated_at' \
-      || true)
-    if [[ -n "$diff_lines" ]]; then
-      dominated=true
-    fi
-  fi
-
-  if [[ "$dominated" == "true" ]]; then
-    log "Committing bean files to current branch before switching"
+    log "Committing new bean files before branch switch"
     git add .beans/ 2>/dev/null
-    git commit --no-verify -m "chore: commit bean files before branch switch" 2>/dev/null || true
+    git commit --no-verify -m "chore: add new bean files" 2>/dev/null || true
   fi
+
+  # Discard modifications to existing bean files (status/timestamp changes)
+  git checkout -- .beans/ 2>/dev/null || true
 }
 
 # Create and checkout bean branch
@@ -631,8 +618,8 @@ setup_bean_branch() {
     git merge --abort 2>/dev/null || true
   fi
 
-  # Commit bean files first so they're visible from all branches
-  commit_bean_files
+  # Discard bean status changes (bookkeeping) before switching
+  discard_bean_changes
 
   # Check for dirty working tree (after committing bean files)
   if [[ -n $(git status --porcelain 2>/dev/null) ]]; then
